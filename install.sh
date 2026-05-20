@@ -10,9 +10,11 @@ DIM='\033[2m'
 BOLD='\033[1m'
 
 PRIMARY='\033[0;97m'
+GREEN='\033[0;32m'
 SECONDARY='\033[0;90m'
 ACCENT='\033[2;37m'
 SUCCESS='\033[0;97m'
+WARNING='\033[0;33m'
 ERROR='\033[0;90m'
 NC='\033[0m' # No Color
 
@@ -21,6 +23,14 @@ if [ "$(uname)" != "Linux" ]; then
     printf "${SECONDARY}▸${NC} Error: This installer only supports Linux systems\n"
     exit 1
 fi
+
+# --- DRY RUN WRAPPERS ---
+dry_run_mkdir() { if [ "$DRY_RUN" = true ]; then echo "[DRY RUN] mkdir $*"; else mkdir "$@"; fi; }
+dry_run_cp()    { if [ "$DRY_RUN" = true ]; then echo "[DRY RUN] cp $*"; else cp "$@"; fi; }
+dry_run_rm()    { if [ "$DRY_RUN" = true ]; then echo "[DRY RUN] rm $*"; else rm "$@"; fi; }
+dry_run_mv()    { if [ "$DRY_RUN" = true ]; then echo "[DRY RUN] mv $*"; else mv "$@"; fi; }
+dry_run_chmod() { if [ "$DRY_RUN" = true ]; then echo "[DRY RUN] chmod $*"; else chmod "$@"; fi; }
+dry_run_ln()    { if [ "$DRY_RUN" = true ]; then echo "[DRY RUN] ln $*"; else ln "$@"; fi; }
 
 require_command() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -80,10 +90,13 @@ refresh_runtime_paths
 SODA_URL="https://github.com/bottlesdevs/wine/releases/download/soda-9.0-1/soda-9.0-1-x86_64.tar.xz"
 DXVK_VERSION="2.4"
 DXVK_URL="https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VERSION}/dxvk-${DXVK_VERSION}.tar.gz"
+WINETRICKS_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
 SCRIPT_VERSION="v1.1.0"
 REPO_ASSETS_BASE_URL="${REPO_ASSETS_BASE_URL:-https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/Assets}"
 SODA_SHA256="${SODA_SHA256:-}"
 DXVK_SHA256="${DXVK_SHA256:-}"
+WINETRICKS_SHA256="${WINETRICKS_SHA256:-}"
+TD_INSTALLER_SHA256="${TD_INSTALLER_SHA256:-}"
 
 # Get terminal width for horizontal rules
 TERMINAL_WIDTH=$(tput cols 2>/dev/null)
@@ -116,6 +129,7 @@ USE_NVIDIA_DGPU=${USE_NVIDIA_DGPU:-N}
 TD_ICON_PATH="touchdesigner"
 DEBUG_LOG_FILE=""
 OPTIONAL_FONT_FIX_LOCATIONS=""
+SHORTCUT_SUMMARY=""
 
 if [ "$NON_INTERACTIVE" = true ]; then
     [ "$CREATE_SHORTCUT" = "N" ] && CREATE_SHORTCUT="Y"
@@ -175,7 +189,7 @@ print_warning() {
 
 print_font_fix_instructions() {
     printf "\n\n${DIM}────────────────────────────────────────────${NC}\n"
-    printf "${BOLD}${PRIMARY}PLEASE READ:${NC}\n"
+    printf "${BOLD}${WARNING}PLEASE READ:${NC}\n"
     printf "\n"
     printf "${BOLD}${PRIMARY}Font/UI Fix (.tox)${NC}\n"
     printf "${DIM}If text is missing, tiny, or broken in TouchDesigner, apply this once per project.${NC}\n"
@@ -192,8 +206,8 @@ print_font_fix_instructions() {
 print_starter_project_instructions() {
     printf "\n${DIM}────────────────────────────────────────────${NC}\n"
     printf "${BOLD}${PRIMARY}TouchDesigner (Font Fixes)${NC}\n"
-    printf "${DIM}A preconfigured project is available for a quick start.${NC}\n"
-    printf "${PRIMARY}•${NC} Open ${BOLD}TouchDesigner (Font Fixes)${NC} to start from a ready-made project\n"
+    printf "${DIM}A preconfigured font-fixes project is available for a quick start.${NC}\n"
+    printf "${PRIMARY}•${NC} Open ${BOLD}TouchDesigner (Font Fixes)${NC} to start from the ready-made font-fixes project\n"
     printf "${PRIMARY}•${NC} It already includes the font fix setup\n"
     printf "${PRIMARY}•${NC} If you like it, set it as TouchDesigner's Startup File inside the app\n"
     printf "${DIM}────────────────────────────────────────────${NC}\n"
@@ -265,6 +279,84 @@ check_network_access() {
     return 1
 }
 
+download_file() {
+    local url="$1"
+    local output_path="$2"
+    local label="$3"
+    local mode="${4:-progress}"
+    local user_agent="${5:-}"
+    local connect_timeout="${6:-10}"
+    local max_time="${7:-0}"
+    local tries="${8:-2}"
+
+    local -a curl_opts=(
+        --fail
+        --location
+        --connect-timeout "$connect_timeout"
+        --retry "$tries"
+        --retry-delay 1
+    )
+
+    if [ "$max_time" -gt 0 ] 2>/dev/null; then
+        curl_opts+=(--max-time "$max_time")
+    fi
+
+    if [ -n "$user_agent" ]; then
+        curl_opts+=(-A "$user_agent")
+    fi
+
+    if [ "$mode" = "quiet" ]; then
+        curl_opts+=(--silent --show-error)
+    else
+        curl_opts+=(--progress-bar)
+    fi
+
+    if [ "$mode" = "progress" ] && command -v wget >/dev/null 2>&1; then
+        local -a wget_opts=(
+            "--tries=$tries"
+            "--timeout=$connect_timeout"
+        )
+
+        if [ -n "$user_agent" ]; then
+            wget_opts+=("--user-agent=$user_agent")
+        fi
+
+        if [ "$mode" = "quiet" ]; then
+            wget_opts+=(-q)
+        else
+            wget_opts+=(-q --show-progress)
+        fi
+
+        wget "${wget_opts[@]}" -O "$output_path" "$url" && return 0
+    fi
+
+    if command -v curl >/dev/null 2>&1; then
+        curl "${curl_opts[@]}" -o "$output_path" "$url" && return 0
+    fi
+
+    if command -v wget >/dev/null 2>&1; then
+        local -a wget_opts=(
+            "--tries=$tries"
+            "--timeout=$connect_timeout"
+        )
+
+        if [ -n "$user_agent" ]; then
+            wget_opts+=("--user-agent=$user_agent")
+        fi
+
+        if [ "$mode" = "quiet" ]; then
+            wget_opts+=(-q)
+        else
+            wget_opts+=(-q --show-progress)
+        fi
+
+        wget "${wget_opts[@]}" -O "$output_path" "$url" && return 0
+    fi
+
+    print_error "No downloader available for $label (need curl or wget)"
+    return 1
+}
+
 verify_checksum() {
     local file_path="$1"
     local expected_hash="$2"
@@ -297,7 +389,7 @@ safe_rm_rf() {
         exit 1
     fi
 
-    rm -rf -- "$target"
+    dry_run_rm -rf -- "$target"
 }
 
 setup_debug_mode() {
@@ -305,7 +397,7 @@ setup_debug_mode() {
         return
     fi
 
-    mkdir -p "$LOG_DIR"
+    dry_run_mkdir -p "$LOG_DIR"
     DEBUG_LOG_FILE="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
 
     # Mirror all output to a persistent log file for issue reports.
@@ -348,26 +440,26 @@ path_allows_exec() {
     local target_path="$1"
     local probe_file="$target_path/.td_exec_probe.$$"
 
-    if ! mkdir -p "$target_path" >/dev/null 2>&1; then
+    if ! dry_run_mkdir -p "$target_path" >/dev/null 2>&1; then
         return 1
     fi
 
     if ! printf '#!/bin/sh\nexit 0\n' >"$probe_file" 2>/dev/null; then
-        rm -f "$probe_file" >/dev/null 2>&1 || true
+        dry_run_rm -f "$probe_file" >/dev/null 2>&1 || true
         return 1
     fi
 
-    chmod +x "$probe_file" >/dev/null 2>&1 || {
-        rm -f "$probe_file" >/dev/null 2>&1 || true
+    dry_run_chmod +x "$probe_file" >/dev/null 2>&1 || {
+        dry_run_rm -f "$probe_file" >/dev/null 2>&1 || true
         return 1
     }
 
     if "$probe_file" >/dev/null 2>&1; then
-        rm -f "$probe_file" >/dev/null 2>&1 || true
+        dry_run_rm -f "$probe_file" >/dev/null 2>&1 || true
         return 0
     fi
 
-    rm -f "$probe_file" >/dev/null 2>&1 || true
+    dry_run_rm -f "$probe_file" >/dev/null 2>&1 || true
     return 1
 }
 
@@ -416,6 +508,32 @@ $location"
     else
         OPTIONAL_FONT_FIX_LOCATIONS="$location"
     fi
+}
+
+add_shortcut_summary_entry() {
+    local entry="$1"
+
+    [ -n "$entry" ] || return
+
+    if [ -n "$SHORTCUT_SUMMARY" ]; then
+        SHORTCUT_SUMMARY="$SHORTCUT_SUMMARY
+$entry"
+    else
+        SHORTCUT_SUMMARY="$entry"
+    fi
+}
+
+print_shortcut_summary() {
+    [ -n "$SHORTCUT_SUMMARY" ] || return
+
+    printf "\n${BOLD}${PRIMARY}SHORTCUTS CREATED:${NC}\n"
+    while IFS= read -r entry; do
+        [ -n "$entry" ] || continue
+        printf "  ${DIM}•${NC} %s\n" "$entry"
+    done <<< "$SHORTCUT_SUMMARY"
+    printf "\n"
+
+    SHORTCUT_SUMMARY=""
 }
 
 require_graphical_session() {
@@ -678,7 +796,7 @@ detect_package_manager() {
         linuxmint)
             PKG_MANAGER="apt"; PKG_DISTRO="Linux Mint";
             ;;
-        pop|pop_os|pop_os)
+        pop|pop_os)
             PKG_MANAGER="apt"; PKG_DISTRO="Pop!_OS";
             ;;
         debian)
@@ -1016,7 +1134,7 @@ download_soda_runner() {
     mkdir -p "$TD_BASE_DIR"
     check_network_access "$SODA_URL" || true
 
-    wget -q --show-progress -O "$tarball" "$SODA_URL" || {
+    download_file "$SODA_URL" "$tarball" "Soda Wine runtime" "progress" || {
         print_error "Failed to download compatibility runtime"
         rm -f "$tarball"
         exit 1
@@ -1140,11 +1258,11 @@ download_winetricks() {
 
     print_info "Downloading winetricks..."
     mkdir -p "$TD_BASE_DIR"
-    wget -q -O "$WINETRICKS_BIN" \
-        "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" || {
+    download_file "$WINETRICKS_URL" "$WINETRICKS_BIN" "winetricks" "quiet" || {
         print_error "Failed to download system libraries"
         exit 1
     }
+
     chmod +x "$WINETRICKS_BIN"
     print_success "Winetricks downloaded"
 }
@@ -1163,7 +1281,7 @@ install_dxvk() {
     print_info "Downloading DXVK $DXVK_VERSION..."
     local dxvk_tarball="$TD_BASE_DIR/dxvk.tar.gz"
     check_network_access "$DXVK_URL" || true
-    wget -q --show-progress -O "$dxvk_tarball" "$DXVK_URL" || {
+    download_file "$DXVK_URL" "$dxvk_tarball" "DXVK archive" "progress" || {
         print_warning "Failed to download GPU acceleration, skipping (optional)"
         rm -f "$dxvk_tarball"
         return
@@ -1305,34 +1423,6 @@ install_windows_deps() {
 }
 
 
-check_installation_status() {
-    printf "\n${BOLD}${DIM}Installation Status Check${NC}\n\n"
-
-    if [ -f "$RUNNER_DIR/bin/wine64" ]; then
-        print_success "Soda Wine runner installed"
-    else
-        print_warning "Soda Wine runner not installed"
-        return 1
-    fi
-
-    if [ -d "$WINE_PREFIX/drive_c" ]; then
-        print_success "Wine prefix initialized"
-    else
-        print_warning "Wine prefix not initialized"
-        return 1
-    fi
-
-    if find_touchdesigner_exe >/dev/null; then
-        print_success "TouchDesigner executable found"
-    else
-        print_warning "TouchDesigner executable not found"
-        return 1
-    fi
-
-    printf "\n${PRIMARY}All installation steps completed!${NC}\n"
-    return 0
-}
-
 download_touchdesigner() {
     local td_archive="https://derivative.ca/download/archive"
     local -a versions=()
@@ -1354,28 +1444,12 @@ download_touchdesigner() {
     local custom_label="Use local installer (.exe path)"
     local max_versions=10
     local td_html
+    local archive_user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
     td_html=$(mktemp)
 
     print_info "Fetching available TouchDesigner versions..."
-    print_info "Trying Derivative website (curl, timeout 20s)..."
-    curl -fsSL \
-        --connect-timeout 8 \
-        --max-time 20 \
-        --retry 1 \
-        --retry-delay 1 \
-        -A "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0" \
-        "$td_archive" \
-        -o "$td_html" 2>/dev/null || true
-
-    if [ ! -s "$td_html" ]; then
-        print_warning "Could not fetch versions with curl"
-        print_info "Retrying with wget (timeout 20s)..."
-        wget -q \
-            --timeout=20 \
-            --tries=1 \
-            --user-agent="Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0" \
-            -O "$td_html" "$td_archive" 2>/dev/null || true
-    fi
+    print_info "Fetching archive index (timeout 20s)..."
+    download_file "$td_archive" "$td_html" "TouchDesigner archive index" "quiet" "$archive_user_agent" 8 20 1 || true
 
     if [ -s "$td_html" ]; then
         mapfile -t versions < <(
@@ -1608,13 +1682,14 @@ download_touchdesigner() {
         TD_FILEPATH="$DOWNLOAD_DIR/$TD_FILENAME"
     else
         print_info "Downloading $TD_FILENAME (≈2GB)..."
-        wget -q --show-progress -P "$DOWNLOAD_DIR" "$TD_URL" || {
+        if ! download_file "$TD_URL" "$DOWNLOAD_DIR/$TD_FILENAME" "$TD_FILENAME" "progress"; then
             print_error "Download failed"
             exit 1
-        }
+        fi
         print_success "Download completed"
         TD_FILEPATH="$DOWNLOAD_DIR/$TD_FILENAME"
     fi
+
 }
 
 install_touchdesigner() {
@@ -1743,7 +1818,7 @@ check_graphics() {
 }
 
 find_touchdesigner_exe() {
-    find "$WINE_PREFIX/drive_c" -type f -iname 'TouchDesigner.exe' 2>/dev/null | head -n 1
+    find "$WINE_PREFIX/drive_c" -type f -iname 'TouchDesigner.exe' 2>/dev/null | sort -V | tail -n 1
 }
 
 
@@ -1784,7 +1859,7 @@ WINE_PREFIX="${prefix_path}"
 USE_NVIDIA_DGPU="${nvidia_mode}"
 
 find_touchdesigner_exe() {
-    find "\$WINE_PREFIX/drive_c" -type f -iname 'TouchDesigner.exe' 2>/dev/null | head -n 1
+    find "\$WINE_PREFIX/drive_c" -type f -iname 'TouchDesigner.exe' 2>/dev/null | sort -V | tail -n 1
 }
 
 # Support version-specific shortcuts via argument (--exe) or env override.
@@ -1827,13 +1902,13 @@ if [ -n "\$1" ]; then
     # Decode file:// URI if passed by desktop environment
     if [[ "\$INPUT_PATH" == file://* ]]; then
         INPUT_PATH="\${INPUT_PATH#file://}"
-        INPUT_PATH="\$(python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.argv[1]))" "\$INPUT_PATH" 2>/dev/null || echo "\$INPUT_PATH")"
+        INPUT_PATH="\$(python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.argv[1]))" "\$INPUT_PATH" 2>/dev/null || { echo "Warning: python3 not available; .toe file URI path may contain encoded characters" >&2; echo "\$INPUT_PATH"; })"
     fi
-    # If the .toe is a starter template, copy it to ~/Documents to avoid overwriting the original
-    STARTER_DIR="\$(dirname "\$RUNNER_DIR")/../touchdesigner-linux/starter-projects"
-    STARTER_DIR="\$(realpath "\$STARTER_DIR" 2>/dev/null || echo "")"
+    # If the .toe is the font-fixes template, copy it to ~/Documents to avoid overwriting the original
+    FONT_FIXES_DIR="\$(dirname "\$RUNNER_DIR")/../touchdesigner-linux/font-fixes-projects"
+    FONT_FIXES_DIR="\$(realpath "\$FONT_FIXES_DIR" 2>/dev/null || echo "")"
     INPUT_REAL="\$(realpath "\$INPUT_PATH" 2>/dev/null || echo "\$INPUT_PATH")"
-    if [ -n "\$STARTER_DIR" ] && [[ "\$INPUT_REAL" == "\$STARTER_DIR"/* ]]; then
+    if [ -n "\$FONT_FIXES_DIR" ] && [[ "\$INPUT_REAL" == "\$FONT_FIXES_DIR"/* ]]; then
         DEST_DIR="\$HOME/Documents/TouchDesigner"
         mkdir -p "\$DEST_DIR"
         DEST_FILE="\$DEST_DIR/New-Project.toe"
@@ -1871,11 +1946,7 @@ install_optional_font_fix() {
         fi
     done
 
-    if curl -fsSL --max-time 20 "$REPO_ASSETS_BASE_URL/wine_ui_fixes.tox" -o "$dest" 2>/dev/null; then
-        return 0
-    fi
-
-    if wget -q -O "$dest" "$REPO_ASSETS_BASE_URL/wine_ui_fixes.tox" 2>/dev/null; then
+    if download_file "$REPO_ASSETS_BASE_URL/wine_ui_fixes.tox" "$dest" "wine_ui_fixes.tox" "quiet" "" 10 20 2; then
         return 0
     fi
 
@@ -1927,12 +1998,7 @@ install_optional_icon() {
         fi
     done
 
-    if curl -fsSL --max-time 20 "$REPO_ASSETS_BASE_URL/TouchDesigner.png" -o "$TD_BASE_DIR/TouchDesigner.png" 2>/dev/null; then
-        TD_ICON_PATH="$TD_BASE_DIR/TouchDesigner.png"
-        return 0
-    fi
-
-    if wget -q -O "$TD_BASE_DIR/TouchDesigner.png" "$REPO_ASSETS_BASE_URL/TouchDesigner.png" 2>/dev/null; then
+    if download_file "$REPO_ASSETS_BASE_URL/TouchDesigner.png" "$TD_BASE_DIR/TouchDesigner.png" "TouchDesigner.png" "quiet" "" 10 20 2; then
         TD_ICON_PATH="$TD_BASE_DIR/TouchDesigner.png"
         return 0
     fi
@@ -1947,12 +2013,7 @@ install_optional_icon() {
         fi
     done
 
-    if curl -fsSL --max-time 20 "$REPO_ASSETS_BASE_URL/_TouchDesigner.png.ico" -o "$TD_BASE_DIR/_TouchDesigner.png.ico" 2>/dev/null; then
-        TD_ICON_PATH="$TD_BASE_DIR/_TouchDesigner.png.ico"
-        return 0
-    fi
-
-    if wget -q -O "$TD_BASE_DIR/_TouchDesigner.png.ico" "$REPO_ASSETS_BASE_URL/_TouchDesigner.png.ico" 2>/dev/null; then
+    if download_file "$REPO_ASSETS_BASE_URL/_TouchDesigner.png.ico" "$TD_BASE_DIR/_TouchDesigner.png.ico" "_TouchDesigner.png.ico" "quiet" "" 10 20 2; then
         TD_ICON_PATH="$TD_BASE_DIR/_TouchDesigner.png.ico"
         return 0
     fi
@@ -1981,7 +2042,6 @@ Categories=Graphics;
 DESKTOP
 
     trust_desktop_shortcut "$DESKTOP_DIR/TouchDesigner.desktop"
-    print_success "Desktop shortcut created"
 }
 
 trust_desktop_shortcut() {
@@ -2017,33 +2077,26 @@ DESKTOP
     if command -v update-desktop-database >/dev/null 2>&1; then
         update-desktop-database "$APPLICATIONS_DIR" >/dev/null 2>&1 || true
     fi
-
-    print_success "Application menu entry created"
 }
 
-install_starter_project() {
+install_font_fixes_project() {
     local src
-    local dest_dir="$TD_BASE_DIR/starter-projects"
-    local dest="$dest_dir/TouchDesigner-Starter.toe"
+    local dest_dir="$TD_BASE_DIR/font-fixes-projects"
+    local dest="$dest_dir/TouchDesigner-Font-Fixes.toe"
 
     mkdir -p "$dest_dir"
 
-    if curl -fsSL --max-time 20 "$REPO_ASSETS_BASE_URL/TouchDesigner_Font_Fixes.toe" -o "$dest" 2>/dev/null; then
+    if download_file "$REPO_ASSETS_BASE_URL/TouchDesigner_Font_Fixes.toe" "$dest" "TouchDesigner_Font_Fixes.toe" "quiet" "" 10 20 2; then
         echo "$dest"
         return 0
     fi
 
-    if wget -q -O "$dest" "$REPO_ASSETS_BASE_URL/TouchDesigner_Font_Fixes.toe" 2>/dev/null; then
+    if download_file "$REPO_ASSETS_BASE_URL/TouchDesigner-Font-Fixes.toe" "$dest" "TouchDesigner-Font-Fixes.toe" "quiet" "" 10 20 2; then
         echo "$dest"
         return 0
     fi
 
-    if curl -fsSL --max-time 20 "$REPO_ASSETS_BASE_URL/TouchDesigner-Starter.toe" -o "$dest" 2>/dev/null; then
-        echo "$dest"
-        return 0
-    fi
-
-    if wget -q -O "$dest" "$REPO_ASSETS_BASE_URL/TouchDesigner-Starter.toe" 2>/dev/null; then
+    if download_file "$REPO_ASSETS_BASE_URL/TouchDesigner-Starter.toe" "$dest" "TouchDesigner-Starter.toe" "quiet" "" 10 20 2; then
         echo "$dest"
         return 0
     fi
@@ -2051,6 +2104,8 @@ install_starter_project() {
     for src in \
         "$SCRIPT_DIR/TouchDesigner_Font_Fixes.toe" \
         "$SCRIPT_DIR/Assets/TouchDesigner_Font_Fixes.toe" \
+        "$SCRIPT_DIR/TouchDesigner-Font-Fixes.toe" \
+        "$SCRIPT_DIR/Assets/TouchDesigner-Font-Fixes.toe" \
         "$SCRIPT_DIR/TouchDesigner-Starter.toe" \
         "$SCRIPT_DIR/Assets/TouchDesigner-Starter.toe"
     do
@@ -2065,34 +2120,38 @@ install_starter_project() {
     return 1
 }
 
-create_starter_shortcuts() {
-    local starter_project="$1"
+create_font_fixes_shortcuts() {
+    local font_fixes_project="$1"
 
     [[ $CREATE_SHORTCUT =~ ^[Yy]$ ]] || return 0
-    [ -f "$starter_project" ] || return 0
+    [ -f "$font_fixes_project" ] || return 0
 
     mkdir -p "$DESKTOP_DIR" "$APPLICATIONS_DIR"
 
-    cat > "$DESKTOP_DIR/TouchDesigner-Starter.desktop" << DESKTOP
+    # Cleanup legacy shortcut names to avoid duplicate menu entries.
+    rm -f "$DESKTOP_DIR/TouchDesigner-Starter.desktop" \
+          "$APPLICATIONS_DIR/touchdesigner-starter.desktop"
+
+    cat > "$DESKTOP_DIR/TouchDesigner-Font-Fixes.desktop" << DESKTOP
 [Desktop Entry]
 Version=1.0
 Type=Application
 Name=TouchDesigner (Font Fixes)
-Comment=Open the starter project with font fixes
-Exec="$LAUNCHER_PATH" "$starter_project"
+Comment=Open the preconfigured font-fixes project
+Exec="$LAUNCHER_PATH" "$font_fixes_project"
 Icon=$TD_ICON_PATH
 Terminal=false
 Categories=Graphics;
 DESKTOP
-    trust_desktop_shortcut "$DESKTOP_DIR/TouchDesigner-Starter.desktop"
+    trust_desktop_shortcut "$DESKTOP_DIR/TouchDesigner-Font-Fixes.desktop"
 
-    cat > "$APPLICATIONS_DIR/touchdesigner-starter.desktop" << DESKTOP
+    cat > "$APPLICATIONS_DIR/touchdesigner-font-fixes.desktop" << DESKTOP
 [Desktop Entry]
 Version=1.0
 Type=Application
 Name=TouchDesigner (Font Fixes)
-Comment=Open the starter project with font fixes
-Exec="$LAUNCHER_PATH" "$starter_project"
+Comment=Open the preconfigured font-fixes project
+Exec="$LAUNCHER_PATH" "$font_fixes_project"
 Icon=$TD_ICON_PATH
 Terminal=false
 Categories=Graphics;
@@ -2102,7 +2161,7 @@ DESKTOP
         update-desktop-database "$APPLICATIONS_DIR" >/dev/null 2>&1 || true
     fi
 
-    print_success "Starter project shortcut created"
+    add_shortcut_summary_entry "TouchDesigner (Font Fixes): opens the preconfigured font-fixes project"
 }
 
 create_versioned_shortcuts() {
@@ -2151,7 +2210,7 @@ Terminal=false
 Categories=Graphics;
 VAPPS
         any_created=true
-        print_success "Version shortcut created: $label"
+        add_shortcut_summary_entry "$label: launches this specific installed version"
     done < <(discover_touchdesigner_install_roots)
 
     if [ "$any_created" = true ] && command -v update-desktop-database >/dev/null 2>&1; then
@@ -2449,6 +2508,12 @@ uninstall_touchdesigner() {
         rm -f "$APPLICATIONS_DIR/touchdesigner-file.desktop"
         print_success "File association removed"
     fi
+    if [ -f "$APPLICATIONS_DIR/touchdesigner-font-fixes.desktop" ]; then
+        rm -f "$APPLICATIONS_DIR/touchdesigner-font-fixes.desktop"
+    fi
+    if [ -f "$APPLICATIONS_DIR/touchdesigner-starter.desktop" ]; then
+        rm -f "$APPLICATIONS_DIR/touchdesigner-starter.desktop"
+    fi
     # Remove versioned application shortcuts
     for _vapp in "$APPLICATIONS_DIR"/touchdesigner-[0-9]*.desktop; do
         [ -f "$_vapp" ] && rm -f "$_vapp"
@@ -2555,19 +2620,22 @@ main() {
                 if [ "$NON_INTERACTIVE" = true ]; then
                     print_info "Non-interactive mode: CREATE_SHORTCUT=$CREATE_SHORTCUT"
                 else
-                    prompt_yes_no "Create desktop shortcut?" "Y"
+                    prompt_yes_no "Create desktop & application menu shortcuts?" "Y"
                     CREATE_SHORTCUT="$PROMPT_YES_NO_RESULT"
                 fi
                 create_desktop_shortcut
                 create_applications_shortcut
+                add_shortcut_summary_entry "TouchDesigner (Desktop + Application menu): launches latest installed version"
                 create_versioned_shortcuts
 
-                starter_project_path="$(install_starter_project 2>/dev/null || true)"
-                if [ -n "$starter_project_path" ]; then
-                    create_starter_shortcuts "$starter_project_path"
+                font_fixes_project_path="$(install_font_fixes_project 2>/dev/null || true)"
+                if [ -n "$font_fixes_project_path" ]; then
+                    create_font_fixes_shortcuts "$font_fixes_project_path"
                 else
-                    print_warning "Starter project not found (local assets/download), skipping starter shortcut"
+                    print_warning "Font-fixes project not found (local assets/download), skipping font-fixes shortcut"
                 fi
+
+                print_shortcut_summary
 
                 if [ "$NON_INTERACTIVE" = true ]; then
                     print_info "Non-interactive mode: ASSOC_FILES=$ASSOC_FILES"
@@ -2585,7 +2653,7 @@ main() {
                 print_font_fix_instructions
             fi
 
-            if [ -f "$TD_BASE_DIR/starter-projects/TouchDesigner-Starter.toe" ]; then
+            if [ -f "$TD_BASE_DIR/font-fixes-projects/TouchDesigner-Font-Fixes.toe" ]; then
                 print_starter_project_instructions
             fi
 
@@ -2623,5 +2691,206 @@ main() {
             ;;
     esac
 }
+
+show_help() {
+        cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Quick start: just run ./install.sh and follow the on-screen instructions.
+
+Common options:
+    -h, --help           Show this help and exit
+    -V, --version        Show installer version and exit
+    --dry-run            Simulate install (no changes made)
+    --list-versions      List available TouchDesigner versions
+    --check              Check environment (dependencies, GPU, etc.)
+
+Examples:
+    ./install.sh
+    ./install.sh --dry-run
+    ./install.sh --list-versions
+    ./install.sh --check
+    ./install.sh --version
+
+For advanced options and automation: ./install.sh --help-advanced
+EOF
+}
+
+show_help_advanced() {
+        cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+ADVANCED OPTIONS:
+    -n, --non-interactive       No prompts (auto Y for shortcuts and .toe association)
+    -f, --fast                  Fast mode (skip pauses)
+    -H, --headless              Headless mode (no graphical installer)
+    -d, --debug                 Enable debug output
+    -x, --trace                 Bash xtrace (bash -x)
+    -u, --force-uninstall       Uninstall without confirmation
+    -s, --create-shortcut       Force shortcut creation
+    -a, --assoc-files           Force .toe file association
+    -g, --nvidia                Force NVIDIA dGPU offload
+    -v, --td-version VERSION    TouchDesigner version to install
+    -i, --installer PATH        Use a local .exe installer
+    -c, --choice N              Pre-select main menu choice (1=Install, 2=Uninstall...)
+
+Environment variables (for scripting/CI):
+    NON_INTERACTIVE, INSTALL_CHOICE, FAST_MODE, ALLOW_HEADLESS_INSTALL,
+    TD_VERSION, TD_INSTALLER_PATH, CREATE_SHORTCUT, ASSOC_FILES, USE_NVIDIA_DGPU,
+    ENABLE_DXVK, FORCE_UNINSTALL, DEBUG, TRACE
+Example:
+    NON_INTERACTIVE=true TD_VERSION=2025.32460 bash install.sh
+
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        --help-advanced)
+            show_help_advanced
+            exit 0
+            ;;
+        -V|--version)
+            echo "$SCRIPT_VERSION"
+            exit 0
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            ;;
+        --list-versions)
+            LIST_VERSIONS=true
+            ;;
+        --check)
+            CHECK_ENV=true
+            ;;
+        -n|--non-interactive)
+            NON_INTERACTIVE=true
+            ;;
+        -f|--fast)
+            FAST_MODE=true
+            ;;
+        -H|--headless)
+            ALLOW_HEADLESS_INSTALL=true
+            ;;
+        -d|--debug)
+            DEBUG=true
+            ;;
+        -x|--trace)
+            TRACE=true
+            ;;
+        -u|--force-uninstall)
+            FORCE_UNINSTALL=true
+            ;;
+        -s|--create-shortcut)
+            CREATE_SHORTCUT=Y
+            ;;
+        -a|--assoc-files)
+            ASSOC_FILES=Y
+            ;;
+        -g|--nvidia)
+            USE_NVIDIA_DGPU=Y
+            ;;
+        -v|--td-version)
+            if [ -z "$2" ]; then
+                print_error "Missing value for $1"
+                exit 1
+            fi
+            TD_VERSION="$2"
+            shift
+            ;;
+        -i|--installer)
+            if [ -z "$2" ]; then
+                print_error "Missing value for $1"
+                exit 1
+            fi
+            TD_INSTALLER_PATH="$2"
+            shift
+            ;;
+        -c|--choice)
+            if [ -z "$2" ]; then
+                print_error "Missing value for $1"
+                exit 1
+            fi
+            INSTALL_CHOICE="$2"
+            shift
+            ;;
+        *)
+            print_error "Unknown option: $1"
+            print_info "Use -h or --help to see available options"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+if [ "$NON_INTERACTIVE" = true ]; then
+    [ "$CREATE_SHORTCUT" = "N" ] && CREATE_SHORTCUT="Y"
+    [ "$ASSOC_FILES" = "N" ] && ASSOC_FILES="Y"
+fi
+
+if [ "$DRY_RUN" = true ]; then
+    echo "[DRY RUN] Simulation mode enabled. No changes will be made."
+    exit 0
+fi
+
+if [ "$LIST_VERSIONS" = true ]; then
+    list_touchdesigner_versions() {
+        local td_archive="https://derivative.ca/download/archive"
+        local -a versions=()
+        local -a fallback_versions=(
+            "2025.32460" "2025.32280" "2025.32050" "2025.31760" "2025.31550" "2025.30000" "2024.10000" "2023.12120" "2022.33910"
+        )
+        local td_html
+        local archive_user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+        td_html=$(mktemp)
+        echo "Fetching available TouchDesigner versions..."
+        download_file "$td_archive" "$td_html" "TouchDesigner archive index" "quiet" "$archive_user_agent" 8 20 1 || true
+        if [ -s "$td_html" ]; then
+            mapfile -t versions < <(grep -oE '20[0-9]{2}\.[0-9]{4,6}' "$td_html" | sort -Vu | sort -Vr)
+        fi
+        rm -f "$td_html"
+        if [ "${#versions[@]}" -eq 0 ]; then
+            echo "Could not fetch live version list from Derivative website."
+            versions=("${fallback_versions[@]}")
+            echo "Using fallback version list:"
+        fi
+        for v in "${versions[@]}"; do
+            echo "$v"
+        done
+    }
+    list_touchdesigner_versions
+    exit 0
+fi
+
+if [ "$CHECK_ENV" = true ]; then
+    check_env_report() {
+        echo "Checking environment..."
+        check_prerequisites
+        echo "- Required commands: OK"
+        if command -v glxinfo >/dev/null 2>&1; then
+            echo "- GPU: $(glxinfo | grep 'OpenGL renderer' | head -n1)"
+        elif command -v vulkaninfo >/dev/null 2>&1; then
+            echo "- GPU: $(vulkaninfo | grep 'deviceName' | head -n1)"
+        else
+            echo "- GPU: (glxinfo/vulkaninfo not found)"
+        fi
+        echo "- Desktop session: $XDG_SESSION_TYPE ($DESKTOP_SESSION)"
+        echo "- DISPLAY: $DISPLAY"
+        echo "- WAYLAND_DISPLAY: $WAYLAND_DISPLAY"
+        echo "- User: $USER"
+        echo "- Kernel: $(uname -r)"
+        echo "- Distro: $(grep PRETTY_NAME /etc/os-release | cut -d= -f2 | tr -d '"')"
+        echo "- Bash version: $BASH_VERSION"
+        echo "- Home: $HOME"
+        echo "- Script version: $SCRIPT_VERSION"
+        echo "Environment check complete."
+    }
+    check_env_report
+    exit 0
+fi
 
 main "$@"
