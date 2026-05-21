@@ -526,11 +526,27 @@ $entry"
 print_shortcut_summary() {
     [ -n "$SHORTCUT_SUMMARY" ] || return
 
-    printf "\n${BOLD}${PRIMARY}SHORTCUTS CREATED:${NC}\n"
+    # Split summary into lines and reorder: main shortcut, Font Fixes, then versions
+    main_shortcut=""
+    font_fixes=""
+    versions=""
     while IFS= read -r entry; do
-        [ -n "$entry" ] || continue
-        printf "  ${DIM}•${NC} %s\n" "$entry"
+        case "$entry" in
+            *"Desktop + Application menu"*) main_shortcut="$entry" ;;
+            *"Font Fixes"*) font_fixes="$entry" ;;
+            *"launches this specific installed version"*)
+                versions="$versions$entry\n"
+                ;;
+        esac
     done <<< "$SHORTCUT_SUMMARY"
+
+    printf "\n${BOLD}${PRIMARY}SHORTCUTS CREATED:${NC}\n"
+    [ -n "$main_shortcut" ] && printf "  ${DIM}•${NC} %s\n" "$main_shortcut"
+    [ -n "$font_fixes" ] && printf "  ${DIM}•${NC} %s\n" "$font_fixes"
+    # Print each version shortcut
+    while IFS= read -r vline; do
+        [ -n "$vline" ] && printf "  ${DIM}•${NC} %s\n" "$vline"
+    done <<< "${versions%\n}"
     printf "\n"
 
     SHORTCUT_SUMMARY=""
