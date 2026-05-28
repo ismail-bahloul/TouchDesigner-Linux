@@ -37,6 +37,8 @@ The script is idempotent, it is safe to run multiple times. It skips already-ins
 
 The installer also adds a ready-to-use starter project: `TouchDesigner Starter`, which already includes the font fix setup.
 
+It can also optionally associate `.toe` and `.tox` files with TouchDesigner (so you can double-click them from your file manager).
+
 ---
 
 **Supported distros:**
@@ -72,7 +74,6 @@ Run the installer again and choose **Uninstall**. You can remove one selected To
 | `~/.local/share/touchdesigner-linux/wine_ui_fixes.tox` | Font fix file |
 | `~/.local/share/touchdesigner-linux/starter-projects/TouchDesigner-Starter.toe` | Ready-to-use starter project |
 | `~/.local/share/applications/touchdesigner.desktop` | App menu entry |
-| `~/.local/share/applications/touchdesigner-starter.desktop` | Starter project menu entry (includes font fix) |
 
 ---
 
@@ -83,7 +84,7 @@ Run the installer again and choose **Uninstall**. You can remove one selected To
 | No display / GUI fails | Run from a graphical session with `DISPLAY` or `WAYLAND_DISPLAY` set |
 | Version list fetch fails | Script falls back to a curated list automatically |
 | Long dependency phase | The compatibility libraries step can be slow and quiet, just wait |
-| Textport warning: `Error Loading Default Mono Font ... Substituted with Verdana` | Non-blocking fallback. UI and projects still work. Apply `wine_ui_fixes.tox` (or use `TouchDesigner (Font Fixes)` starter), then restart TouchDesigner if needed. |
+| Textport warning: `Error Loading Default Mono Font ... Substituted with Verdana` | Non-blocking fallback. UI and projects still work. Apply `wine_ui_fixes.tox` (or use the Starter project), then restart TouchDesigner if needed. |
 | Ubuntu/Debian `:i386` dependency errors (`Breaks`, version mismatch) | Usually caused by third-party repo skew between amd64 and i386 packages. The installer does not force downgrades. Align package versions in apt sources, then rerun the script. |
 | TD installer fails on specific `.dll` files (for example ZED, Spinnaker, TensorRT/CUDA) | In the TouchDesigner installer, choose `Custom`/`Minimal` install and uncheck optional hardware SDK components you do not need. |
 | Duplicate menu entry | Remove stale `.desktop` files in `~/.local/share/applications` and run `update-desktop-database` |
@@ -199,6 +200,9 @@ Fonts will display correctly as long as the `.tox` file is present in the projec
 
 If Textport still shows `Error Loading Default Mono Font ... Substituted with Verdana`, this is usually harmless on Linux/Wine and can be ignored once the UI looks correct.
 
+Note: the installer and launcher expect a `global-fixes` source directory by default at `~/.local/share/touchdesigner-linux/global-fixes`.
+If that folder is missing, the launcher will fall back to the repository-packaged fixes located at `Assets/global-fixes` (useful for development or when running the installer from the repo).
+
 ---
 
 ### 7. Optional: Flatpak Filesystem Access
@@ -231,7 +235,7 @@ Inside Bottles, click the **⋮** next to TouchDesigner and select **Add Desktop
 
 ### File association & icon
 
-1. Associate `.toe` files with TouchDesigner.
+1. Associate `.toe` and `.tox` files with TouchDesigner.
 2. Assign the TouchDesigner icon (`.png`) to the file type.
 
 The icon is located at:
@@ -347,16 +351,17 @@ update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
 
 ---
 
-<div align="center">
-
-Built with care — **Iswad**
-
-</div>
-
----
-
 ## Support the project
 
 If this project helps you, you can support maintenance and improvements via GitHub Sponsors:
 
 - https://github.com/sponsors/iswad-lab
+
+
+---
+
+<div align="center">
+
+Built with care — **Iswad**
+
+</div>

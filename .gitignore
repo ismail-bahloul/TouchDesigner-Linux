@@ -36,3 +36,4 @@ tmp/
 
 # Safety (Wine / local env)
 .local/
+install.sh
