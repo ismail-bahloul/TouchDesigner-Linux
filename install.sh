@@ -73,7 +73,12 @@ WINE_PREFIX=""
 WINETRICKS_BIN=""
 LOG_DIR=""
 DOWNLOAD_DIR="$HOME/Downloads"
-DESKTOP_DIR="$HOME/Desktop"
+# Detect the actual Desktop directory using XDG user dirs, fallback to $HOME/Desktop
+if command -v xdg-user-dir >/dev/null 2>&1; then
+    DESKTOP_DIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+else
+    DESKTOP_DIR="$HOME/Desktop"
+fi
 APPLICATIONS_DIR="$HOME/.local/share/applications"
 LAUNCHER_DIR="$HOME/.local/bin"
 LAUNCHER_PATH="$LAUNCHER_DIR/launch-touchdesigner.sh"
@@ -91,7 +96,7 @@ SODA_URL="https://github.com/bottlesdevs/wine/releases/download/soda-9.0-1/soda-
 DXVK_VERSION="2.4"
 DXVK_URL="https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VERSION}/dxvk-${DXVK_VERSION}.tar.gz"
 WINETRICKS_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
-SCRIPT_VERSION="v1.1.0"
+SCRIPT_VERSION="v1.2.0"
 REPO_ASSETS_BASE_URL="${REPO_ASSETS_BASE_URL:-https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/Assets}"
 SODA_SHA256="${SODA_SHA256:-}"
 DXVK_SHA256="${DXVK_SHA256:-}"
@@ -121,6 +126,7 @@ TD_INSTALLER_PATH=${TD_INSTALLER_PATH:-}
 FORCE_UNINSTALL=${FORCE_UNINSTALL:-false}
 DEBUG=${DEBUG:-false}
 TRACE=${TRACE:-false}
+PATCH_TOE_FILE=${PATCH_TOE_FILE:-}
 ENABLE_DXVK=${ENABLE_DXVK:-Y}
 CREATE_SHORTCUT=${CREATE_SHORTCUT:-N}
 ASSOC_FILES=${ASSOC_FILES:-N}
@@ -203,15 +209,6 @@ print_font_fix_instructions() {
     printf "${DIM}────────────────────────────────────────────${NC}\n"
 }
 
-print_starter_project_instructions() {
-    printf "\n${DIM}────────────────────────────────────────────${NC}\n"
-    printf "${BOLD}${PRIMARY}TouchDesigner (Font Fixes)${NC}\n"
-    printf "${DIM}A preconfigured font-fixes project is available for a quick start.${NC}\n"
-    printf "${PRIMARY}•${NC} Open ${BOLD}TouchDesigner (Font Fixes)${NC} to start from the ready-made font-fixes project\n"
-    printf "${PRIMARY}•${NC} It already includes the font fix setup\n"
-    printf "${PRIMARY}•${NC} If you like it, set it as TouchDesigner's Startup File inside the app\n"
-    printf "${DIM}────────────────────────────────────────────${NC}\n"
-}
 
 prompt_yes_no() {
     local prompt="$1"
@@ -524,7 +521,7 @@ $entry"
 }
 
 print_shortcut_summary() {
-    [ -n "$SHORTCUT_SUMMARY" ] || return
+    [ -n "$SHORTCUT_SUMMARY" ] || return 0
 
     # Split summary into lines and reorder: main shortcut, Font Fixes, then versions
     main_shortcut=""
@@ -728,7 +725,10 @@ show_main_menu() {
     printf "\n"
     printf "${ACCENT}      -> Already installed? Re-run safely ! Completed steps will be skipped.${NC}\n"
     printf "\n"
-    printf "  2  Uninstall\n"
+    printf "  2  Update\n"
+    printf "${ACCENT}      • Update launcher, Wine components, UI fixes and icons.${NC}\n"
+    printf "\n"
+    printf "  3  Uninstall\n"
     printf "${ACCENT}      • Removes the Wine prefix, runner, launcher, and all TouchDesigner data.${NC}\n"
     printf "\n"
     printf "  0  Exit\n"
@@ -1136,6 +1136,158 @@ check_arch_runtime_dependencies() {
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PATCH .TOE FILE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Check if a .toe file already has the wine_ui_fixes patch
+has_fix_already() {
+    local f="$1"
+    local toeexpand="$2"
+
+    local f_dir
+    f_dir=$(dirname "$f")
+    local f_base
+    f_base=$(basename "$f")
+
+    # Quick check: expand the .toe and look for wine_ui_fixes folder in .dir
+    local wine_f="z:${f//\//\\}"
+    local toe_dir="$f_dir/${f_base}.dir"
+    local toe_toc="$f_dir/${f_base}.toc"
+
+    rm -rf "$toe_dir" "$toe_toc" 2>/dev/null || true
+    WINEPREFIX="$WINE_PREFIX" "$RUNNER_DIR/bin/wine64" "$toeexpand" "$wine_f" >/dev/null 2>&1 || true
+
+    local has_fix=false
+    if [ -d "$toe_dir/wine_ui_fixes" ]; then
+        has_fix=true
+    fi
+
+    rm -rf "$toe_dir" "$toe_toc" 2>/dev/null || true
+    $has_fix && return 0 || return 1
+}
+
+patch_single_toe_file() {
+    local f="$1"
+    local fixfile="$2"
+    local toeexpand="$3"
+    local toecollapse="$4"
+
+    local f_base
+    f_base=$(basename "$f")
+    local f_noext="${f_base%.*}"
+
+    print_info "Patching ${f_base}..."
+
+    # Expand the .tox fix file to get its structure
+    local fix_tmpdir
+    fix_tmpdir=$(mktemp -d "/tmp/td_fix_${f_noext}.XXXXXX")
+    local fix_copy="$fix_tmpdir/fix.tox"
+    cp -f "$fixfile" "$fix_copy" 2>/dev/null || true
+    local wine_fix_copy="z:${fix_copy//\//\\}"
+    WINEPREFIX="$WINE_PREFIX" "$RUNNER_DIR/bin/wine64" "$toeexpand" "$wine_fix_copy" >/dev/null 2>&1 || true
+
+    if [ ! -d "$fix_copy.dir" ]; then
+        rm -rf "$fix_tmpdir"
+        return 1
+    fi
+
+    # Read fix .toc entries
+    local -a fix_entries=()
+    while IFS= read -r entry; do
+        [ -z "$entry" ] && continue
+        [[ "$entry" == \#* ]] && continue
+        [ "$entry" = ".build" ] && continue
+        fix_entries+=("$entry")
+    done < "$fix_copy.toc"
+
+    rm -rf "$fix_tmpdir"
+
+    # Step 3: Backup centralisé (nom unique basé sur le chemin complet)
+    local backup_dir="$TD_BASE_DIR/backups"
+    mkdir -p "$backup_dir" 2>/dev/null || true
+    local unique_bak_name="${f//\//_}.bak"
+    local backup="$backup_dir/$unique_bak_name"
+    cp -f "$f" "$backup" 2>/dev/null || true
+
+    # Step 4: Expand target .toe
+    local f_dir
+    f_dir=$(dirname "$f")
+    local toe_dir="$f_dir/${f_base}.dir"
+    local toe_toc="$f_dir/${f_base}.toc"
+    local wine_f="z:${f//\//\\}"
+
+    rm -rf "$toe_dir" "$toe_toc" 2>/dev/null || true
+    WINEPREFIX="$WINE_PREFIX" "$RUNNER_DIR/bin/wine64" "$toeexpand" "$wine_f" >/dev/null 2>&1 || true
+
+    if [ ! -d "$toe_dir" ]; then
+        # Restore depuis le backup centralisé
+        cp -f "$backup" "$f" 2>/dev/null || true
+        return 1
+    fi
+
+    # Step 5: Merge fix into expanded toe
+    local merge_tmpdir
+    merge_tmpdir=$(mktemp -d "/tmp/td_merge_${f_noext}.XXXXXX")
+    local merge_fix="$merge_tmpdir/fix.tox"
+    cp -f "$fixfile" "$merge_fix" 2>/dev/null || true
+    local wine_mfix="z:${merge_fix//\//\\}"
+    WINEPREFIX="$WINE_PREFIX" "$RUNNER_DIR/bin/wine64" "$toeexpand" "$wine_mfix" >/dev/null 2>&1 || true
+
+    if [ -d "$merge_fix.dir" ]; then
+        cp -rf "$merge_fix.dir/"* "$toe_dir/" 2>/dev/null || true
+    fi
+    rm -rf "$merge_tmpdir"
+
+    for entry in "${fix_entries[@]}"; do
+        echo "$entry" >> "$toe_toc"
+    done
+
+    WINEPREFIX="$WINE_PREFIX" "$RUNNER_DIR/bin/wine64" "$toecollapse" "$wine_f" >/dev/null 2>&1 || true
+    rm -rf "$toe_dir" "$toe_toc" 2>/dev/null || true
+}
+
+patch_toe_projects_in_drive() {
+    [ -d "$WINE_PREFIX/drive_c" ] || return 0
+
+    local toeexpand toecollapse
+    toeexpand=$(find "$WINE_PREFIX/drive_c" -type f -iname 'toeexpand.exe' 2>/dev/null | head -n1 || true)
+    toecollapse=$(find "$WINE_PREFIX/drive_c" -type f -iname 'toecollapse.exe' 2>/dev/null | head -n1 || true)
+
+    if [ -z "$toeexpand" ] || [ -z "$toecollapse" ]; then
+        print_warning "toeexpand/toecollapse not found — skipping .toe patching"
+        return 0
+    fi
+
+    local fixfile="$TD_BASE_DIR/wine_ui_fixes.tox"
+    if [ ! -f "$fixfile" ]; then
+        print_warning "wine_ui_fixes.tox not found — skipping .toe patching"
+        return 0
+    fi
+
+    mapfile -t toe_files < <(find "$WINE_PREFIX/drive_c" -type f -iname '*.toe' 2>/dev/null || true)
+    [ "${#toe_files[@]}" -eq 0 ] && return 0
+
+    local total=${#toe_files[@]}
+    local patched=0
+    local skipped=0
+
+    for f in "${toe_files[@]}"; do
+        local f_base
+        f_base=$(basename "$f")
+        if has_fix_already "$f" "$toeexpand"; then
+            print_info "${f_base} — already patched"
+            skipped=$((skipped + 1))
+        else
+            print_info "${f_base} — patching..."
+            patch_single_toe_file "$f" "$fixfile" "$toeexpand" "$toecollapse"
+            patched=$((patched + 1))
+        fi
+    done
+
+    print_success "${total} .toe file(s) detected, ${patched} patched, ${skipped} already up to date"
+}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # WINE RUNNER SETUP
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1456,8 +1608,11 @@ download_touchdesigner() {
     local selected=""
     local selected_version=""
     local use_custom_installer=false
+    local use_skip=false
+    TD_SKIP_INSTALL=false
     local custom_installer_path=""
     local custom_label="Use local installer (.exe path)"
+    local skip_label="Skip"
     local max_versions=10
     local td_html
     local archive_user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
@@ -1537,7 +1692,7 @@ download_touchdesigner() {
 
         local cursor=0
         local count="${#versions[@]}"
-        local total_count=$((count + 1))  # selectable items (versions + custom)
+        local total_count=$((count + 2))  # selectable items (versions + custom + skip)
 
         # Build set of already-installed version numbers
         local -A _installed_versions=()
@@ -1560,8 +1715,8 @@ download_touchdesigner() {
                 _sep_count=$((_sep_count + 1))
             fi
         done
-        # Total drawn lines = versions + separators + 1 (year sep before custom) + 1 (custom entry)
-        local draw_lines=$((count + _sep_count + 1 + 1))
+        # Total drawn lines = versions + separators + 1 (year sep before custom) + 1 (custom entry) + 1 (skip)
+        local draw_lines=$((count + _sep_count + 1 + 1 + 1))
 
         # Draw the list
         _draw_version_list() {
@@ -1587,6 +1742,13 @@ download_touchdesigner() {
                 printf "  ${BOLD}${PRIMARY}▶  %-30s${NC}\n" "$custom_label"
             else
                 printf "  ${DIM}   %-30s${NC}\n" "$custom_label"
+            fi
+
+            local skip_idx=$((count + 1))
+            if [ "$cursor" -eq "$skip_idx" ]; then
+                printf "  ${BOLD}${PRIMARY}▶  %-30s${NC}\n" "$skip_label"
+            else
+                printf "  ${DIM}   %-30s${NC}\n" "$skip_label"
             fi
         }
 
@@ -1632,11 +1794,20 @@ download_touchdesigner() {
         tput cnorm 2>/dev/null || true
         printf "\n"
 
+        local skip_idx=$((count + 1))
         if [ "$cursor" -eq "$count" ]; then
             use_custom_installer=true
+        elif [ "$cursor" -eq "$skip_idx" ]; then
+            use_skip=true
         else
             selected_version="${versions[$cursor]}"
         fi
+    fi
+
+    if [ "$use_skip" = true ]; then
+        TD_SKIP_INSTALL=true
+        print_info "Skipping TouchDesigner download/install"
+        return
     fi
 
     if [ "$use_custom_installer" = true ]; then
@@ -1842,16 +2013,32 @@ register_toe_mimetype() {
     local mime_dir="$HOME/.local/share/mime/packages"
     mkdir -p "$mime_dir"
 
+    # Remove old/legacy MIME cache to force a clean rebuild
+    rm -f "$HOME/.local/share/mime/globs2" \
+          "$HOME/.local/share/mime/magic" \
+          "$HOME/.local/share/mime/types" \
+          "$HOME/.local/share/mime/subclasses" \
+          "$HOME/.local/share/mime/XMLnamespaces" \
+          "$HOME/.local/share/mime/aliases" \
+          "$HOME/.local/share/mime/generic-icons" 2>/dev/null || true
+
     cat > "$mime_dir/touchdesigner.xml" << XML
 <?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
-  <mime-type type="application/x-touchdesigner">
+  <mime-type type="application/x-touchdesigner-toe">
     <comment>TouchDesigner project file</comment>
-    <glob pattern="*.toe"/>
+    <glob pattern="*.toe" priority="100"/>
+    <icon name="TouchDesigner-toe"/>
+  </mime-type>
+  <mime-type type="application/x-touchdesigner-tox">
+    <comment>TouchDesigner component file</comment>
+    <glob pattern="*.tox" priority="100"/>
+    <icon name="TouchDesigner-tox"/>
   </mime-type>
 </mime-info>
 XML
 
+    # Don't install icons into hicolor/mimetypes — creating index.theme breaks KDE.
     if command -v update-mime-database >/dev/null 2>&1; then
         update-mime-database "$HOME/.local/share/mime" >/dev/null 2>&1 || true
     fi
@@ -1862,17 +2049,29 @@ XML
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 create_launcher_script() {
-    local runner_path="$RUNNER_DIR"
-    local prefix_path="$WINE_PREFIX"
     local nvidia_mode="$USE_NVIDIA_DGPU"
+
+    # Préserver le réglage NVIDIA existant si l'utilisateur l'a modifié
+    if [ -f "$LAUNCHER_PATH" ]; then
+        local existing_nvidia
+        existing_nvidia=$(grep -E '^USE_NVIDIA_DGPU=' "$LAUNCHER_PATH" | cut -d'"' -f2 2>/dev/null || echo "")
+        [ -n "$existing_nvidia" ] && nvidia_mode="$existing_nvidia"
+    fi
 
     mkdir -p "$LAUNCHER_DIR"
 
     cat > "$LAUNCHER_PATH" << LAUNCHER
 #!/bin/bash
-RUNNER_DIR="${runner_path}"
-WINE_PREFIX="${prefix_path}"
+# Allow overriding base dir; default to conventional user install
+TD_BASE_DIR="\${TD_BASE_DIR:-\$HOME/.local/share/touchdesigner-linux}"
+RUNNER_DIR="\${TD_BASE_DIR%/}/runner"
+WINE_PREFIX="\${TD_BASE_DIR%/}/prefix"
 USE_NVIDIA_DGPU="${nvidia_mode}"
+
+# Graphics & Display fixes for Wayland (KDE Plasma 6)
+# Forces standalone window initialization through XWayland and avoids GLXMakeCurrent timing bugs.
+export WAYLAND_DISPLAY=""
+export __GL_YIELD="USLEEP"
 
 find_touchdesigner_exe() {
     find "\$WINE_PREFIX/drive_c" -type f -iname 'TouchDesigner.exe' 2>/dev/null | sort -V | tail -n 1
@@ -1920,31 +2119,128 @@ if [ -n "\$1" ]; then
         INPUT_PATH="\${INPUT_PATH#file://}"
         INPUT_PATH="\$(python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.argv[1]))" "\$INPUT_PATH" 2>/dev/null || { echo "Warning: python3 not available; .toe file URI path may contain encoded characters" >&2; echo "\$INPUT_PATH"; })"
     fi
-    # If the .toe is the font-fixes template, copy it to ~/Documents to avoid overwriting the original
-    FONT_FIXES_DIR="\$(dirname "\$RUNNER_DIR")/../touchdesigner-linux/font-fixes-projects"
-    FONT_FIXES_DIR="\$(realpath "\$FONT_FIXES_DIR" 2>/dev/null || echo "")"
-    INPUT_REAL="\$(realpath "\$INPUT_PATH" 2>/dev/null || echo "\$INPUT_PATH")"
-    if [ -n "\$FONT_FIXES_DIR" ] && [[ "\$INPUT_REAL" == "\$FONT_FIXES_DIR"/* ]]; then
-        DEST_DIR="\$HOME/Documents/TouchDesigner"
-        mkdir -p "\$DEST_DIR"
-        DEST_FILE="\$DEST_DIR/New-Project.toe"
-        if [ ! -f "\$DEST_FILE" ]; then
-            cp "\$INPUT_PATH" "\$DEST_FILE"
-        else
-            TIMESTAMP="\$(date +%Y%m%d-%H%M%S)"
-            DEST_FILE="\$DEST_DIR/New-Project-\$TIMESTAMP.toe"
-            cp "\$INPUT_PATH" "\$DEST_FILE"
-        fi
-        INPUT_PATH="\$DEST_FILE"
-    fi
     # Map Linux path to Wine Z: drive
     WINE_PATH="z:\${INPUT_PATH//\//\\\\}"
     EXTRA_ARGS=("\$WINE_PATH")
 fi
 
-PATH="\$RUNNER_DIR/bin:\$PATH" \\
-WINEPREFIX="\$WINE_PREFIX" \\
-    "\$RUNNER_DIR/bin/wine64" "\$TOUCHDESIGNER_EXE" "\${EXTRA_ARGS[@]}" &
+# Before launching, check if .toe files need the wine_ui_fixes patch
+TOE_EXPAND="\$(find "\$WINE_PREFIX/drive_c" -type f -iname 'toeexpand.exe' 2>/dev/null | head -n1 || true)"
+TOE_COLLAPSE="\$(find "\$WINE_PREFIX/drive_c" -type f -iname 'toecollapse.exe' 2>/dev/null | head -n1 || true)"
+FIX_FILE="\$TD_BASE_DIR/wine_ui_fixes.tox"
+
+# Patch a single .toe file: checks if already patched, and if not, merges wine_ui_fixes
+check_and_patch_toe() {
+    local TOE_PATH="\$1"
+    [ -f "\$TOE_PATH" ] || return 0
+    local TOE_BASE TOE_DIR DIR_PATH TOC_PATH WINE_TOE
+    TOE_BASE="\$(basename "\$TOE_PATH")"
+    TOE_DIR="\$(dirname "\$TOE_PATH")"
+    DIR_PATH="\$TOE_DIR/\${TOE_BASE}.dir"
+    TOC_PATH="\$TOE_DIR/\${TOE_BASE}.toc"
+    WINE_TOE="z:\${TOE_PATH//\//\\\\}"
+
+    # Check if already patched
+    rm -rf "\$DIR_PATH" "\$TOC_PATH" 2>/dev/null || true
+    WINEPREFIX="\$WINE_PREFIX" "\$RUNNER_DIR/bin/wine64" "\$TOE_EXPAND" "\$WINE_TOE" >/dev/null 2>&1 || true
+    local NEEDS_PATCH=false
+    if [ ! -d "\$DIR_PATH/wine_ui_fixes" ]; then
+        NEEDS_PATCH=true
+    fi
+    rm -rf "\$DIR_PATH" "\$TOC_PATH" 2>/dev/null || true
+
+    if [ "\$NEEDS_PATCH" = true ]; then
+        # Backup centralisé (nom unique basé sur le chemin complet)
+        BACKUP_DIR="\$TD_BASE_DIR/backups"
+        mkdir -p "\$BACKUP_DIR" 2>/dev/null || true
+        # Transforme /home/user/proj/file.toe en _home_user_proj_file.toe.bak (unique même si même nom de fichier)
+        local UNIQUE_BAK_NAME="\${TOE_PATH//\//_}.bak"
+        cp -f "\$TOE_PATH" "\$BACKUP_DIR/\$UNIQUE_BAK_NAME" 2>/dev/null || true
+        # Expand target .toe
+        WINEPREFIX="\$WINE_PREFIX" "\$RUNNER_DIR/bin/wine64" "\$TOE_EXPAND" "\$WINE_TOE" >/dev/null 2>&1 || true
+        if [ -d "\$DIR_PATH" ]; then
+            # Merge fix
+            local MERGE_TMP="\$(mktemp -d "/tmp/td_merge_toe.XXXXXX" 2>/dev/null || true)"
+            if [ -n "\$MERGE_TMP" ]; then
+                local MERGE_FIX="\$MERGE_TMP/fix.tox"
+                cp -f "\$FIX_FILE" "\$MERGE_FIX" 2>/dev/null || true
+                local WINE_MFIX="z:\${MERGE_FIX//\//\\\\}"
+                WINEPREFIX="\$WINE_PREFIX" "\$RUNNER_DIR/bin/wine64" "\$TOE_EXPAND" "\$WINE_MFIX" >/dev/null 2>&1 || true
+                if [ -d "\$MERGE_FIX.dir" ]; then
+                    cp -rf "\$MERGE_FIX.dir/"* "\$DIR_PATH/" 2>/dev/null || true
+                fi
+                rm -rf "\$MERGE_TMP" 2>/dev/null || true
+            fi
+            # Add fix entries to .toc
+            for entry in "\${FIX_ENTRIES[@]}"; do
+                echo "\$entry" >> "\$TOC_PATH"
+            done
+            WINEPREFIX="\$WINE_PREFIX" "\$RUNNER_DIR/bin/wine64" "\$TOE_COLLAPSE" "\$WINE_TOE" >/dev/null 2>&1 || true
+        fi
+        rm -rf "\$DIR_PATH" "\$TOC_PATH" 2>/dev/null || true
+    fi
+}
+
+if [ -n "\$TOE_EXPAND" ] && [ -n "\$TOE_COLLAPSE" ] && [ -f "\$FIX_FILE" ]; then
+    # Read fix .toc entries once (shared across all patches)
+    FIX_TMPDIR="\$(mktemp -d "/tmp/td_fix_launcher.XXXXXX" 2>/dev/null || true)"
+    if [ -n "\$FIX_TMPDIR" ]; then
+        FIX_COPY="\$FIX_TMPDIR/fix.tox"
+        cp -f "\$FIX_FILE" "\$FIX_COPY" 2>/dev/null || true
+        WINE_FIX_COPY="z:\${FIX_COPY//\//\\\\}"
+        WINEPREFIX="\$WINE_PREFIX" "\$RUNNER_DIR/bin/wine64" "\$TOE_EXPAND" "\$WINE_FIX_COPY" >/dev/null 2>&1 || true
+
+        if [ -d "\$FIX_COPY.dir" ]; then
+            # Read fix entries
+            FIX_ENTRIES=()
+            while IFS= read -r entry; do
+                [ -z "\$entry" ] && continue
+                [[ "\$entry" == \#* ]] && continue
+                [ "\$entry" = ".build" ] && continue
+                FIX_ENTRIES+=("\$entry")
+            done < "\$FIX_COPY.toc"
+
+            # Patch NewProject.toe files in drive_c (TouchDesigner default templates)
+            while IFS= read -r -d '' NP_TOE; do
+                check_and_patch_toe "\$NP_TOE"
+            done < <(find "\$WINE_PREFIX/drive_c" -type f -iname 'NewProject.toe' -print0 2>/dev/null || true)
+
+            # Check the startup mode defined in pref.txt and patch custom template if set
+            PREF_FILE="\$WINE_PREFIX/drive_c/users/steamuser/AppData/Local/Derivative/TouchDesigner099/pref.txt"
+            if [ -f "\$PREF_FILE" ]; then
+                STARTUP_MODE=\$(grep -E '^general\.startupfilemode' "\$PREF_FILE" 2>/dev/null | head -n1 | cut -f2 | tr -d '\r' || true)
+                if [ "\$STARTUP_MODE" = "2" ]; then
+                    CUSTOM_TOE=\$(grep -E '^general\.startupfilename' "\$PREF_FILE" 2>/dev/null | head -n1 | cut -f2- | tr -d '\r' || true)
+                    if [ -n "\$CUSTOM_TOE" ]; then
+                        PATCH_CUSTOM_TOE="\${CUSTOM_TOE#z:}"
+                        PATCH_CUSTOM_TOE="\${PATCH_CUSTOM_TOE#Z:}"
+                        PATCH_CUSTOM_TOE="\${PATCH_CUSTOM_TOE//\\\\/\/}"
+                        [ -f "\$PATCH_CUSTOM_TOE" ] && check_and_patch_toe "\$PATCH_CUSTOM_TOE"
+                    fi
+                fi
+            fi
+
+            # Patch the .toe file passed as argument (double-click or CLI), if not already patched
+            if [ -n "\$INPUT_PATH" ] && [[ "\$INPUT_PATH" == *.toe ]]; then
+                check_and_patch_toe "\$INPUT_PATH"
+            fi
+        fi
+        rm -rf "\$FIX_TMPDIR" 2>/dev/null || true
+    fi
+fi
+
+# Nettoyage automatique des backups de plus de 30 jours
+BACKUP_DIR="\$TD_BASE_DIR/backups"
+if [ -d "\$BACKUP_DIR" ]; then
+    find "\$BACKUP_DIR" -name '*.bak' -type f -mtime +30 -delete 2>/dev/null || true
+fi
+
+# 1. On prépare l'environnement d'exécution
+PATH="\$RUNNER_DIR/bin:\$PATH"
+export WINEPREFIX="\$WINE_PREFIX"
+
+# 2. On remplace le processus Bash par Wine (Supprime le besoin de l'arrière-plan &)
+exec "\$RUNNER_DIR/bin/wine64" "\$TOUCHDESIGNER_EXE" "\${EXTRA_ARGS[@]}"
 LAUNCHER
     chmod +x "$LAUNCHER_PATH"
 }
@@ -2000,42 +2296,47 @@ distribute_optional_font_fix() {
 
 install_optional_icon() {
     local src
+
     TD_ICON_PATH="touchdesigner"
 
     mkdir -p "$TD_BASE_DIR"
 
-    for src in \
-        "$SCRIPT_DIR/TouchDesigner.png" \
-        "$SCRIPT_DIR/Assets/TouchDesigner.png"; do
-        if [ -f "$src" ]; then
-            cp -f "$src" "$TD_BASE_DIR/TouchDesigner.png"
-            TD_ICON_PATH="$TD_BASE_DIR/TouchDesigner.png"
-            return 0
-        fi
-    done
-
-    if download_file "$REPO_ASSETS_BASE_URL/TouchDesigner.png" "$TD_BASE_DIR/TouchDesigner.png" "TouchDesigner.png" "quiet" "" 10 20 2; then
-        TD_ICON_PATH="$TD_BASE_DIR/TouchDesigner.png"
-        return 0
+    # Install TouchDesigner app icon into TD_BASE_DIR
+    # Use absolute path in .desktop files — this is the most reliable method
+    # across KDE, GNOME, and other Linux desktop environments.
+    local td_svg_src="$SCRIPT_DIR/Assets/Icons/TouchDesigner.svg"
+    if [ ! -f "$td_svg_src" ]; then
+        download_file "$REPO_ASSETS_BASE_URL/Icons/TouchDesigner.svg" "$TD_BASE_DIR/TouchDesigner.svg" "TouchDesigner.svg" "quiet" "" 10 20 2 || true
+    else
+        cp -f "$td_svg_src" "$TD_BASE_DIR/TouchDesigner.svg" 2>/dev/null || true
+    fi
+    if [ -f "$TD_BASE_DIR/TouchDesigner.svg" ]; then
+        TD_ICON_PATH="$TD_BASE_DIR/TouchDesigner.svg"
     fi
 
-    for src in \
-        "$SCRIPT_DIR/_TouchDesigner.png.ico" \
-        "$SCRIPT_DIR/Assets/_TouchDesigner.png.ico"; do
-        if [ -f "$src" ]; then
-            cp -f "$src" "$TD_BASE_DIR/_TouchDesigner.png.ico"
-            TD_ICON_PATH="$TD_BASE_DIR/_TouchDesigner.png.ico"
-            return 0
+    # Install .toe and .tox file-type icons into the system icon theme
+    # so the MIME type XML <icon name="..."> references are resolved correctly.
+    local mime_icon_dir="$HOME/.local/share/icons/hicolor/scalable/mimetypes"
+    mkdir -p "$mime_icon_dir"
+
+    for icon_name in TouchDesigner-toe TouchDesigner-tox; do
+        local short_name
+        case "$icon_name" in
+            TouchDesigner-toe) short_name="toe" ;;
+            TouchDesigner-tox) short_name="tox" ;;
+        esac
+        local icon_src="$SCRIPT_DIR/Assets/Icons/${icon_name}.svg"
+        local icon_dest="$mime_icon_dir/${icon_name}.svg"
+        if [ ! -f "$icon_src" ]; then
+            download_file "$REPO_ASSETS_BASE_URL/Icons/${icon_name}.svg" "$icon_dest" "${icon_name}.svg" "quiet" "" 10 20 2 || true
+        else
+            cp -f "$icon_src" "$icon_dest" 2>/dev/null || true
         fi
+        # Also keep a copy in TD_BASE_DIR for reference
+        cp -f "$icon_dest" "$TD_BASE_DIR/${short_name}.svg" 2>/dev/null || true
     done
 
-    if download_file "$REPO_ASSETS_BASE_URL/_TouchDesigner.png.ico" "$TD_BASE_DIR/_TouchDesigner.png.ico" "_TouchDesigner.png.ico" "quiet" "" 10 20 2; then
-        TD_ICON_PATH="$TD_BASE_DIR/_TouchDesigner.png.ico"
-        return 0
-    fi
-
-    rm -f "$TD_BASE_DIR/TouchDesigner.png" "$TD_BASE_DIR/_TouchDesigner.png.ico"
-    return 1
+    return 0
 }
 
 create_desktop_shortcut() {
@@ -2050,10 +2351,11 @@ create_desktop_shortcut() {
 Version=1.0
 Type=Application
 Name=TouchDesigner
-Comment=Open latest installed version (add wine_ui_fixes.tox yourself)
-Exec="$LAUNCHER_PATH"
+Comment=Real-time visual development platform
+Exec=$LAUNCHER_PATH
 Icon=$TD_ICON_PATH
 Terminal=false
+StartupNotify=true
 Categories=Graphics;
 DESKTOP
 
@@ -2083,10 +2385,11 @@ create_applications_shortcut() {
 Version=1.0
 Type=Application
 Name=TouchDesigner
-Comment=Open latest installed version (add wine_ui_fixes.tox yourself)
-Exec="$LAUNCHER_PATH"
+Comment=Real-time visual development platform
+Exec=$LAUNCHER_PATH
 Icon=$TD_ICON_PATH
 Terminal=false
+StartupNotify=true
 Categories=Graphics;
 DESKTOP
 
@@ -2095,98 +2398,22 @@ DESKTOP
     fi
 }
 
-install_font_fixes_project() {
-    local src
-    local dest_dir="$TD_BASE_DIR/font-fixes-projects"
-    local dest="$dest_dir/TouchDesigner-Font-Fixes.toe"
-
-    mkdir -p "$dest_dir"
-
-    if download_file "$REPO_ASSETS_BASE_URL/TouchDesigner_Font_Fixes.toe" "$dest" "TouchDesigner_Font_Fixes.toe" "quiet" "" 10 20 2; then
-        echo "$dest"
-        return 0
-    fi
-
-    if download_file "$REPO_ASSETS_BASE_URL/TouchDesigner-Font-Fixes.toe" "$dest" "TouchDesigner-Font-Fixes.toe" "quiet" "" 10 20 2; then
-        echo "$dest"
-        return 0
-    fi
-
-    if download_file "$REPO_ASSETS_BASE_URL/TouchDesigner-Starter.toe" "$dest" "TouchDesigner-Starter.toe" "quiet" "" 10 20 2; then
-        echo "$dest"
-        return 0
-    fi
-
-    for src in \
-        "$SCRIPT_DIR/TouchDesigner_Font_Fixes.toe" \
-        "$SCRIPT_DIR/Assets/TouchDesigner_Font_Fixes.toe" \
-        "$SCRIPT_DIR/TouchDesigner-Font-Fixes.toe" \
-        "$SCRIPT_DIR/Assets/TouchDesigner-Font-Fixes.toe" \
-        "$SCRIPT_DIR/TouchDesigner-Starter.toe" \
-        "$SCRIPT_DIR/Assets/TouchDesigner-Starter.toe"
-    do
-        if [ -f "$src" ]; then
-            cp -f "$src" "$dest"
-            echo "$dest"
-            return 0
-        fi
-    done
-
-    rm -f "$dest"
-    return 1
-}
-
-create_font_fixes_shortcuts() {
-    local font_fixes_project="$1"
-
-    [[ $CREATE_SHORTCUT =~ ^[Yy]$ ]] || return 0
-    [ -f "$font_fixes_project" ] || return 0
-
-    mkdir -p "$DESKTOP_DIR" "$APPLICATIONS_DIR"
-
-    # Cleanup legacy shortcut names to avoid duplicate menu entries.
-    rm -f "$DESKTOP_DIR/TouchDesigner-Starter.desktop" \
-          "$APPLICATIONS_DIR/touchdesigner-starter.desktop"
-
-    cat > "$DESKTOP_DIR/TouchDesigner-Font-Fixes.desktop" << DESKTOP
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=TouchDesigner (Font Fixes)
-Comment=Open the preconfigured font-fixes project
-Exec="$LAUNCHER_PATH" "$font_fixes_project"
-Icon=$TD_ICON_PATH
-Terminal=false
-Categories=Graphics;
-DESKTOP
-    trust_desktop_shortcut "$DESKTOP_DIR/TouchDesigner-Font-Fixes.desktop"
-
-    cat > "$APPLICATIONS_DIR/touchdesigner-font-fixes.desktop" << DESKTOP
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=TouchDesigner (Font Fixes)
-Comment=Open the preconfigured font-fixes project
-Exec="$LAUNCHER_PATH" "$font_fixes_project"
-Icon=$TD_ICON_PATH
-Terminal=false
-Categories=Graphics;
-DESKTOP
-
-    if command -v update-desktop-database >/dev/null 2>&1; then
-        update-desktop-database "$APPLICATIONS_DIR" >/dev/null 2>&1 || true
-    fi
-
-    add_shortcut_summary_entry "TouchDesigner (Font Fixes): opens the preconfigured font-fixes project"
-}
 
 create_versioned_shortcuts() {
     [[ $CREATE_SHORTCUT =~ ^[Yy]$ ]] || return 0
 
     local install_root td_exe version label safe_version
     local any_created=false
+    local -a all_roots=()
 
     while IFS= read -r install_root; do
+        all_roots+=("$install_root")
+    done < <(discover_touchdesigner_install_roots)
+
+    # Only create version-specific shortcuts when 2+ versions are installed
+    [ "${#all_roots[@]}" -lt 2 ] && return 0
+
+    for install_root in "${all_roots[@]}"; do
         td_exe="$install_root/bin/TouchDesigner.exe"
         [ -f "$td_exe" ] || td_exe="$install_root/TouchDesigner.exe"
         [ -f "$td_exe" ] || continue
@@ -2205,10 +2432,11 @@ create_versioned_shortcuts() {
 Version=1.0
 Type=Application
 Name=$label
-Comment=Version $version (Wine on Linux)
-Exec="$LAUNCHER_PATH" --exe "$td_exe"
+Comment=Version $version
+Exec=$LAUNCHER_PATH --exe "$td_exe"
 Icon=$TD_ICON_PATH
 Terminal=false
+StartupNotify=true
 Categories=Graphics;
 VDESKTOP
         trust_desktop_shortcut "$DESKTOP_DIR/TouchDesigner-${safe_version}.desktop"
@@ -2219,10 +2447,11 @@ VDESKTOP
 Version=1.0
 Type=Application
 Name=$label
-Comment=Version $version (Wine on Linux)
-Exec="$LAUNCHER_PATH" --exe "$td_exe"
+Comment=Version $version
+Exec=$LAUNCHER_PATH --exe "$td_exe"
 Icon=$TD_ICON_PATH
 Terminal=false
+StartupNotify=true
 Categories=Graphics;
 VAPPS
         any_created=true
@@ -2245,21 +2474,23 @@ associate_toe_files() {
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=TouchDesigner Project (.toe)
-Exec="$LAUNCHER_PATH" %u
-Icon=$TD_ICON_PATH
-MimeType=application/x-touchdesigner;
+Name=TouchDesigner
+Exec=$LAUNCHER_PATH %u
+MimeType=application/x-touchdesigner-toe;application/x-touchdesigner-tox;
 NoDisplay=true
+Icon=TouchDesigner
+StartupNotify=true
 Categories=Graphics;
 DESKTOP
 
     register_toe_mimetype
 
     if command -v xdg-mime >/dev/null 2>&1; then
-        xdg-mime default touchdesigner-file.desktop application/x-touchdesigner 2>/dev/null || true
+        xdg-mime default touchdesigner-file.desktop application/x-touchdesigner-toe 2>/dev/null || true
+        xdg-mime default touchdesigner-file.desktop application/x-touchdesigner-tox 2>/dev/null || true
     fi
 
-    print_success ".toe files associated"
+    print_success ".toe and .tox files associated"
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2316,6 +2547,15 @@ uninstall_selected_touchdesigner_versions() {
         [ "$pretty_root" = "$root" ] && pretty_root="$root"
 
         if [ -d "$root" ]; then
+            # Remove version-specific shortcuts for this install
+            local version
+            version="$(detect_touchdesigner_version "$root" 2>/dev/null || true)"
+            if [ -n "$version" ]; then
+                local safe_version="${version//[^a-zA-Z0-9._-]/-}"
+                rm -f "$DESKTOP_DIR/TouchDesigner-${safe_version}.desktop" \
+                      "$APPLICATIONS_DIR/touchdesigner-${safe_version}.desktop" 2>/dev/null || true
+            fi
+
             print_info "Removing: $pretty_root"
             safe_rm_rf "$root"
             removed_count=$((removed_count + 1))
@@ -2323,6 +2563,21 @@ uninstall_selected_touchdesigner_versions() {
             print_warning "Already missing: $pretty_root"
         fi
     done
+
+    # After removal, if ≤ 1 version remains, remove all version-specific shortcuts
+    local remaining_roots=()
+    mapfile -t remaining_roots < <(discover_touchdesigner_install_roots)
+    if [ "${#remaining_roots[@]}" -le 1 ]; then
+        for _vshortcut in "$DESKTOP_DIR"/TouchDesigner-*.desktop; do
+            [ -f "$_vshortcut" ] && rm -f "$_vshortcut"
+        done
+        for _vapp in "$APPLICATIONS_DIR"/touchdesigner-[0-9]*.desktop; do
+            [ -f "$_vapp" ] && rm -f "$_vapp"
+        done
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database "$APPLICATIONS_DIR" >/dev/null 2>&1 || true
+        fi
+    fi
 
     if [ "$removed_count" -gt 0 ]; then
         print_success "Removed $removed_count TouchDesigner version(s)"
@@ -2487,6 +2742,12 @@ uninstall_touchdesigner() {
         return
     fi
 
+    print_info "Removing centralised backups..."
+    if [ -d "$TD_BASE_DIR/backups" ]; then
+        rm -rf "$TD_BASE_DIR/backups"
+        print_success "Centralised backups removed"
+    fi
+
     print_info "Removing Wine prefix and runner..."
     if [ -d "$TD_BASE_DIR" ]; then
         safe_rm_rf "$TD_BASE_DIR"
@@ -2533,6 +2794,13 @@ uninstall_touchdesigner() {
     # Remove versioned application shortcuts
     for _vapp in "$APPLICATIONS_DIR"/touchdesigner-[0-9]*.desktop; do
         [ -f "$_vapp" ] && rm -f "$_vapp"
+    done
+
+    local mime_icon_dir="$HOME/.local/share/icons/hicolor/scalable/mimetypes"
+    for _icon in TouchDesigner-toe.svg TouchDesigner-tox.svg; do
+        if [ -f "$mime_icon_dir/$_icon" ]; then
+            rm -f "$mime_icon_dir/$_icon"
+        fi
     done
 
     local mime_dir="$HOME/.local/share/mime/packages"
@@ -2593,7 +2861,7 @@ main() {
             [ "$FAST_MODE" != true ] && sleep 0.3
 
             # Step 3: Wine prefix
-            print_info "Setting up compatibility environment..."
+            print_info "Step 3/6: Setting up compatibility environment..."
             setup_wine_prefix
             [ "$FAST_MODE" != true ] && sleep 0.3
 
@@ -2614,14 +2882,16 @@ main() {
             [ "$FAST_MODE" != true ] && sleep 0.3
 
             # Step 6: Install TouchDesigner
-            if [ -d "$WINE_PREFIX/drive_c" ]; then
+            if [ "$TD_SKIP_INSTALL" = true ]; then
+                print_info "Step 6/6: Skipped (user chose to skip TouchDesigner install)"
+            elif [ -d "$WINE_PREFIX/drive_c" ]; then
                 print_info "Step 6/6: Installing TouchDesigner..."
                 install_touchdesigner
             else
                 print_warning "Step 6/6: Skipped (requires graphical session)"
             fi
 
-            if find_touchdesigner_exe >/dev/null; then
+            if [ "$TD_SKIP_INSTALL" = true ] || find_touchdesigner_exe >/dev/null; then
                 # Create launcher
                 print_info "Creating launcher script..."
                 create_launcher_script
@@ -2633,34 +2903,45 @@ main() {
                 fi
                 [ "$FAST_MODE" != true ] && sleep 0.3
 
-                if [ "$NON_INTERACTIVE" = true ]; then
+            print_info "Patching existing .toe files..."
+            install_optional_font_fix || true
+            patch_toe_projects_in_drive
+
+            if [ "$NON_INTERACTIVE" = true ]; then
                     print_info "Non-interactive mode: CREATE_SHORTCUT=$CREATE_SHORTCUT"
                 else
                     prompt_yes_no "Create desktop & application menu shortcuts?" "Y"
                     CREATE_SHORTCUT="$PROMPT_YES_NO_RESULT"
                 fi
+                if [[ $CREATE_SHORTCUT =~ ^[Yy]$ ]]; then
+                    # Remove all existing TouchDesigner shortcuts to recreate them cleanly
+                    for _old in "$DESKTOP_DIR"/TouchDesigner*.desktop; do
+                        [ -f "$_old" ] && rm -f "$_old"
+                    done
+                    for _old in "$APPLICATIONS_DIR"/touchdesigner*.desktop; do
+                        [ -f "$_old" ] && rm -f "$_old"
+                    done
+                    if command -v update-desktop-database >/dev/null 2>&1; then
+                        update-desktop-database "$APPLICATIONS_DIR" >/dev/null 2>&1 || true
+                    fi
+                fi
                 create_desktop_shortcut
                 create_applications_shortcut
-                add_shortcut_summary_entry "TouchDesigner (Desktop + Application menu): launches latest installed version"
-                create_versioned_shortcuts
-
-                font_fixes_project_path="$(install_font_fixes_project 2>/dev/null || true)"
-                if [ -n "$font_fixes_project_path" ]; then
-                    create_font_fixes_shortcuts "$font_fixes_project_path"
-                else
-                    print_warning "Font-fixes project not found (local assets/download), skipping font-fixes shortcut"
+                if [[ $CREATE_SHORTCUT =~ ^[Yy]$ ]]; then
+                    add_shortcut_summary_entry "TouchDesigner (Desktop + Application menu): launches latest installed version"
                 fi
+                create_versioned_shortcuts
 
                 print_shortcut_summary
 
                 if [ "$NON_INTERACTIVE" = true ]; then
                     print_info "Non-interactive mode: ASSOC_FILES=$ASSOC_FILES"
                 else
-                    prompt_yes_no "Associate .toe files with TouchDesigner?" "Y"
+                    prompt_yes_no "Associate .toe & .tox files with TouchDesigner?" "Y"
                     ASSOC_FILES="$PROMPT_YES_NO_RESULT"
                 fi
                 associate_toe_files
-            else
+            elif [ "$TD_SKIP_INSTALL" != true ]; then
                 print_warning "TouchDesigner is not installed yet; skipping launcher and desktop integration"
             fi
 
@@ -2669,9 +2950,6 @@ main() {
                 print_font_fix_instructions
             fi
 
-            if [ -f "$TD_BASE_DIR/font-fixes-projects/TouchDesigner-Font-Fixes.toe" ]; then
-                print_starter_project_instructions
-            fi
 
             printf "\n${DIM}────────────────────────────────────────────${NC}\n"
             if [ "$headless_mode" = true ]; then
@@ -2695,6 +2973,33 @@ main() {
             printf "${DIM}────────────────────────────────────────────${NC}\n\n"
             ;;
         2)
+            print_banner
+            print_info "Starting TouchDesigner update..."
+            printf "\n"
+
+            print_info "Regenerating launcher script..."
+            create_launcher_script
+            print_success "Launcher updated"
+
+            install_optional_icon || true
+            print_info "Updating winetricks..."
+            download_winetricks
+            print_success "Winetricks updated"
+
+            print_info "Updating DXVK..."
+            install_dxvk
+            print_success "DXVK updated"
+
+            print_info "Updating wine_ui_fixes.tox..."
+            install_optional_font_fix || true
+            print_success "UI fixes updated"
+
+            printf "\n${DIM}────────────────────────────────────────────${NC}\n"
+            printf "${PRIMARY}Update Complete${NC}\n"
+            printf "${SECONDARY}TouchDesigner components are up to date!${NC}\n"
+            printf "${DIM}────────────────────────────────────────────${NC}\n\n"
+            ;;
+        3)
             uninstall_touchdesigner_menu
             ;;
         0)
@@ -2826,6 +3131,14 @@ while [[ $# -gt 0 ]]; do
             TD_INSTALLER_PATH="$2"
             shift
             ;;
+        --patch-toe)
+            if [ -z "$2" ]; then
+                print_error "Missing value for $1"
+                exit 1
+            fi
+            PATCH_TOE_FILE="$2"
+            shift
+            ;;
         -c|--choice)
             if [ -z "$2" ]; then
                 print_error "Missing value for $1"
@@ -2849,7 +3162,21 @@ if [ "$NON_INTERACTIVE" = true ]; then
 fi
 
 if [ "$DRY_RUN" = true ]; then
-    echo "[DRY RUN] Simulation mode enabled. No changes will be made."
+    printf "${DIM}────────────────────────────────────────────${NC}\n"
+    printf "${BOLD}${PRIMARY}TouchDesigner Linux installer ${ACCENT}%s${NC}\n" "$SCRIPT_VERSION"
+    printf "${SECONDARY}By Iswad${NC}\n"
+    printf "${DIM}────────────────────────────────────────────${NC}\n"
+    printf "\n"
+    printf "Would install TouchDesigner on your system:\n"
+    printf "  • Install system packages\n"
+    printf "  • Download and extract Soda Wine runner (~300MB)\n"
+    printf "  • Initialize Wine prefix\n"
+    printf "  • Install Windows dependencies (corefonts, vcrun2019)\n"
+    printf "  • Download and install TouchDesigner\n"
+    printf "  • Create desktop shortcuts and file associations\n"
+    printf "  • Patch .toe files with wine_ui_fixes\n"
+    printf "\n"
+    echo "[DRY RUN] Simulation mode enabled. No changes were made."
     exit 0
 fi
 
@@ -2907,6 +3234,36 @@ if [ "$CHECK_ENV" = true ]; then
     }
     check_env_report
     exit 0
+fi
+
+# If --patch-toe is provided, run standalone patch mode
+if [ -n "$PATCH_TOE_FILE" ]; then
+    if [ ! -f "$PATCH_TOE_FILE" ]; then
+        print_error "File not found: $PATCH_TOE_FILE"
+        exit 1
+    fi
+    if [ ! -d "$RUNNER_DIR/bin" ] || [ ! -d "$WINE_PREFIX/drive_c" ]; then
+        print_error "TouchDesigner Wine environment not found. Run the installer first."
+        exit 1
+    fi
+    # Find toe tools
+    _toeexpand=$(find "$WINE_PREFIX/drive_c" -type f -iname 'toeexpand.exe' 2>/dev/null | head -n1 || true)
+    _toecollapse=$(find "$WINE_PREFIX/drive_c" -type f -iname 'toecollapse.exe' 2>/dev/null | head -n1 || true)
+    if [ -z "$_toeexpand" ] || [ -z "$_toecollapse" ]; then
+        print_error "toeexpand/toecollapse not found in Wine prefix."
+        exit 1
+    fi
+    _fixfile="$TD_BASE_DIR/wine_ui_fixes.tox"
+    if [ ! -f "$_fixfile" ]; then
+        # Try to install the font fix
+        install_optional_font_fix
+    fi
+    if [ ! -f "$_fixfile" ]; then
+        print_error "wine_ui_fixes.tox not found. Cannot patch."
+        exit 1
+    fi
+    patch_single_toe_file "$PATCH_TOE_FILE" "$_fixfile" "$_toeexpand" "$_toecollapse"
+    exit $?
 fi
 
 main "$@"
