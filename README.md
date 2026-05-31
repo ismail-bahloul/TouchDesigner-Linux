@@ -4,6 +4,10 @@ This is an automated installer to run TouchDesigner on Linux.
 
 ![Screenshot](Screenshots/TD_Preview.png)
 
+File icons installed by the project:
+
+![Screenshot](Screenshots/SVG_Preview.png)
+
 ### Installation
 
 <details open>
