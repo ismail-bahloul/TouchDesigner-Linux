@@ -9,7 +9,7 @@ This is an automated installer to run TouchDesigner on Linux.
 <details open>
 <summary id="automated-installation-recommended"><b>Automated Installation</b></summary>
 
-![Screenshot](Screenshots/Script_Preview.png)
+![Screenshot](Assets/Script_Preview.png)
 
 ### Prerequisites
 
