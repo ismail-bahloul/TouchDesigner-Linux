@@ -1,6 +1,0 @@
-DAT:table
-tile -1 -1 340 283
-flags =  current on viewer 1 activate on parlanguage 0
-color 0.67 0.67 0.67 
-view -1 0 8 0 1 1 1 0 0 0 0 0
-end

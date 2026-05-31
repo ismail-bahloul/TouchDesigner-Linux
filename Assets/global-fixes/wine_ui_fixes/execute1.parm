@@ -1,5 +1,0 @@
-?
-start 547 on parent().par.Enable
-startpulse 547 0 parent().par.Fixnow
-language 0 python
-?
