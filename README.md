@@ -11,7 +11,7 @@ File icons installed by the project:
 ### Installation
 
 <details open>
-<summary id="automated-installation-recommended"><b>Automated Installation</b></summary>
+<summary id="automated-installation-recommended"><b>Using the script</b></summary>
 
 ![Screenshot](Screenshots/Script_Preview.png)
 
