@@ -25,7 +25,7 @@ File icons installed by the project:
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
 
-<sub>To run headless (SSH, no display):
+To run headless (SSH, no display):
 ```bash
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash -s -- -H
 ```
@@ -33,7 +33,8 @@ curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/i
 To run in debug mode (verbose logs):
 ```bash
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | DEBUG=true bash
-```</sub>
+```
+</sub>
 
 The script is idempotent, it is safe to run multiple times. It skips already-installed components.
 
