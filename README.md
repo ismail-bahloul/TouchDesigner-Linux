@@ -25,6 +25,9 @@ File icons installed by the project:
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
 
+---
+
+
 To run headless (SSH, no display):
 ```bash
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash -s -- -H
