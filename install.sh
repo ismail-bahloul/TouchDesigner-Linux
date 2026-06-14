@@ -88,6 +88,7 @@ refresh_runtime_paths() {
     WINE_PREFIX="$TD_BASE_DIR/prefix"
     WINETRICKS_BIN="$TD_BASE_DIR/winetricks"
     LOG_DIR="$TD_BASE_DIR/logs"
+    WINETRICKS_TMP="$TD_BASE_DIR/tmp"
 }
 
 refresh_runtime_paths
@@ -96,7 +97,7 @@ SODA_URL="https://github.com/bottlesdevs/wine/releases/download/soda-9.0-1/soda-
 DXVK_VERSION="2.4"
 DXVK_URL="https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VERSION}/dxvk-${DXVK_VERSION}.tar.gz"
 WINETRICKS_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
-SCRIPT_VERSION="v1.2.0"
+SCRIPT_VERSION="v1.3"
 REPO_ASSETS_BASE_URL="${REPO_ASSETS_BASE_URL:-https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/Assets}"
 SODA_SHA256="${SODA_SHA256:-}"
 DXVK_SHA256="${DXVK_SHA256:-}"
@@ -899,7 +900,7 @@ install_packages() {
 
             print_info "Installing required packages..."
             if ! run_with_progress 6 sudo pacman -S --needed --noconfirm \
-                curl wget tar xz cabextract unzip p7zip \
+                curl wget tar xz cabextract unzip p7zip innoextract \
                 mesa-utils \
                 vulkan-tools vulkan-icd-loader lib32-vulkan-icd-loader \
                 lib32-glib2 lib32-gcc-libs lib32-libx11 libx11 \
@@ -941,7 +942,7 @@ install_packages() {
             fi
 
             local -a apt_packages=(
-                curl wget tar xz-utils cabextract unzip p7zip-full
+                curl wget tar xz-utils cabextract unzip p7zip-full innoextract
                 libvulkan1 libvulkan1:i386 vulkan-tools
                 libglib2.0-0 libglib2.0-0:i386
                 libx11-6 libx11-6:i386
@@ -989,7 +990,7 @@ install_packages() {
 
             print_info "Installing required packages..."
             if ! run_with_progress 6 sudo dnf install -y \
-                curl wget tar xz cabextract unzip p7zip \
+                curl wget tar xz cabextract unzip p7zip innoextract \
                 vulkan-loader vulkan-loader.i686 mesa-vulkan-drivers vulkan-tools \
                 mesa-demos xorg-x11-server-Xwayland \
                 libunwind libunwind.i686 \
@@ -1060,6 +1061,8 @@ install_packages() {
             append_first_zypper_package zypper_packages libGL1-32bit Mesa-libGL1-32bit || true
             append_first_zypper_package zypper_packages libEGL1 Mesa-libEGL1 || true
             append_first_zypper_package zypper_packages libEGL1-32bit Mesa-libEGL1-32bit || true
+
+            append_first_zypper_package zypper_packages innoextract || true
 
             if ! run_with_progress 6 sudo zypper install -y "${zypper_packages[@]}"; then
                 print_error "Failed to install required packages"
@@ -1550,6 +1553,10 @@ install_windows_deps() {
 
     local wt_status=0
     set +e
+    mkdir -p "$WINETRICKS_TMP"
+    TMPDIR="$WINETRICKS_TMP" \
+    TMP="$WINETRICKS_TMP" \
+    TEMP="$WINETRICKS_TMP" \
     PATH="$RUNNER_DIR/bin:$PATH" \
     WINEPREFIX="$WINE_PREFIX" \
     WINEDLLOVERRIDES="$WINE_DLL_OVERRIDES" \
@@ -1570,7 +1577,7 @@ install_windows_deps() {
     if [ "$wt_status" -ne 0 ]; then
         print_error "Winetricks failed with status ${wt_status}"
         print_info "Last winetricks log lines:"
-        grep -v -E '^[0-9a-f]+:(fixme|warn):|wineserver:' "$wt_log" | tail -n 20 || tail -n 20 "$wt_log" || true
+        cat "$wt_log" 2>/dev/null || print_info "(log file empty)"
         print_info "Retry with DEBUG=true for a full persistent log."
         rm -f "$wt_log"
         exit 1
@@ -1880,50 +1887,109 @@ download_touchdesigner() {
 }
 
 install_touchdesigner() {
-    if ! require_graphical_session; then
-        print_warning "Skipping TouchDesigner installer launch (requires graphical session)"
+    local exe_path="$1"
+    local td_install_dir="$WINE_PREFIX/drive_c/Program Files/TouchDesigner"
+
+    if [ -f "$td_install_dir/bin/TouchDesigner.exe" ]; then
+        print_success "TouchDesigner already installed at: $td_install_dir"
         return
     fi
 
-    print_info "Running TouchDesigner installer..."
-
-    local install_log
-    install_log=$(mktemp)
-
-    if PATH="$RUNNER_DIR/bin:$PATH" \
-       WINEPREFIX="$WINE_PREFIX" \
-             WINEDLLOVERRIDES="" \
-       WINEDEBUG=-all \
-       WINESERVER_DEBUG=0 \
-           "$RUNNER_DIR/bin/wine64" "$TD_FILEPATH" >"$install_log" 2>&1; then
-        grep -v -E '^[0-9a-f]+:(fixme|warn):|wineserver:' "$install_log" | tail -n 10 || true
-        rm -f "$install_log"
-        return
+    if ! command -v 7z >/dev/null 2>&1; then
+        print_error "7z (p7zip) is required for installation"
+        print_info "Install it with your package manager, then re-run."
+        exit 1
     fi
 
-    tail -n 20 "$install_log"
-
-    if grep -qiE 'FreeType font library|freetype\.org' "$install_log"; then
-        print_error "Wine runtime font library is missing (FreeType/fontconfig)"
-        if [ "$PKG_MANAGER" = "dnf" ]; then
-            print_info "On Fedora, run: sudo dnf install -y freetype freetype.i686 fontconfig fontconfig.i686"
-        elif [ "$PKG_MANAGER" = "pacman" ]; then
-            print_info "On Arch-based distros, run: sudo pacman -S --needed freetype2 fontconfig lib32-freetype2 lib32-fontconfig"
-        elif [ "$PKG_MANAGER" = "apt" ]; then
-            print_info "On Ubuntu/Debian, run: sudo apt-get install -y libfreetype6 libfreetype6:i386 libfontconfig1 libfontconfig1:i386"
-        fi
+    if ! command -v innoextract >/dev/null 2>&1; then
+        print_error "innoextract is required for installation"
+        print_info "Install it with your package manager, then re-run."
+        exit 1
     fi
 
-    if grep -qiE "nodrv_CreateWindow|No GPU vendor found|DISPLAY is set correctly|Failed to create hwnd" "$install_log"; then
-        print_error "Installer GUI could not start due to display/GPU access issues"
-        print_info "Current env: DISPLAY='${DISPLAY:-unset}', WAYLAND_DISPLAY='${WAYLAND_DISPLAY:-unset}'"
-        print_info "Recommended fix on Arch/CachyOS: sudo pacman -S --needed xorg-xwayland vulkan-icd-loader vulkan-tools"
-        print_info "Arch NVIDIA 32-bit runtime: sudo pacman -S --needed lib32-libglvnd lib32-nvidia-utils"
-        print_info "Then relogin and retry."
+    mkdir -p "$WINETRICKS_TMP"
+    local extract_root
+    extract_root=$(mktemp -d "$WINETRICKS_TMP/td_install.XXXXXX")
+
+    print_info "Extracting TouchDesigner installer (7z)..."
+    (
+        _7z_start=$(date +%s)
+        while true; do
+            _7z_elapsed=$(( $(date +%s) - _7z_start ))
+            print_info "7z (${_7z_elapsed}s)..."
+            sleep 5
+        done
+    ) &
+    local _7z_heartbeat=$!
+
+    local extract_7z="$extract_root/7z_extract"
+    mkdir -p "$extract_7z"
+    if ! 7z x "$exe_path" -o"$extract_7z" -y >/dev/null 2>&1; then
+        kill "$_7z_heartbeat" 2>/dev/null || true
+        wait "$_7z_heartbeat" 2>/dev/null || true
+        print_error "Failed to extract 7z archive from installer"
+        rm -rf "$extract_root"
+        exit 1
+    fi
+    kill "$_7z_heartbeat" 2>/dev/null || true
+    wait "$_7z_heartbeat" 2>/dev/null || true
+
+    local inner_exe
+    inner_exe=$(find "$extract_7z" -maxdepth 1 -type f -iname '*.exe' 2>/dev/null | head -n 1)
+    if [ -z "$inner_exe" ]; then
+        print_error "No inner Inno Setup installer found in the archive"
+        rm -rf "$extract_root"
+        exit 1
     fi
 
-    rm -f "$install_log"
-    exit 1
+    print_info "Extracting TouchDesigner (innoextract)..."
+    (
+        _inno_start=$(date +%s)
+        while true; do
+            _inno_elapsed=$(( $(date +%s) - _inno_start ))
+            print_info "Innoextract (${_inno_elapsed}s)..."
+            sleep 10
+        done
+    ) &
+    local _inno_heartbeat=$!
+
+    local extract_inno="$extract_root/inno_extract"
+    mkdir -p "$extract_inno"
+    if ! innoextract -d "$extract_inno" -e "$inner_exe" >/dev/null 2>&1; then
+        kill "$_inno_heartbeat" 2>/dev/null || true
+        wait "$_inno_heartbeat" 2>/dev/null || true
+        print_error "Failed to extract Inno Setup installer"
+        rm -rf "$extract_root"
+        exit 1
+    fi
+    kill "$_inno_heartbeat" 2>/dev/null || true
+    wait "$_inno_heartbeat" 2>/dev/null || true
+
+    if [ ! -d "$extract_inno/"'$'"/app" ]; then
+        print_error "Unexpected installer structure"
+        rm -rf "$extract_root"
+        exit 1
+    fi
+
+    print_info "Copying TouchDesigner files to Wine prefix..."
+
+    mkdir -p "$td_install_dir"
+    cp -rf "$extract_inno/"'$'"/app/." "$td_install_dir/"
+
+    if [ -d "$extract_inno/commonappdata" ]; then
+        local programdata="$WINE_PREFIX/drive_c/ProgramData"
+        mkdir -p "$programdata"
+        cp -rf "$extract_inno/commonappdata/." "$programdata/" 2>/dev/null || true
+    fi
+
+    rm -rf "$extract_root"
+
+    if [ ! -f "$td_install_dir/bin/TouchDesigner.exe" ]; then
+        print_error "TouchDesigner installation failed: TouchDesigner.exe not found"
+        exit 1
+    fi
+
+    print_success "TouchDesigner installed to: $td_install_dir"
 }
 
 check_graphics() {
@@ -2884,11 +2950,9 @@ main() {
             # Step 6: Install TouchDesigner
             if [ "$TD_SKIP_INSTALL" = true ]; then
                 print_info "Step 6/6: Skipped (user chose to skip TouchDesigner install)"
-            elif [ -d "$WINE_PREFIX/drive_c" ]; then
-                print_info "Step 6/6: Installing TouchDesigner..."
-                install_touchdesigner
             else
-                print_warning "Step 6/6: Skipped (requires graphical session)"
+                print_info "Step 6/6: Installing TouchDesigner..."
+                install_touchdesigner "$TD_FILEPATH"
             fi
 
             if [ "$TD_SKIP_INSTALL" = true ] || find_touchdesigner_exe >/dev/null; then
@@ -2907,12 +2971,8 @@ main() {
             install_optional_font_fix || true
             patch_toe_projects_in_drive
 
-            if [ "$NON_INTERACTIVE" = true ]; then
-                    print_info "Non-interactive mode: CREATE_SHORTCUT=$CREATE_SHORTCUT"
-                else
-                    prompt_yes_no "Create desktop & application menu shortcuts?" "Y"
-                    CREATE_SHORTCUT="$PROMPT_YES_NO_RESULT"
-                fi
+            CREATE_SHORTCUT=Y
+            print_info "Creating desktop & application menu shortcuts..."
                 if [[ $CREATE_SHORTCUT =~ ^[Yy]$ ]]; then
                     # Remove all existing TouchDesigner shortcuts to recreate them cleanly
                     for _old in "$DESKTOP_DIR"/TouchDesigner*.desktop; do
@@ -2934,12 +2994,8 @@ main() {
 
                 print_shortcut_summary
 
-                if [ "$NON_INTERACTIVE" = true ]; then
-                    print_info "Non-interactive mode: ASSOC_FILES=$ASSOC_FILES"
-                else
-                    prompt_yes_no "Associate .toe & .tox files with TouchDesigner?" "Y"
-                    ASSOC_FILES="$PROMPT_YES_NO_RESULT"
-                fi
+                ASSOC_FILES=Y
+                print_info "Associating .toe & .tox files..."
                 associate_toe_files
             elif [ "$TD_SKIP_INSTALL" != true ]; then
                 print_warning "TouchDesigner is not installed yet; skipping launcher and desktop integration"
@@ -2952,18 +3008,21 @@ main() {
 
 
             printf "\n${DIM}────────────────────────────────────────────${NC}\n"
-            if [ "$headless_mode" = true ]; then
+            if find_touchdesigner_exe >/dev/null; then
+                printf "${PRIMARY}Installation Complete${NC}\n"
+                printf "${SECONDARY}TouchDesigner is ready to use!${NC}\n"
+                printf "\n"
+                print_success "Launch TouchDesigner from the shortcut."
+            elif [ "$headless_mode" = true ]; then
                 printf "${PRIMARY}Headless Preparation Complete${NC}\n"
                 printf "${SECONDARY}Re-run this script from a graphical session to finish installation.${NC}\n"
+                printf "\n"
+                print_info "When you have a graphical session, re-run the installer and choose Install."
             else
                 printf "${PRIMARY}Installation Complete${NC}\n"
                 printf "${SECONDARY}TouchDesigner is ready to use!${NC}\n"
-            fi
-            printf "\n"
-            if find_touchdesigner_exe >/dev/null; then
+                printf "\n"
                 print_success "Launch TouchDesigner from the shortcut."
-            else
-                print_info "When you have a graphical session, re-run the installer and choose Install."
             fi
             if [ -n "$DEBUG_LOG_FILE" ]; then
                 print_info "Debug log saved to: $DEBUG_LOG_FILE"

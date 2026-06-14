@@ -25,6 +25,12 @@ File icons installed by the project:
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
 
+To run entirely headless (SSH, no display):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash -s -- -H
+```
+
 To run in debug mode (verbose logs for bug reports):
 
 ```bash
@@ -33,7 +39,7 @@ curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/i
 
 The script is idempotent, it is safe to run multiple times. It skips already-installed components.
 
-**What it does:** detects your distro, installs system packages, sets up a compatibility runtime and environment, lets you pick a TD version, supports side-by-side multi-version installs, creates launcher shortcuts with optional desktop integration, and automatically patches `.toe` files to correct font issues. Also features an **Update** option for maintenance and centralised backups with auto-cleanup after 30 days.
+**What it does:** detects your distro, installs system packages, sets up a compatibility runtime and environment, lets you pick a TD version, supports side-by-side multi-version installs, creates launcher shortcuts with optional desktop integration, and automatically patches `.toe` files to correct font issues. Installation is **fully silent and headless** — no GUI required, works over SSH. Also features an **Update** option for maintenance and centralised backups with auto-cleanup after 30 days.
 
 ---
 
@@ -46,9 +52,15 @@ The script is idempotent, it is safe to run multiple times. It skips already-ins
 | Fedora-based | Fedora, RHEL… |
 | openSUSE-based | Leap, Tumbleweed… |
 
-**Expected duration:** 40–60 min on first run.
+**Required dependencies (installed automatically):**
+| Package | Role |
+| --- | --- |
+| `innoextract` | Extracts the TouchDesigner installer natively (no Wine needed) |
+| `7z` (p7zip) | Decompresses the embedded installer archive |
 
-> ⏳ The longest step is the TouchDesigner `.exe` installation. Expect ~30 min for that step alone.
+**Expected duration:** 5–10 min on first run.
+
+> ⏳ Most of the time is spent downloading the ~300MB Wine runner and installing Windows compatibility libraries. The TouchDesigner `.exe` extraction itself takes ~2 min.
 >
 > First launch can take 1–2 min. This is all normal.
 
@@ -117,9 +129,7 @@ Backups are automatically cleaned up after 30 days.
 
 | Symptom | Fix |
 | --- | --- |
-| No display / GUI fails | Run from a graphical session with `DISPLAY` or `WAYLAND_DISPLAY` set |
 | Version list fetch fails | Script falls back to a curated list automatically |
-| Long dependency phase | The compatibility libraries step can be slow and quiet, just wait |
 | Textport warning: `Error Loading Default Mono Font ... Substituted with Verdana` | Non-blocking fallback. UI and projects still work. The launcher auto-patches `.toe` files with `wine_ui_fixes.tox` on launch. |
 | Fonts still missing after patching | If text is missing, tiny, or broken, apply `wine_ui_fixes.tox` manually once per project: open your `.toe` in TouchDesigner, open Palette > **My Components**, right-click and select **Refresh Folder**, drag and drop `wine_ui_fixes.tox` into your network, click **Enable**, then save. The launcher also auto-patches on launch. |
 | Ubuntu/Debian `:i386` dependency errors (`Breaks`, version mismatch) | Usually caused by third-party repo skew between amd64 and i386 packages. The installer does not force downgrades. Align package versions in apt sources, then rerun the script. |

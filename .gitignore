@@ -34,6 +34,10 @@ __pycache__/
 Downloads/
 tmp/
 
+# Inno Setup extraction artifacts
+$/
+commonappdata/
+
 # Safety (Wine / local env)
 .local/
 install.sh
