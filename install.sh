@@ -2907,9 +2907,9 @@ main() {
             mkdir -p "$WINETRICKS_TMP"
             local _avail_kb
             _avail_kb=$(df --output=avail "$WINETRICKS_TMP" 2>/dev/null | tail -n 1)
-            if [ -n "$_avail_kb" ] && [ "$_avail_kb" -lt 10485760 ] 2>/dev/null; then
-                print_error "Insufficient disk space: less than 10 GB available on $(df --output=target "$WINETRICKS_TMP" 2>/dev/null | tail -n 1)"
-                print_info "TouchDesigner installation requires at least 10 GB of free space."
+            if [ -n "$_avail_kb" ] && [ "$_avail_kb" -lt 8388608 ] 2>/dev/null; then
+                print_error "Insufficient disk space: less than 8 GB available on $(df --output=target "$WINETRICKS_TMP" 2>/dev/null | tail -n 1)"
+                print_info "TouchDesigner installation requires at least 8 GB of free space (final install is ~9 GB)."
                 print_info "Free up space or set TD_BASE_DIR to a drive with more room."
                 print_info "Example: TD_BASE_DIR=/mnt/bigdrive/touchdesigner-linux ./install.sh"
                 exit 1
