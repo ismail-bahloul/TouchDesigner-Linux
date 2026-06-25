@@ -85,9 +85,7 @@ def run_install(args):
                 selected = select_version_interactive(versions)
             except KeyboardInterrupt:
                 info("\nInstallation cancelled by user")
-                import sys
-
-                sys.exit(1)
+                raise SystemExit(1)
             if selected is None:
                 info("Skipping TouchDesigner install")
             elif selected == "__custom__":
