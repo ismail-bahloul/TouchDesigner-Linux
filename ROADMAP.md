@@ -42,9 +42,11 @@ Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An o
 
 Currently requires `USE_NVIDIA_DGPU=Y` manually. Could detect NVIDIA + Intel/AMD hybrid setups automatically and offer config on first launch.
 
-### 6. Flatpak
+### 6. Distribution packages (AUR / Flatpak)
 
-Package the whole thing as a Flatpak. `flatpak install` and done — no more dependency issues, exec flags, or path problems. Requires more work (sandboxing, GPU driver access, etc.).
+**AUR package** — Arch and its derivatives (CachyOS, EndeavourOS, Manjaro) are popular among creative coders. An AUR PKGBUILD would mean `yay -S touchdesigner-linux` with automatic updates.
+
+**Flatpak** — Distro-agnostic, sandboxed, one command install. Requires more work around GPU driver access and sandboxing.
 
 ---
 
