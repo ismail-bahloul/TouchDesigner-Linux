@@ -100,74 +100,38 @@ def _show_menu(args):
 
     compat_ok = ARCH_NAME == "x86_64" and PKG_MANAGER != "unknown"
 
-    print(f"\n{Colors.bold}{Colors.dim}Environment check{Colors.nc}\n")
-
-    print(f" {Colors.dim}╔═══════════════════════════════════╗{Colors.nc}")
-    sysname = f"System: {OS_NAME} / {ARCH_NAME}"
-    print(f" {Colors.dim}║{Colors.nc} {sysname:<33} {Colors.dim}║{Colors.nc}")
-    print(f" {Colors.dim}╚═══════════════════════════════════╝{Colors.nc}")
-
-    if compat_ok:
-        print(f"  {Colors.white}▸ Your Linux is supported{Colors.nc}\n")
-    else:
-        print(f"  {Colors.gray}▸ Your Linux is not supported{Colors.nc}")
+    # System info (compact)
+    sysname = f"{Colors.dim}{OS_NAME}{Colors.nc} — {Colors.dim}{ARCH_NAME}{Colors.nc}"
+    print(f"  System: {sysname}")
+    if not compat_ok:
         if ARCH_NAME != "x86_64":
             print(
-                f"  {Colors.dim}  Architecture {ARCH_NAME} is not supported (x86_64 required){Colors.nc}"
+                f"  {Colors.dim}Architecture {ARCH_NAME} is not supported (x86_64 required){Colors.nc}"
             )
         if PKG_MANAGER == "unknown":
-            print(
-                f"  {Colors.dim}  No supported package manager found (apt/dnf/pacman/zypper){Colors.nc}"
-            )
-        print()
+            print(f"  {Colors.dim}No supported package manager found{Colors.nc}")
+    print()
 
-    print(f"\n{Colors.bold}{Colors.white}WHAT YOU GET:{Colors.nc}\n")
-
-    def _item(label, text):
-        print(
-            f"  {Colors.dim}[{Colors.nc}{Colors.white}{Colors.bold}{label:<7}{Colors.nc}{Colors.dim}]{Colors.nc}  {text}"
-        )
-
-    _item("Runner", "Soda Wine 9.0-1 (standalone)")
-    _item("GPU", "Vulkan acceleration (3D graphics)")
-    _item("Font", "Microsoft core fonts (corefonts)")
-    _item("App", "Latest TouchDesigner version installation")
-
-    print(f"\n{Colors.white}INSTALLATION OPTIONS :{Colors.nc}\n")
-
-    print(f"  1  Install")
-    print(f"{Colors.accent}      \u2022 Run TouchDesigner on Linux.{Colors.nc}")
+    # Menu options (clean, scannable)
+    print(f"  {Colors.bold}{Colors.white}1{Colors.nc}  Install")
     print(
-        f"{Colors.accent}      \u2022 Auto-configure compatibility components.{Colors.nc}"
-    )
-    print(
-        f"{Colors.accent}      \u2022 GPU acceleration for better graphics performance.{Colors.nc}"
-    )
-    print(
-        f"{Colors.accent}      \u2022 Install multiple TouchDesigner versions independently.{Colors.nc}"
+        f"     {Colors.accent}Run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
     )
     print()
+    print(f"  {Colors.bold}{Colors.white}2{Colors.nc}  Update")
     print(
-        f"{Colors.accent}      -> Already installed? Re-run safely ! Completed steps will be skipped.{Colors.nc}"
+        f"     {Colors.accent}Refresh launcher, Wine components, UI fixes and icons{Colors.nc}"
     )
     print()
-    print(f"  2  Update")
+    print(f"  {Colors.bold}{Colors.white}3{Colors.nc}  Uninstall")
     print(
-        f"{Colors.accent}      \u2022 Update launcher, Wine components, UI fixes and icons.{Colors.nc}"
+        f"     {Colors.accent}Remove selected versions or everything (prefix, runner, launcher){Colors.nc}"
     )
     print()
-    print(f"  3  Uninstall")
-    print(
-        f"{Colors.accent}      \u2022 Removes the Wine prefix, runner, launcher, and all TouchDesigner data.{Colors.nc}"
-    )
-    print()
-    print(f"  0  Exit")
-    print(
-        f"{Colors.accent}      \u2022 Quit this script without making changes.{Colors.nc}\n"
-    )
+    print(f"  {Colors.bold}{Colors.white}0{Colors.nc}  Exit\n")
 
     try:
-        choice = input("Select option [1]: ").strip() or "1"
+        choice = input("  Select option [1]: ").strip() or "1"
     except (EOFError, KeyboardInterrupt):
         print()
         choice = "0"
