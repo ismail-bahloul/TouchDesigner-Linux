@@ -95,6 +95,15 @@ def create_shortcuts(icon_path: str) -> None:
     ensure_dir(DESKTOP_DIR)
     ensure_dir(APPLICATIONS_DIR)
 
+    # Remove existing shortcuts to avoid duplicates
+    for d in [DESKTOP_DIR, APPLICATIONS_DIR]:
+        if not os.path.isdir(d):
+            continue
+        for f in os.listdir(d):
+            if f.startswith("TouchDesigner") or f.startswith("touchdesigner"):
+                if f.endswith(".desktop"):
+                    os.remove(os.path.join(d, f))
+
     # Desktop shortcut
     desktop_file = os.path.join(DESKTOP_DIR, "TouchDesigner.desktop")
     _write_desktop_file(desktop_file, icon_path, LAUNCHER_PATH)
