@@ -158,6 +158,8 @@ def select_version_interactive(versions: list[str]) -> str | None:
 
     installed_versions = {v for _, v in discover_installed_versions()}
 
+    from .utils import Colors
+
     print(f"\nAvailable TouchDesigner versions")
     print(f"Use ↑ ↓ to navigate, Enter to select\n")
 
@@ -178,7 +180,11 @@ def select_version_interactive(versions: list[str]) -> str | None:
             label = v
             if i == 0:
                 label = f"{v} (Latest stable)"
-            installed = " ✓ installed" if v in installed_versions else ""
+            installed = (
+                f" {Colors.green}{chr(10003)} installed{Colors.nc}"
+                if v in installed_versions
+                else ""
+            )
             marker = "▶" if i == cursor else " "
             lines.append((i, f"  {marker}  {label:<30}{installed}"))
 
