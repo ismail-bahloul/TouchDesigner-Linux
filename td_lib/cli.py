@@ -117,6 +117,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Simulate installation (no changes made)",
     )
+    opts.add_argument(
+        "--patch-toe",
+        dest="patch_toe",
+        metavar="FILE",
+        help="Apply wine_ui_fixes.tox to a .toe file",
+    )
 
     args = parser.parse_args(argv)
     return args

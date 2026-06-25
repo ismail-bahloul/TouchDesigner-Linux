@@ -49,6 +49,11 @@ def main():
         print(f"td-install {__version__}")
         return
 
+    # Handle --patch-toe standalone mode
+    if args.patch_toe:
+        run_patch_toe(args.patch_toe)
+        return
+
     # Show interactive menu if no action specified and not non-interactive
     if args.action is None:
         if args.non_interactive:
@@ -179,6 +184,139 @@ def _show_menu(args):
             sys.exit(0)
         case _:
             args.action = "install"
+
+
+def run_patch_toe(file_path: str) -> None:
+    """Apply wine_ui_fixes.tox to a single .toe file (--patch-toe)."""
+    from td_lib.utils import ensure_dir, error, info
+    from td_lib.wine import RUNNER_DIR, WINE_PREFIX
+
+    file_path = os.path.expanduser(file_path)
+    if not os.path.isfile(file_path):
+        error(f"File not found: {file_path}")
+        sys.exit(1)
+
+    runner_bin = os.path.join(RUNNER_DIR, "bin")
+    if not os.path.isdir(runner_bin):
+        error("TouchDesigner Wine environment not found. Run td-install first.")
+        sys.exit(1)
+
+    # Find toeexpand and toecollapse
+    drive_c = os.path.join(WINE_PREFIX, "drive_c")
+    toeexpand = None
+    toecollapse = None
+    for root, dirs, files in os.walk(drive_c):
+        for f in files:
+            if f.lower() == "toeexpand.exe":
+                toeexpand = os.path.join(root, f)
+            elif f.lower() == "toecollapse.exe":
+                toecollapse = os.path.join(root, f)
+
+    if not toeexpand or not toecollapse:
+        error("toeexpand/toecollapse not found in Wine prefix.")
+        sys.exit(1)
+
+    # Find fix file
+    fix_file = os.path.join(TD_BASE_DIR, "wine_ui_fixes.tox")
+    if not os.path.isfile(fix_file):
+        from td_lib.desktop import install_font_fix
+
+        fix_file = install_font_fix()
+        if not fix_file:
+            error("wine_ui_fixes.tox not found. Cannot patch.")
+            sys.exit(1)
+
+    # Run patch using Wine's toeexpand/toecollapse
+    import shutil
+    import subprocess
+    import tempfile
+
+    fix_tmpdir = tempfile.mkdtemp(prefix="td_fix_")
+    try:
+        fix_copy = os.path.join(fix_tmpdir, "fix.tox")
+        shutil.copy2(fix_file, fix_copy)
+
+        env = os.environ.copy()
+        env["WINEPREFIX"] = WINE_PREFIX
+        env["PATH"] = f"{runner_bin}:{env.get('PATH', '')}"
+
+        # Expand the fix file to get entries
+        subprocess.run(
+            [toeexpand, f"z:{fix_copy}"],
+            env=env,
+            capture_output=True,
+            timeout=30,
+        )
+
+        fix_entries = []
+        toc_file = f"{fix_copy}.toc"
+        if os.path.isfile(toc_file):
+            with open(toc_file) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and line != ".build":
+                        fix_entries.append(line)
+
+        # Backup original .toe
+        backup_dir = os.path.join(TD_BASE_DIR, "backups")
+        ensure_dir(backup_dir)
+        unique_name = file_path.replace("/", "_") + ".bak"
+        shutil.copy2(file_path, os.path.join(backup_dir, unique_name))
+
+        # Expand target .toe
+        wine_path = f"z:{file_path}"
+        subprocess.run(
+            [toeexpand, wine_path],
+            env=env,
+            capture_output=True,
+            timeout=30,
+        )
+
+        toe_dir = f"{file_path}.dir"
+        if os.path.isdir(toe_dir):
+            # Merge fix
+            subprocess.run(
+                [toeexpand, f"z:{fix_copy}"],
+                env=env,
+                capture_output=True,
+                timeout=30,
+            )
+            fix_dir = f"{fix_copy}.dir"
+            if os.path.isdir(fix_dir):
+                for item in os.listdir(fix_dir):
+                    shutil.copytree(
+                        os.path.join(fix_dir, item),
+                        os.path.join(toe_dir, item),
+                        dirs_exist_ok=True,
+                    )
+
+            # Add fix entries to .toc
+            toe_toc = f"{file_path}.toc"
+            with open(toe_toc, "a") as f:
+                for entry in fix_entries:
+                    f.write(f"{entry}\n")
+
+            # Collapse back
+            subprocess.run(
+                [toecollapse, wine_path],
+                env=env,
+                capture_output=True,
+                timeout=30,
+            )
+
+            # Cleanup expanded files
+            if os.path.isdir(toe_dir):
+                shutil.rmtree(toe_dir)
+            if os.path.isfile(toe_toc):
+                os.remove(toe_toc)
+
+            info(f"Patched: {file_path}")
+        else:
+            error(f"Failed to expand {file_path}")
+            sys.exit(1)
+    finally:
+        if os.path.isdir(fix_tmpdir):
+            shutil.rmtree(fix_tmpdir)
 
 
 if __name__ == "__main__":
