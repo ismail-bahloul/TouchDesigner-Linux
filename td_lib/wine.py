@@ -5,6 +5,8 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import threading
+import time
 
 from .utils import (
     TD_BASE_DIR,
@@ -276,6 +278,19 @@ def install_windows_deps() -> None:
         }
     )
 
+    stop_heartbeat = threading.Event()
+
+    def _heartbeat():
+        start = time.time()
+        while not stop_heartbeat.is_set():
+            elapsed = int(time.time() - start)
+            if elapsed > 0 and elapsed % 10 == 0:
+                info(f"Winetricks still working... ({elapsed}s)")
+            time.sleep(1)
+
+    thread = threading.Thread(target=_heartbeat, daemon=True)
+    thread.start()
+
     try:
         result = subprocess.run(
             ["bash", WINETRICKS_BIN, "-q", "corefonts", "d3dx11_43", "vcrun2019"],
@@ -296,6 +311,8 @@ def install_windows_deps() -> None:
         print()
         error("Installation cancelled")
         raise SystemExit(1)
+    finally:
+        stop_heartbeat.set()
 
     # Check if any verb was skipped (already installed) for a cleaner message
     if result.stdout and "already installed, skipping" in result.stdout:
