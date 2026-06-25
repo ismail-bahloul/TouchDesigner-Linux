@@ -24,6 +24,7 @@ class Colors:
     cyan = "\033[0;36m" if _enabled else ""
     gray = "\033[0;90m" if _enabled else ""
     white = "\033[0;97m" if _enabled else ""
+    accent = "\033[2;37m" if _enabled else ""  # dim white (bash ACCENT)
     nc = "\033[0m" if _enabled else ""
 
 

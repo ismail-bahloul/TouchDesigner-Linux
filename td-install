@@ -131,34 +131,34 @@ def _show_menu(args):
     print(f"\n{Colors.white}INSTALLATION OPTIONS :{Colors.nc}\n")
 
     print(f"  1  Install")
-    print(f"{Colors.dim}      \u2022 Run TouchDesigner on Linux.{Colors.nc}")
+    print(f"{Colors.accent}      \u2022 Run TouchDesigner on Linux.{Colors.nc}")
     print(
-        f"{Colors.dim}      \u2022 Auto-configure compatibility components.{Colors.nc}"
+        f"{Colors.accent}      \u2022 Auto-configure compatibility components.{Colors.nc}"
     )
     print(
-        f"{Colors.dim}      \u2022 GPU acceleration for better graphics performance.{Colors.nc}"
+        f"{Colors.accent}      \u2022 GPU acceleration for better graphics performance.{Colors.nc}"
     )
     print(
-        f"{Colors.dim}      \u2022 Install multiple TouchDesigner versions independently.{Colors.nc}"
+        f"{Colors.accent}      \u2022 Install multiple TouchDesigner versions independently.{Colors.nc}"
     )
     print()
     print(
-        f"{Colors.dim}      -> Already installed? Re-run safely ! Completed steps will be skipped.{Colors.nc}"
+        f"{Colors.accent}      -> Already installed? Re-run safely ! Completed steps will be skipped.{Colors.nc}"
     )
     print()
     print(f"  2  Update")
     print(
-        f"{Colors.dim}      \u2022 Update launcher, Wine components, UI fixes and icons.{Colors.nc}"
+        f"{Colors.accent}      \u2022 Update launcher, Wine components, UI fixes and icons.{Colors.nc}"
     )
     print()
     print(f"  3  Uninstall")
     print(
-        f"{Colors.dim}      \u2022 Removes the Wine prefix, runner, launcher, and all TouchDesigner data.{Colors.nc}"
+        f"{Colors.accent}      \u2022 Removes the Wine prefix, runner, launcher, and all TouchDesigner data.{Colors.nc}"
     )
     print()
     print(f"  0  Exit")
     print(
-        f"{Colors.dim}      \u2022 Quit this script without making changes.{Colors.nc}\n"
+        f"{Colors.accent}      \u2022 Quit this script without making changes.{Colors.nc}\n"
     )
 
     try:
