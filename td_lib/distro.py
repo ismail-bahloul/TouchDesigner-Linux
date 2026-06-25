@@ -369,12 +369,9 @@ def _install_pacman() -> None:
             ["sudo", "pacman", "-S", "--needed", "--noconfirm", "--quiet"]
             + PACMAN_PACKAGES,
             check=True,
-            capture_output=True,
+            stderr=subprocess.DEVNULL,
         )
-    except subprocess.CalledProcessError as e:
-        # Show stderr on failure
-        if e.stderr:
-            print(e.stderr, end="", file=sys.stderr)
+    except subprocess.CalledProcessError:
         error("Failed to install packages. Try: sudo pacman -Syu")
         raise SystemExit(1)
 
