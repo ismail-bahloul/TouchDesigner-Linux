@@ -128,7 +128,7 @@ def _show_menu(args):
 
     print(f"  1  Install")
     print(
-        f"{Colors.accent}     Run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
+        f"{Colors.accent}     Install and run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
     )
     print()
     print(f"  2  Update")
