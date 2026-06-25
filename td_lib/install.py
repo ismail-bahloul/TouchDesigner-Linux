@@ -1,17 +1,25 @@
 """Installation workflow."""
 
-from .utils import error, info, print_banner
+from .utils import error, info, print_banner, success
 
 
 def run_install(args):
     """Run full TouchDesigner installation."""
     print_banner("2.0-dev")
-    info("Starting TouchDesigner installation...")
+    info("Starting TouchDesigner installation...\n")
 
     # Check prerequisites
     _check_prerequisites()
 
     # Step 1: System packages
+    from .distro import detect_distro, install_packages
+
+    distro = detect_distro()
+    success(f"Detected: {distro.distro_name} ({distro.package_manager})")
+
+    if not args.dry_run:
+        install_packages(distro)
+
     # Step 2: Wine runner
     # Step 3: Wine prefix
     # Step 4: Windows dependencies (winetricks, DXVK)
@@ -21,8 +29,7 @@ def run_install(args):
     # Step 8: Launcher, shortcuts, icons
     # Step 9: Cleanup
 
-    info("Installation workflow coming in V2.0 — use install.sh for now.")
-    info("See https://github.com/iswad-lab/TouchDesigner-Linux")
+    info("Full installation workflow continuing in V2.0 \u2014 use install.sh for now.")
 
 
 def _check_prerequisites():
