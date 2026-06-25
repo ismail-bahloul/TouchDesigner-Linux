@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""
+TouchDesigner-Linux — Automated installer for TouchDesigner on Linux.
+
+Usage:
+    td-install                      Interactive installation
+    td-install -n                   Non-interactive (auto)
+    td-install -H                   Headless (SSH, no display)
+    td-install --diagnose           System health check
+    td-install --help               Full options
+"""
+
+import sys
+import os
+
+# Ensure the td_lib package is importable
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
+from td_lib.cli import parse_args
+from td_lib.utils import setup_logging, print_banner, error
+from td_lib.install import run_install
+from td_lib.update import run_update
+from td_lib.cleanup import run_uninstall_menu
+from td_lib.diagnose import run_diagnose
+
+
+def main():
+    args = parse_args()
+
+    setup_logging(args.debug)
+
+    if args.diagnose:
+        run_diagnose()
+        return
+
+    if args.version:
+        from td_lib import __version__
+        print(f"td-install {__version__}")
+        return
+
+    match args.action:
+        case "install":
+            run_install(args)
+        case "update":
+            run_update(args)
+        case "uninstall":
+            run_uninstall_menu(args)
+        case _:
+            error("No action selected. Run with --help for usage.")
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
