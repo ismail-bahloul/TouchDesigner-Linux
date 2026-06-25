@@ -1886,6 +1886,63 @@ download_touchdesigner() {
 
 }
 
+patch_ids_dlls() {
+    local td_bin="$WINE_PREFIX/drive_c/Program Files/TouchDesigner/bin"
+    local ids_dlls=(
+        "ids_peak_ipl.dll"
+        "ids_peak_afl.dll"
+        "ids_peak_ifl.dll"
+        "ids_peak_comfort_c.dll"
+    )
+
+    command -v python3 >/dev/null 2>&1 || return 0
+
+    local patched=0
+    local skipped=0
+    local dll
+
+    for dll in "${ids_dlls[@]}"; do
+        local dll_path="$td_bin/$dll"
+        [ -f "$dll_path" ] || continue
+
+        python3 -c "
+import struct, sys, os, shutil
+
+path = sys.argv[1]
+with open(path, 'rb') as f:
+    data = bytearray(f.read())
+
+# PE header: e_lfanew at offset 0x3C (4 bytes)
+e_lfanew = struct.unpack_from('<I', data, 0x3C)[0]
+# AddressOfEntryPoint = e_lfanew + 4 (PE sig) + 20 (COFF hdr) + 16 (into OptHdr)
+ep_offset = e_lfanew + 4 + 20 + 16
+ep = struct.unpack_from('<I', data, ep_offset)[0]
+
+if ep == 0:
+    sys.exit(2)  # already patched
+
+# Create backup before patching
+backup = path + '.bak'
+if not os.path.exists(backup):
+    shutil.copy2(path, backup)
+
+struct.pack_into('<I', data, ep_offset, 0)
+with open(path, 'wb') as f:
+    f.write(data)
+sys.exit(0)  # patched
+" "$dll_path" 2>/dev/null
+        case $? in
+            0) patched=$((patched + 1)) ;;
+            2) skipped=$((skipped + 1)) ;;
+        esac
+    done
+
+    if [ "$patched" -gt 0 ]; then
+        print_success "Patched $patched IDS Peak SDK DLL(s) for Wine compatibility"
+    fi
+    [ "$skipped" -gt 0 ] && print_info "$skipped IDS DLL(s) already patched"
+}
+
 install_touchdesigner() {
     local exe_path="$1"
     local td_install_dir="$WINE_PREFIX/drive_c/Program Files/TouchDesigner"
@@ -2903,6 +2960,12 @@ main() {
             print_info "Starting TouchDesigner installation..."
             printf "\n"
 
+            # Clean up temp files from previous runs
+            if [ -d "$WINETRICKS_TMP" ]; then
+                print_info "Cleaning up temporary files from previous runs..."
+                safe_rm_rf "$WINETRICKS_TMP"
+            fi
+
             # Check available disk space early — extraction needs at least 10 GB
             mkdir -p "$WINETRICKS_TMP"
             local _avail_kb
@@ -2915,7 +2978,6 @@ main() {
                 exit 1
             fi
 
-            # Clean up temp files from previous runs
             # Step 1: System packages
             print_info "Step 1/6: Installing system packages..."
             detect_package_manager
@@ -2966,6 +3028,21 @@ main() {
             else
                 print_info "Step 6/6: Installing TouchDesigner..."
                 install_touchdesigner "$TD_FILEPATH"
+
+                # Patch IDS Peak SDK DLLs to prevent DllMain crash on Wine
+                patch_ids_dlls
+
+                # Clean up the downloaded installer to free ~2 GB
+                if [ -f "$TD_FILEPATH" ] && [ "${TD_FILEPATH##*/}" = "$TD_FILENAME" ] && [ -n "$DOWNLOAD_DIR" ] && [ "$(dirname "$TD_FILEPATH")" = "$DOWNLOAD_DIR" ]; then
+                    rm -f "$TD_FILEPATH"
+                    print_success "Installer removed: $TD_FILENAME (freed ~2 GB)"
+                fi
+
+                # Clean up winetricks temp directory
+                if [ -d "$WINETRICKS_TMP" ]; then
+                    safe_rm_rf "$WINETRICKS_TMP"
+                    print_info "Temporary files cleaned up"
+                fi
             fi
 
             if [ "$TD_SKIP_INSTALL" = true ] || find_touchdesigner_exe >/dev/null; then
