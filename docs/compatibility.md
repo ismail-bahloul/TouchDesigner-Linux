@@ -1,0 +1,22 @@
+# Compatibility Status
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Launch and runtime | ✅ | App launches normally and runs reliably |
+| UI rendering | ✅ | Correct with `wine_ui_fixes.tox` (auto-patched on launch) |
+| Real-time visuals | ✅ | Live updates and interaction are smooth |
+| Inputs / outputs | ✅ | External outputs and inputs are functional in tested scenarios |
+| NDI | ✅ | Confirmed working |
+| TD - Bitwig | ✅ | Confirmed working |
+| Video Device In | ⚠️ | USB Webcams work on first init, but Wine "locks" the device. Replug or TD restart required to reset |
+| NVIDIA TOP | ❌ | Background, Flow and Denoise fail to init CUDA/TensorRT in this environment |
+| Engine COMP | ❌ | The background process may start (PID assigned), but the IPC bridge fails to initialize. Workaround: move your logic into a Base or Container COMP to run within the main process |
+| WebRender TOP | ❌ | Web pages do not render (no errors thrown). Known upstream limitation with Chromium-based components in Wine environments |
+| External installs / integrations | ❓ | Third-party installs, Kinect, extra plugins, and advanced external production pipelines still need broader testing |
+
+## Notes
+
+- NVIDIA GPUs are highly recommended.
+- Wayland is strongly recommended (X11 may cause launch issues or black screen)
+- The launcher disables native Wayland for Wine (avoids GLXMakeCurrent timing bugs on KDE Plasma 6). TouchDesigner runs through XWayland, which is transparent on modern Wayland desktops. This is a temporary workaround until Wine has reliable native Wayland support.
+- Performance may vary depending on hardware and driver setup.
