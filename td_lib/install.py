@@ -4,7 +4,7 @@ import os
 import shutil
 import sys
 
-from .utils import error, info, print_banner, success
+from .utils import error, info, print_banner, print_hr, success
 
 
 def run_install(args):
@@ -152,7 +152,10 @@ def run_install(args):
             info("Downloaded installer removed (freed ~2 GB)")
 
     print()
-    info("Installation complete — use launch-touchdesigner.sh to start.")
+    print_hr()
+    success(f"TouchDesigner {td_version or ''} installation complete")
+    info("Launch TouchDesigner from your desktop shortcut or application menu.")
+    info("Or run: ~/.local/bin/launch-touchdesigner.sh")
 
 
 def _pick_installer_file() -> str | None:
