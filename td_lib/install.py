@@ -119,6 +119,7 @@ def run_install(args):
         if not install_touchdesigner(td_exe_path, version=td_version):
             error("TouchDesigner installation failed")
             raise SystemExit(1)
+    print()
 
     # Step 7: IDS DLL patch
     from .patcher import patch_ids_dlls
@@ -126,6 +127,7 @@ def run_install(args):
     if td_exe_path and not args.dry_run:
         info("Patching IDS Peak SDK DLLs...")
         patch_ids_dlls()
+    print()
 
     # Step 8: Launcher script + desktop integration
     from .launcher import LAUNCHER_PATH, create_launcher_script
@@ -149,6 +151,7 @@ def run_install(args):
             safe_rm(td_exe_path)
             info("Downloaded installer removed (freed ~2 GB)")
 
+    print()
     info("Installation complete — use launch-touchdesigner.sh to start.")
 
 
