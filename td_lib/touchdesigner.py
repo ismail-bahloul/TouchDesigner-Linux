@@ -194,12 +194,17 @@ def select_version_interactive(versions: list[str]) -> str | None:
                 break
 
             if key == "\x1b":
-                seq = sys.stdin.read(2)
-                if seq in ("[A", "[D"):  # Up or Left
+                seq = ""
+                try:
+                    seq = sys.stdin.read(2)
+                except (EOFError, OSError):
+                    pass
+                if seq == "[A":  # Up
                     cursor = (cursor - 1) % total
-                elif seq in ("[B", "[C"):  # Down or Right
+                elif seq == "[B":  # Down
                     cursor = (cursor + 1) % total
-            elif key == "\r":  # Enter
+                # Left/Right intentionally ignored (vertical list)
+            elif key in ("\r", "\n"):  # Enter
                 if cursor == skip_idx:
                     selected = None
                 elif cursor == custom_idx:
