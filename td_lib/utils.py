@@ -166,7 +166,7 @@ def download_file(
             cmd.insert(1, "--silent")
             cmd.insert(2, "--show-error")
         try:
-            run(cmd)
+            subprocess.run(cmd, check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError:
             return False
@@ -188,7 +188,7 @@ def download_file(
         else:
             cmd.insert(1, "-q")
         try:
-            run(cmd)
+            subprocess.run(cmd, check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError:
             return False

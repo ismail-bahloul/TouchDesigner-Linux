@@ -277,19 +277,29 @@ def install_windows_deps() -> None:
     )
 
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["bash", WINETRICKS_BIN, "-q", "corefonts", "d3dx11_43", "vcrun2019"],
             env=wt_env,
+            capture_output=True,
+            text=True,
             check=True,
         )
     except subprocess.CalledProcessError:
         error("Winetricks failed")
+        info("Last output:")
+        if "result" in dir():
+            for line in result.stdout.splitlines()[-10:]:
+                info(line)
         info("Retry with --debug for verbose logs")
         raise SystemExit(1)
     except KeyboardInterrupt:
         print()
         error("Installation cancelled")
         raise SystemExit(1)
+
+    # Check if any verb was skipped (already installed) for a cleaner message
+    if result.stdout and "already installed, skipping" in result.stdout:
+        success("Windows dependencies already satisfied")
 
     success("Windows dependencies installed")
 

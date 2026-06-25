@@ -365,7 +365,8 @@ def _install_pacman() -> None:
     info("Installing required packages...")
     try:
         subprocess.run(
-            ["sudo", "pacman", "-S", "--needed", "--noconfirm"] + PACMAN_PACKAGES,
+            ["sudo", "pacman", "-S", "--needed", "--noconfirm", "--quiet"]
+            + PACMAN_PACKAGES,
             check=True,
         )
     except subprocess.CalledProcessError:

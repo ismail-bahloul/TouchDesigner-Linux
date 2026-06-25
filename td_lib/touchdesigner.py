@@ -132,8 +132,8 @@ def select_version_interactive(versions: list[str]) -> str | None:
 
     installed_versions = {v for _, v in discover_installed_versions()}
 
-    print(f"\n{'Available TouchDesigner versions':^60}")
-    print(f"{'Use ↑ ↓ to navigate, Enter to select':^60}\n")
+    print(f"\nAvailable TouchDesigner versions")
+    print(f"Use ↑ ↓ to navigate, Enter to select\n")
 
     count = len(versions)
     total = count + 2  # versions + "Use local installer" + "Skip"
