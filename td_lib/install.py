@@ -64,6 +64,7 @@ def run_install(args):
     )
 
     td_exe_path = None
+    td_version = None
 
     if args.dry_run:
         td_exe_path = "/dry-run/placeholder.exe"
@@ -75,11 +76,9 @@ def run_install(args):
         versions = fetch_available_versions()
 
         if args.non_interactive or args.headless:
-            selected_version = (
-                args.td_version if args.td_version != "latest" else versions[0]
-            )
-            info(f"Non-interactive mode: selected version {selected_version}")
-            td_exe_path = download_touchdesigner(selected_version)
+            td_version = args.td_version if args.td_version != "latest" else versions[0]
+            info(f"Non-interactive mode: selected version {td_version}")
+            td_exe_path = download_touchdesigner(td_version)
         else:
             try:
                 selected = select_version_interactive(versions)
@@ -102,12 +101,13 @@ def run_install(args):
                     if path:
                         td_exe_path = download_touchdesigner("", installer_path=path)
             else:
-                td_exe_path = download_touchdesigner(selected)
+                td_version = selected
+                td_exe_path = download_touchdesigner(td_version)
 
     # Step 6: Install TouchDesigner
     if td_exe_path and not args.dry_run:
         info("Step 6/6: Installing TouchDesigner...")
-        if not install_touchdesigner(td_exe_path):
+        if not install_touchdesigner(td_exe_path, version=td_version):
             error("TouchDesigner installation failed")
             raise SystemExit(1)
 

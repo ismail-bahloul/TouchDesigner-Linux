@@ -275,13 +275,31 @@ def download_touchdesigner(
 # ── Installation (7z + innoextract) ──────────────────────────────────────────
 
 
-def install_touchdesigner(exe_path: str) -> bool:
+def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
     """
     Extract the TouchDesigner installer into the Wine prefix using 7z + innoextract.
+    Installs to a versioned directory: 'TouchDesigner {version}/'
     Returns True on success.
     """
-    if os.path.isfile(os.path.join(TD_INSTALL_DIR, "bin", "TouchDesigner.exe")):
-        success(f"TouchDesigner already installed at: {TD_INSTALL_DIR}")
+    # Detect version from filename if not provided
+    if not version:
+        basename = os.path.basename(exe_path)
+        m = re.search(r"(\d{4}\.\d+)", basename)
+        if m:
+            version = m.group(1)
+
+    if version:
+        install_dir = os.path.join(
+            WINE_PREFIX, "drive_c", "Program Files", f"TouchDesigner {version}"
+        )
+    else:
+        install_dir = os.path.join(
+            WINE_PREFIX, "drive_c", "Program Files", "TouchDesigner"
+        )
+
+    td_exe_path = os.path.join(install_dir, "bin", "TouchDesigner.exe")
+    if os.path.isfile(td_exe_path):
+        success(f"TouchDesigner {version or ''} already installed at: {install_dir}")
         return True
 
     # Check required tools
@@ -344,10 +362,10 @@ def install_touchdesigner(exe_path: str) -> bool:
             error("Unexpected installer structure")
             return False
 
-        # Copy files to Wine prefix
-        info("Copying TouchDesigner files to Wine prefix...")
-        ensure_dir(TD_INSTALL_DIR)
-        shutil.copytree(app_dir, TD_INSTALL_DIR, dirs_exist_ok=True)
+        # Copy files to versioned directory
+        info(f"Copying TouchDesigner files to {install_dir}...")
+        ensure_dir(install_dir)
+        shutil.copytree(app_dir, install_dir, dirs_exist_ok=True)
 
         # Copy commonappdata if exists
         commonappdata = os.path.join(extract_inno, "commonappdata")
@@ -363,12 +381,23 @@ def install_touchdesigner(exe_path: str) -> bool:
                     shutil.copy2(src, dst)
 
     finally:
-        # Cleanup
         safe_rm(extract_root)
 
-    if not os.path.isfile(os.path.join(TD_INSTALL_DIR, "bin", "TouchDesigner.exe")):
-        error("TouchDesigner installation failed: TouchDesigner.exe not found")
+    if not os.path.isfile(td_exe_path):
+        error(f"TouchDesigner installation failed: {td_exe_path} not found")
         return False
 
-    success(f"TouchDesigner installed to: {TD_INSTALL_DIR}")
+    # Detect actual version from installed exe and rename if needed
+    actual_version = detect_version_from_exe(td_exe_path)
+    if actual_version and actual_version != version:
+        actual_dir = os.path.join(
+            WINE_PREFIX, "drive_c", "Program Files", f"TouchDesigner {actual_version}"
+        )
+        if os.path.isdir(install_dir) and not os.path.isdir(actual_dir):
+            os.rename(install_dir, actual_dir)
+            install_dir = actual_dir
+            td_exe_path = os.path.join(install_dir, "bin", "TouchDesigner.exe")
+            version = actual_version
+
+    success(f"TouchDesigner {version or ''} installed to: {install_dir}")
     return True
