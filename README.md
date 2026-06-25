@@ -2,6 +2,8 @@
 
 This is an automated installer to run TouchDesigner on Linux.
 
+👉 [Roadmap & planned features](ROADMAP.md)
+
 ![Screenshot](Screenshots/TD_Preview.png)
 
 File icons installed by the project:
