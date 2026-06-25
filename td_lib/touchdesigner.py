@@ -403,7 +403,8 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
             return False
 
         # Copy files to versioned directory
-        info(f"Copying TouchDesigner files to {install_dir}...")
+        short_dir = install_dir.replace(WINE_PREFIX + "/drive_c/", "drive_c/")
+        info(f"Copying TouchDesigner files to {short_dir}...")
         ensure_dir(install_dir)
         shutil.copytree(app_dir, install_dir, dirs_exist_ok=True)
 
@@ -439,5 +440,5 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
             td_exe_path = os.path.join(install_dir, "bin", "TouchDesigner.exe")
             version = actual_version
 
-    success(f"TouchDesigner {version or ''} installed to: {install_dir}")
+    success(f"TouchDesigner {version or ''} installed")
     return True
