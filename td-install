@@ -76,6 +76,8 @@ def _show_menu(args):
     from td_lib.distro import detect_distro
     from td_lib.utils import Colors, print_banner, print_hr
 
+    if sys.stdout.isatty():
+        print("\033[2J\033[H", end="")  # clear screen (like bash's `clear`)
     print_banner("v1.4")
 
     OS_NAME = "Unknown"
