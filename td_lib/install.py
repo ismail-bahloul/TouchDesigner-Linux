@@ -93,7 +93,12 @@ def run_install(args):
                 if path:
                     td_exe_path = download_touchdesigner("", installer_path=path)
                 else:
-                    path = input("Path to TouchDesigner installer (.exe): ").strip()
+                    try:
+                        path = input("Path to TouchDesigner installer (.exe): ").strip()
+                    except (EOFError, KeyboardInterrupt):
+                        print()
+                        info("Installation cancelled")
+                        raise SystemExit(1)
                     if path:
                         td_exe_path = download_touchdesigner("", installer_path=path)
             else:
