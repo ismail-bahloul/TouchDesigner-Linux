@@ -168,23 +168,36 @@ def select_version_interactive(versions: list[str]) -> str | None:
 
     lines, custom_idx, skip_idx = _draw()
 
-    # Save terminal state
+    # Print initial list
+    for _, line in lines:
+        print(line)
+    print_count = len(lines)
+
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
     try:
-        tty.setraw(sys.stdin)
-
-        for _, line in lines:
-            print(f"\033[K{line}")
-        print_count = len(lines)
+        # Set non-canonical mode: read char by char, keep \n -> \r\n mapping
+        new = termios.tcgetattr(fd)
+        new[tty.LFLAG] &= ~(termios.ICANON | termios.ECHO)
+        new[tty.CC][termios.VMIN] = 1
+        new[tty.CC][termios.VTIME] = 0
+        termios.tcsetattr(fd, termios.TCSADRAIN, new)
 
         while True:
-            key = sys.stdin.read(1)
+            try:
+                key = sys.stdin.read(1)
+            except (EOFError, KeyboardInterrupt):
+                key = "\x03"
+
+            if key == "\x03":  # Ctrl+C
+                selected = None
+                break
+
             if key == "\x1b":
                 seq = sys.stdin.read(2)
-                if seq == "[A" or seq == "[D":  # Up or Left
+                if seq in ("[A", "[D"):  # Up or Left
                     cursor = (cursor - 1) % total
-                elif seq == "[B" or seq == "[C":  # Down or Right
+                elif seq in ("[B", "[C"):  # Down or Right
                     cursor = (cursor + 1) % total
             elif key == "\r":  # Enter
                 if cursor == skip_idx:
@@ -195,16 +208,17 @@ def select_version_interactive(versions: list[str]) -> str | None:
                     selected = versions[cursor]
                 break
 
-            # Redraw
+            # Redraw: move up and reprint
             lines, _, _ = _draw()
             for _ in range(print_count):
-                sys.stdout.write("\033[F")  # Move up
+                sys.stdout.write("\033[A")  # Move cursor up one line
             for _, line in lines:
-                print(f"\033[K{line}")
+                sys.stdout.write(f"\033[K{line}\n")  # Clear line, print, newline
+            sys.stdout.flush()
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        print()
 
+    print()
     return selected
 
 
