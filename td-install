@@ -22,7 +22,7 @@ from td_lib.cli import parse_args
 from td_lib.utils import setup_logging, print_banner, error
 from td_lib.install import run_install
 from td_lib.update import run_update
-from td_lib.cleanup import run_uninstall_menu
+from td_lib.cleanup import run_uninstall
 from td_lib.diagnose import run_diagnose
 
 
@@ -46,7 +46,7 @@ def main():
         case "update":
             run_update(args)
         case "uninstall":
-            run_uninstall_menu(args)
+            run_uninstall(args)
         case _:
             error("No action selected. Run with --help for usage.")
             sys.exit(1)
