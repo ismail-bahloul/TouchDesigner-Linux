@@ -49,33 +49,70 @@ def run_install(args):
         install_windows_deps()
         install_dxvk(enable=args.dxvk)
 
-    # Step 5: IDS DLL patch
+    # Step 5: Download TouchDesigner
+    from .touchdesigner import (
+        download_touchdesigner,
+        fetch_available_versions,
+        install_touchdesigner,
+        select_version_interactive,
+    )
+
+    td_exe_path = None
+
+    if args.dry_run:
+        td_exe_path = "/dry-run/placeholder.exe"
+    elif args.installer_path:
+        info("Step 5/6: Using local installer...")
+        td_exe_path = download_touchdesigner("", installer_path=args.installer_path)
+    else:
+        info("Step 5/6: Downloading TouchDesigner...")
+        versions = fetch_available_versions()
+
+        if args.non_interactive or args.headless:
+            selected_version = (
+                args.td_version if args.td_version != "latest" else versions[0]
+            )
+            info(f"Non-interactive mode: selected version {selected_version}")
+            td_exe_path = download_touchdesigner(selected_version)
+        else:
+            selected = select_version_interactive(versions)
+            if selected is None:
+                info("Skipping TouchDesigner install")
+            elif selected == "__custom__":
+                path = input("Path to TouchDesigner installer (.exe): ").strip()
+                td_exe_path = download_touchdesigner("", installer_path=path)
+            else:
+                td_exe_path = download_touchdesigner(selected)
+
+    # Step 6: Install TouchDesigner
+    if td_exe_path and not args.dry_run:
+        info("Step 6/6: Installing TouchDesigner...")
+        if not install_touchdesigner(td_exe_path):
+            error("TouchDesigner installation failed")
+            raise SystemExit(1)
+
+    # Step 7: IDS DLL patch
     from .patcher import patch_ids_dlls
 
-    if not args.dry_run:
+    if td_exe_path and not args.dry_run:
         info("Patching IDS Peak SDK DLLs...")
         patch_ids_dlls()
 
-    # Step 6: Launcher script
+    # Step 8: Launcher script
     from .launcher import LAUNCHER_PATH, create_launcher_script
 
     if not args.dry_run:
         info("Creating launcher script...")
         create_launcher_script(nvidia_offload=args.nvidia_offload)
 
-    # Step 7: Desktop shortcuts (TODO)
-    # Step 8: Cleanup
+    # Step 9: Cleanup
+    from .touchdesigner import DOWNLOAD_DIR
     from .utils import safe_rm
 
-    if not args.dry_run:
-        # Clean up downloaded installer
-        if (
-            hasattr(args, "installer_path")
-            and args.installer_path
-            and os.path.isfile(args.installer_path)
-        ):
-            safe_rm(args.installer_path)
-            info("Downloaded installer removed")
+    if td_exe_path and not args.dry_run:
+        if os.path.isfile(td_exe_path) and DOWNLOAD_DIR in os.path.dirname(td_exe_path):
+            safe_rm(td_exe_path)
+            info("Downloaded installer removed (freed ~2 GB)")
 
     info("Installation complete — use launch-touchdesigner.sh to start.")
 
