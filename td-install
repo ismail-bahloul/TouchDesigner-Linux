@@ -100,34 +100,49 @@ def _show_menu(args):
 
     compat_ok = ARCH_NAME == "x86_64" and PKG_MANAGER != "unknown"
 
-    # System info
-    print(f"\n  {Colors.dim}╔═══════════════════════════════════╗{Colors.nc}")
-    sysname = f"System: {OS_NAME} / {ARCH_NAME}"
-    support = "Your Linux is supported"
-    print(f"  {Colors.dim}║{Colors.nc}  {sysname:<31} {Colors.dim}║{Colors.nc}")
-    if compat_ok:
-        print(
-            f"  {Colors.dim}║{Colors.nc}  {Colors.white}{support:<31}{Colors.nc} {Colors.dim}║{Colors.nc}"
-        )
-    print(f"  {Colors.dim}╚═══════════════════════════════════╝{Colors.nc}")
+    print(f"\n{Colors.bold}{Colors.dim}Environment check{Colors.nc}\n")
 
-    # Menu options (clean, scannable)
-    print(f"  {Colors.bold}{Colors.white}1{Colors.nc}  Install")
+    print(f" {Colors.dim}╔═══════════════════════════════════╗{Colors.nc}")
+    sysname = f"System: {OS_NAME} / {ARCH_NAME}"
+    print(f" {Colors.dim}║{Colors.nc} {sysname:<33} {Colors.dim}║{Colors.nc}")
+    print(f" {Colors.dim}╚═══════════════════════════════════╝{Colors.nc}")
+
+    if compat_ok:
+        print(f"  {Colors.white}▸ Your Linux is supported{Colors.nc}\n")
+    else:
+        print(f"  {Colors.gray}▸ Your Linux is not supported{Colors.nc}\n")
+
+    print(f"{Colors.bold}{Colors.white}WHAT YOU GET:{Colors.nc}\n")
+
+    def _item(label, text):
+        print(
+            f"  {Colors.dim}[{Colors.nc}{Colors.white}{Colors.bold}{label:<7}{Colors.nc}{Colors.dim}]{Colors.nc}  {text}"
+        )
+
+    _item("Runner", "Soda Wine 9.0-1 (standalone)")
+    _item("GPU", "Vulkan acceleration (3D graphics)")
+    _item("Font", "Microsoft core fonts (corefonts)")
+    _item("App", "Latest TouchDesigner version installation")
+
+    print(f"\n{Colors.white}INSTALLATION OPTIONS :{Colors.nc}\n")
+
+    print(f"  1  Install")
     print(
-        f"     {Colors.accent}Run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
+        f"{Colors.accent}     Run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
     )
     print()
-    print(f"  {Colors.bold}{Colors.white}2{Colors.nc}  Update")
+    print(f"  2  Update")
     print(
-        f"     {Colors.accent}Refresh launcher, Wine components, UI fixes and icons{Colors.nc}"
+        f"{Colors.accent}     Refresh launcher, Wine components, UI fixes and icons{Colors.nc}"
     )
     print()
-    print(f"  {Colors.bold}{Colors.white}3{Colors.nc}  Uninstall")
+    print(f"  3  Uninstall")
     print(
-        f"     {Colors.accent}Remove selected versions or everything (prefix, runner, launcher){Colors.nc}"
+        f"{Colors.accent}     Remove selected versions or everything (prefix, runner, launcher){Colors.nc}"
     )
     print()
-    print(f"  {Colors.bold}{Colors.white}0{Colors.nc}  Exit\n")
+    print(f"  0  Exit")
+    print(f"{Colors.accent}     Quit this script without making changes.{Colors.nc}\n")
 
     try:
         choice = input("  Select option [1]: ").strip() or "1"
