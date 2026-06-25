@@ -1,10 +1,14 @@
 """Update workflow: launcher, winetricks, DXVK, font fix, icons."""
 
+import sys
+
 from .utils import info, print_banner, success
 
 
 def run_update(args) -> None:
     """Update launcher, winetricks, DXVK, UI fixes, and icons."""
+    if sys.stdout.isatty():
+        print("\033[2J\033[H", end="")
     print_banner("1.4")
     info("Starting TouchDesigner update...\n")
 

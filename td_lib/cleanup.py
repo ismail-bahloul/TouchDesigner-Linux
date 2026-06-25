@@ -147,6 +147,8 @@ def show_uninstall_menu() -> None:
     import sys
 
     versions = discover_installed_versions()
+    if sys.stdout.isatty():
+        print("\033[2J\033[H", end="")
     print_banner("1.4")
     print("\nUninstall TouchDesigner:\n")
 

@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+import sys
 
 from .utils import (
     TD_BASE_DIR,
@@ -18,6 +19,8 @@ from .utils import (
 
 def run_diagnose():
     """Print a full system health report."""
+    if sys.stdout.isatty():
+        print("\033[2J\033[H", end="")
     print_banner("1.4")
     print(f"\n{Colors.bold}System Health Check{Colors.nc}\n")
     print_hr()
