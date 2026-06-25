@@ -90,6 +90,7 @@ def fetch_available_versions() -> list[str]:
             show_progress=False,
             timeout=20,
             retries=1,
+            user_agent=USER_AGENT,
         )
     except Exception:
         success = False
