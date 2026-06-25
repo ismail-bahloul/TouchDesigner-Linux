@@ -21,9 +21,13 @@ def run_install(args):
     from .distro import detect_distro, install_packages
 
     if not args.dry_run:
-        distro = detect_distro()
-        success(f"Detected: {distro.distro_name} ({distro.package_manager})")
-        install_packages(distro)
+        try:
+            distro = detect_distro()
+            success(f"Detected: {distro.distro_name} ({distro.package_manager})")
+            install_packages(distro)
+        except KeyboardInterrupt:
+            info("\nInstallation cancelled")
+            raise SystemExit(1)
 
     # Step 2: Wine runner
     from .wine import download_soda_runner

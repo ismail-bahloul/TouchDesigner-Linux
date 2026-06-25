@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from typing import Self
 
@@ -368,8 +369,12 @@ def _install_pacman() -> None:
             ["sudo", "pacman", "-S", "--needed", "--noconfirm", "--quiet"]
             + PACMAN_PACKAGES,
             check=True,
+            capture_output=True,
         )
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        # Show stderr on failure
+        if e.stderr:
+            print(e.stderr, end="", file=sys.stderr)
         error("Failed to install packages. Try: sudo pacman -Syu")
         raise SystemExit(1)
 
@@ -409,18 +414,9 @@ def _check_arch_runtime() -> None:
     """Check and install missing Arch runtime dependencies."""
     info("Checking Arch runtime dependencies...")
 
-    missing: list[str] = []
-    for pkg in ARCH_RUNTIME_CHECK:
-        result = subprocess.run(
-            ["pacman", "-Q", pkg],
-            capture_output=True,
-        )
-        if result.returncode != 0:
-            missing.append(pkg)
-
-    # NVIDIA-specific packages
-    if shutil.which("nvidia-smi"):
-        for pkg in ["lib32-libglvnd", "lib32-nvidia-utils"]:
+    try:
+        missing: list[str] = []
+        for pkg in ARCH_RUNTIME_CHECK:
             result = subprocess.run(
                 ["pacman", "-Q", pkg],
                 capture_output=True,
@@ -428,21 +424,38 @@ def _check_arch_runtime() -> None:
             if result.returncode != 0:
                 missing.append(pkg)
 
-    if not missing:
-        success("Arch runtime dependency check passed")
-        return
+        # NVIDIA-specific packages
+        if shutil.which("nvidia-smi"):
+            for pkg in ["lib32-libglvnd", "lib32-nvidia-utils"]:
+                result = subprocess.run(
+                    ["pacman", "-Q", pkg],
+                    capture_output=True,
+                )
+                if result.returncode != 0:
+                    missing.append(pkg)
+
+        if not missing:
+            success("Arch runtime dependency check passed")
+            return
+    except KeyboardInterrupt:
+        print()
+        raise
 
     warning(f"Missing {len(missing)} runtime package(s), installing...")
     try:
         subprocess.run(
             ["sudo", "pacman", "-S", "--needed", "--noconfirm"] + missing,
             check=True,
+            capture_output=True,
         )
         success("Arch runtime dependencies repaired")
     except subprocess.CalledProcessError:
         error("Unable to install Arch runtime packages")
         info(f"Try: sudo pacman -S --needed {' '.join(missing)}")
         raise SystemExit(1)
+    except KeyboardInterrupt:
+        print()
+        raise
 
 
 # ── APT ──────────────────────────────────────────────────────────────────────

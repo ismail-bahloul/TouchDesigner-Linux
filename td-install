@@ -298,4 +298,9 @@ def run_patch_toe(file_path: str) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print()
+        error("Installation cancelled")
+        sys.exit(1)
