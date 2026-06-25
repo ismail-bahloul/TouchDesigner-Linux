@@ -100,17 +100,16 @@ def _show_menu(args):
 
     compat_ok = ARCH_NAME == "x86_64" and PKG_MANAGER != "unknown"
 
-    # System info (compact)
-    sysname = f"{Colors.dim}{OS_NAME}{Colors.nc} — {Colors.dim}{ARCH_NAME}{Colors.nc}"
-    print(f"  System: {sysname}")
-    if not compat_ok:
-        if ARCH_NAME != "x86_64":
-            print(
-                f"  {Colors.dim}Architecture {ARCH_NAME} is not supported (x86_64 required){Colors.nc}"
-            )
-        if PKG_MANAGER == "unknown":
-            print(f"  {Colors.dim}No supported package manager found{Colors.nc}")
-    print()
+    # System info
+    print(f"\n  {Colors.dim}╔═══════════════════════════════════╗{Colors.nc}")
+    sysname = f"System: {OS_NAME} / {ARCH_NAME}"
+    support = "Your Linux is supported"
+    print(f"  {Colors.dim}║{Colors.nc}  {sysname:<31} {Colors.dim}║{Colors.nc}")
+    if compat_ok:
+        print(
+            f"  {Colors.dim}║{Colors.nc}  {Colors.white}{support:<31}{Colors.nc} {Colors.dim}║{Colors.nc}"
+        )
+    print(f"  {Colors.dim}╚═══════════════════════════════════╝{Colors.nc}")
 
     # Menu options (clean, scannable)
     print(f"  {Colors.bold}{Colors.white}1{Colors.nc}  Install")
