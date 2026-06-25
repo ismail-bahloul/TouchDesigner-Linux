@@ -49,6 +49,13 @@ def main():
         print(f"td-install {__version__}")
         return
 
+    # Show interactive menu if no action specified and not non-interactive
+    if args.action is None:
+        if args.non_interactive:
+            args.action = "install"
+        else:
+            _show_menu(args)
+
     match args.action:
         case "install":
             run_install(args)
@@ -59,6 +66,54 @@ def main():
         case _:
             error("No action selected. Run with --help for usage.")
             sys.exit(1)
+
+
+def _show_menu(args):
+    """Show interactive main menu."""
+    import shutil
+
+    from td_lib.distro import detect_distro
+    from td_lib.utils import Colors, print_banner, print_hr
+
+    print_banner("1.4")
+
+    distro = detect_distro()
+
+    print(
+        f"\n{Colors.dim}Detected: {distro.distro_name} / {distro.package_manager}{Colors.nc}\n"
+    )
+    print_hr()
+
+    print(f"\n{Colors.bold}1{Colors.nc}  Install")
+    print(
+        f"{Colors.dim}     Run TouchDesigner on Linux (idempotent — safe to re-run){Colors.nc}"
+    )
+    print(f"\n{Colors.bold}2{Colors.nc}  Update")
+    print(
+        f"{Colors.dim}     Update launcher, Wine components, UI fixes and icons{Colors.nc}"
+    )
+    print(f"\n{Colors.bold}3{Colors.nc}  Uninstall")
+    print(f"{Colors.dim}     Remove TouchDesigner versions or everything{Colors.nc}")
+    print(f"\n{Colors.bold}0{Colors.nc}  Exit\n")
+
+    try:
+        choice = input("Select option [1]: ").strip() or "1"
+    except (EOFError, KeyboardInterrupt):
+        print()
+        choice = "0"
+
+    match choice:
+        case "1":
+            args.action = "install"
+        case "2":
+            args.action = "update"
+        case "3":
+            args.action = "uninstall"
+        case "0":
+            print("Exiting...")
+            sys.exit(0)
+        case _:
+            args.action = "install"
 
 
 if __name__ == "__main__":

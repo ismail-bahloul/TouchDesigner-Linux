@@ -119,9 +119,4 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     args = parser.parse_args(argv)
-
-    # Default action is install if nothing specified
-    if args.action is None and not args.diagnose and not args.version:
-        args.action = "install"
-
     return args
