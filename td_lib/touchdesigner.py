@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
 from .utils import (
@@ -42,6 +43,31 @@ FALLBACK_VERSIONS = [
 TD_INSTALL_DIR = os.path.join(WINE_PREFIX, "drive_c", "Program Files", "TouchDesigner")
 
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+
+
+def _run_with_progress(cmd: list[str], label: str = "") -> subprocess.CompletedProcess:
+    """Run a command with a heartbeat progress message every 10 seconds."""
+    import time
+
+    stop_heartbeat = threading.Event()
+
+    def _heartbeat():
+        start = time.time()
+        while not stop_heartbeat.is_set():
+            elapsed = int(time.time() - start)
+            if elapsed > 0 and elapsed % 10 == 0:
+                info(f"{label} ({elapsed}s)")
+            time.sleep(1)
+
+    thread = threading.Thread(target=_heartbeat, daemon=True)
+    thread.start()
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        return result
+    finally:
+        stop_heartbeat.set()
+        thread.join(timeout=2)
 
 
 # ── Version listing ──────────────────────────────────────────────────────────
@@ -338,10 +364,9 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
         extract_7z = os.path.join(extract_root, "7z_extract")
         ensure_dir(extract_7z)
 
-        result = subprocess.run(
+        result = _run_with_progress(
             ["7z", "x", exe_path, f"-o{extract_7z}", "-y"],
-            capture_output=True,
-            text=True,
+            "Extracting 7z archive...",
         )
         if result.returncode != 0:
             error("Failed to extract 7z archive from installer")
@@ -363,10 +388,9 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
         extract_inno = os.path.join(extract_root, "inno_extract")
         ensure_dir(extract_inno)
 
-        result = subprocess.run(
+        result = _run_with_progress(
             ["innoextract", "-d", extract_inno, "-e", inner_exe],
-            capture_output=True,
-            text=True,
+            "Extracting TouchDesigner files...",
         )
         if result.returncode != 0:
             error("Failed to extract Inno Setup installer")
