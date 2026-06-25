@@ -155,6 +155,7 @@ def run_install(args):
     print_hr()
     ver_str = f" {td_version}" if td_version else ""
     success(f"TouchDesigner{ver_str} installation complete")
+    print()
     info("Launch TouchDesigner from your desktop shortcut or application menu.")
     info("Or run: ~/.local/bin/launch-touchdesigner.sh")
 
