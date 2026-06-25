@@ -125,8 +125,9 @@ def detect_version_from_exe(exe_path: str) -> str | None:
             if "TouchDesigner" in line and "20" in line:
                 parts = line.strip().split()
                 for p in parts:
-                    if re.match(r"^20\d{2}\.\d+", p):
-                        return p
+                    m = re.match(r"(20\d{2}\.\d+)", p)
+                    if m:
+                        return m.group(1)
     except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
         pass
     return None
