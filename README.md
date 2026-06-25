@@ -26,6 +26,8 @@ curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/i
 
 The script detects your distro, installs required packages, sets up a Wine environment, downloads and installs TouchDesigner. It supports **multiple versions side-by-side**, auto-patches `.toe` files for font fixes, and creates desktop shortcuts.
 
+![Screenshot](Screenshots/Script_Preview.png)
+
 > **Expected time:** 5–10 min. Most of it is downloading the ~300 MB Wine runner.  
 > **Disk space:** ~3–5 GB final footprint. Temporary files are cleaned up automatically.
 
@@ -59,6 +61,10 @@ Run the installer and choose **3 – Uninstall**. Remove specific versions or ev
 | `~/.local/share/touchdesigner-linux/` | Base directory (runner, prefix, assets) |
 | `~/.local/share/touchdesigner-linux/prefix/` | Wine prefix (Windows environment) |
 | `~/.local/share/touchdesigner-linux/backups/` | Auto-backups of patched `.toe` files |
+
+File icons installed by the project:
+
+![Screenshot](Screenshots/SVG_Preview.png)
 
 ---
 
