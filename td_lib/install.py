@@ -24,10 +24,12 @@ def run_install(args):
         try:
             distro = detect_distro()
             success(f"Detected: {distro.distro_name} ({distro.package_manager})")
+            print()
             install_packages(distro)
         except KeyboardInterrupt:
             info("\nInstallation cancelled")
             raise SystemExit(1)
+    print()
 
     # Step 2: Wine runner
     from .wine import download_soda_runner
@@ -35,6 +37,7 @@ def run_install(args):
     info("Step 2/6: Setting up compatibility runtime...")
     if not args.dry_run:
         download_soda_runner()
+    print()
 
     # Step 3: Wine prefix
     from .wine import setup_wine_prefix
@@ -42,6 +45,7 @@ def run_install(args):
     info("Step 3/6: Setting up compatibility environment...")
     if not args.dry_run:
         setup_wine_prefix(headless=args.headless)
+    print()
 
     # Step 4: Windows dependencies (winetricks, DXVK)
     from .utils import ensure_dir
@@ -58,6 +62,7 @@ def run_install(args):
         download_winetricks()
         install_windows_deps()
         install_dxvk(enable=args.dxvk)
+    print()
 
     # Step 5: Download TouchDesigner
     from .touchdesigner import (
