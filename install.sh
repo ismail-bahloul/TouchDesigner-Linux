@@ -552,19 +552,13 @@ print_shortcut_summary() {
 
 require_graphical_session() {
     if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-        return
+        return 0
     fi
 
-    if [ "$ALLOW_HEADLESS_INSTALL" = true ]; then
-        print_warning "No graphical session detected"
-        print_info "Continuing in headless preparation mode (GUI-only steps will be skipped)."
-        return 1
-    fi
-
-    print_error "No graphical session detected"
-    print_info "Run this installer from a terminal inside your desktop session (not plain TTY/SSH)."
-    print_info "Expected DISPLAY or WAYLAND_DISPLAY to be set."
-    exit 1
+    print_warning "No graphical session detected, continuing in headless mode"
+    print_info "GUI-only steps (Wine prefix, desktop shortcuts) will be skipped."
+    print_info "Run the launcher from a graphical session to finalize setup."
+    return 1
 }
 
 run_and_tail() {
@@ -3193,7 +3187,7 @@ Usage: $(basename "$0") [OPTIONS]
 ADVANCED OPTIONS:
     -n, --non-interactive       No prompts (auto Y for shortcuts and .toe association)
     -f, --fast                  Fast mode (skip pauses)
-    -H, --headless              Headless mode (no graphical installer)
+    -H, --headless              Headless mode (now auto-detected, this flag is optional)
     -d, --debug                 Enable debug output
     -x, --trace                 Bash xtrace (bash -x)
     -u, --force-uninstall       Uninstall without confirmation

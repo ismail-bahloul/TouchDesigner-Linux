@@ -14,15 +14,18 @@ Run TouchDesigner on Linux via Wine — fully automated installation.
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
 
+**That's it.** One command for any environment:
+
+- **Graphical session** → full install with shortcuts
+- **SSH / headless** → auto-detected, prepares everything except GUI-only steps
+
 **Prerequisite:** NVIDIA users should install their GPU driver first, then reboot.
 
-### Options
+### Debug mode
 
-| Command | Description |
-| --- | --- |
-| `curl ... \| bash` | Normal install (graphical session required) |
-| `curl ... \| bash -s -- -H` | Headless install (SSH, no display) |
-| `DEBUG=true curl ... \| bash` | Verbose logs for issue reports |
+```bash
+DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
+```
 
 The script detects your distro, installs required packages, sets up a Wine environment, downloads and installs TouchDesigner. It supports **multiple versions side-by-side**, auto-patches `.toe` files for font fixes, and creates desktop shortcuts.
 
