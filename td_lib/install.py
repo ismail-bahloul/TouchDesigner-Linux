@@ -75,7 +75,13 @@ def run_install(args):
             info(f"Non-interactive mode: selected version {selected_version}")
             td_exe_path = download_touchdesigner(selected_version)
         else:
-            selected = select_version_interactive(versions)
+            try:
+                selected = select_version_interactive(versions)
+            except KeyboardInterrupt:
+                info("\nInstallation cancelled by user")
+                import sys
+
+                sys.exit(1)
             if selected is None:
                 info("Skipping TouchDesigner install")
             elif selected == "__custom__":

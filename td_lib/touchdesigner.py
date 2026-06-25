@@ -190,8 +190,7 @@ def select_version_interactive(versions: list[str]) -> str | None:
                 key = "\x03"
 
             if key == "\x03":  # Ctrl+C
-                selected = None
-                break
+                raise KeyboardInterrupt()
 
             if key == "\x1b":
                 seq = ""
