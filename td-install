@@ -69,32 +69,95 @@ def main():
 
 
 def _show_menu(args):
-    """Show interactive main menu."""
+    """Show interactive main menu (same as bash install.sh)."""
     import shutil
+    import subprocess
 
     from td_lib.distro import detect_distro
     from td_lib.utils import Colors, print_banner, print_hr
 
-    print_banner("1.4")
+    print_banner("v1.4")
 
-    distro = detect_distro()
+    OS_NAME = "Unknown"
+    try:
+        with open("/etc/os-release") as f:
+            for line in f:
+                if line.startswith("PRETTY_NAME="):
+                    OS_NAME = line.split("=", 1)[1].strip().strip('"')
+                    break
+    except OSError:
+        pass
 
-    print(
-        f"\n{Colors.dim}Detected: {distro.distro_name} / {distro.package_manager}{Colors.nc}\n"
-    )
-    print_hr()
+    ARCH_NAME = os.uname().machine
+    PKG_MANAGER = detect_distro().package_manager
 
-    print(f"\n{Colors.bold}1{Colors.nc}  Install")
+    compat_ok = ARCH_NAME == "x86_64" and PKG_MANAGER != "unknown"
+
+    print(f"\n{Colors.bold}{Colors.dim}Environment check{Colors.nc}\n")
+
+    print(f" {Colors.dim}╔═══════════════════════════════════╗{Colors.nc}")
+    sysname = f"System: {OS_NAME} / {ARCH_NAME}"
+    print(f" {Colors.dim}║{Colors.nc} {sysname:<33} {Colors.dim}║{Colors.nc}")
+    print(f" {Colors.dim}╚═══════════════════════════════════╝{Colors.nc}")
+
+    if compat_ok:
+        print(f"  {Colors.white}▸ Your Linux is supported{Colors.nc}\n")
+    else:
+        print(f"  {Colors.gray}▸ Your Linux is not supported{Colors.nc}")
+        if ARCH_NAME != "x86_64":
+            print(
+                f"  {Colors.dim}  Architecture {ARCH_NAME} is not supported (x86_64 required){Colors.nc}"
+            )
+        if PKG_MANAGER == "unknown":
+            print(
+                f"  {Colors.dim}  No supported package manager found (apt/dnf/pacman/zypper){Colors.nc}"
+            )
+        print()
+
+    print(f"\n{Colors.bold}{Colors.white}WHAT YOU GET:{Colors.nc}\n")
+
+    def _item(label, text):
+        print(
+            f"  {Colors.dim}[{Colors.nc}{Colors.white}{Colors.bold}{label:<7}{Colors.nc}{Colors.dim}]{Colors.nc}  {text}"
+        )
+
+    _item("Runner", "Soda Wine 9.0-1 (standalone)")
+    _item("GPU", "Vulkan acceleration (3D graphics)")
+    _item("Font", "Microsoft core fonts (corefonts)")
+    _item("App", "Latest TouchDesigner version installation")
+
+    print(f"\n{Colors.white}INSTALLATION OPTIONS :{Colors.nc}\n")
+
+    print(f"  1  Install")
+    print(f"{Colors.dim}      \u2022 Run TouchDesigner on Linux.{Colors.nc}")
     print(
-        f"{Colors.dim}     Run TouchDesigner on Linux (idempotent — safe to re-run){Colors.nc}"
+        f"{Colors.dim}      \u2022 Auto-configure compatibility components.{Colors.nc}"
     )
-    print(f"\n{Colors.bold}2{Colors.nc}  Update")
     print(
-        f"{Colors.dim}     Update launcher, Wine components, UI fixes and icons{Colors.nc}"
+        f"{Colors.dim}      \u2022 GPU acceleration for better graphics performance.{Colors.nc}"
     )
-    print(f"\n{Colors.bold}3{Colors.nc}  Uninstall")
-    print(f"{Colors.dim}     Remove TouchDesigner versions or everything{Colors.nc}")
-    print(f"\n{Colors.bold}0{Colors.nc}  Exit\n")
+    print(
+        f"{Colors.dim}      \u2022 Install multiple TouchDesigner versions independently.{Colors.nc}"
+    )
+    print()
+    print(
+        f"{Colors.dim}      -> Already installed? Re-run safely ! Completed steps will be skipped.{Colors.nc}"
+    )
+    print()
+    print(f"  2  Update")
+    print(
+        f"{Colors.dim}      \u2022 Update launcher, Wine components, UI fixes and icons.{Colors.nc}"
+    )
+    print()
+    print(f"  3  Uninstall")
+    print(
+        f"{Colors.dim}      \u2022 Removes the Wine prefix, runner, launcher, and all TouchDesigner data.{Colors.nc}"
+    )
+    print()
+    print(f"  0  Exit")
+    print(
+        f"{Colors.dim}      \u2022 Quit this script without making changes.{Colors.nc}\n"
+    )
 
     try:
         choice = input("Select option [1]: ").strip() or "1"
