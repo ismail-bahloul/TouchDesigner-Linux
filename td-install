@@ -133,7 +133,7 @@ def _show_menu(args):
     print()
     print(f"  2  Update")
     print(
-        f"{Colors.accent}     Refresh launcher, Wine components, UI fixes and icons{Colors.nc}"
+        f"{Colors.accent}     Update launcher, Wine components, UI fixes and icons{Colors.nc}"
     )
     print()
     print(f"  3  Uninstall")
