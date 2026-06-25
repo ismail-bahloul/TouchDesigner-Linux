@@ -236,26 +236,31 @@ def install_windows_deps() -> None:
 
     # Check Wine prefix health
     env = _wine_env()
-    result = subprocess.run(
-        [env["wine64"], "cmd.exe", "/c", "echo %AppData%"],
-        env=env["env"],
-        capture_output=True,
-        text=True,
-    )
-    appdata = result.stdout.strip().strip("\r\n\x00")
-    if not appdata or appdata == "%AppData%":
-        warning("Wine runtime check failed, repairing prefix...")
-        setup_wine_prefix(headless=False)  # Re-run with error
+    try:
         result = subprocess.run(
             [env["wine64"], "cmd.exe", "/c", "echo %AppData%"],
             env=env["env"],
             capture_output=True,
             text=True,
         )
-        appdata = result.stdout.strip()
+        appdata = result.stdout.strip().strip("\r\n\x00")
         if not appdata or appdata == "%AppData%":
-            error("Wine runtime is still unhealthy after repair")
-            raise SystemExit(1)
+            warning("Wine runtime check failed, repairing prefix...")
+            setup_wine_prefix(headless=False)
+            result = subprocess.run(
+                [env["wine64"], "cmd.exe", "/c", "echo %AppData%"],
+                env=env["env"],
+                capture_output=True,
+                text=True,
+            )
+            appdata = result.stdout.strip()
+            if not appdata or appdata == "%AppData%":
+                error("Wine runtime is still unhealthy after repair")
+                raise SystemExit(1)
+    except KeyboardInterrupt:
+        print()
+        error("Installation cancelled")
+        raise SystemExit(1)
 
     ensure_dir(WINETRICKS_TMP)
 
@@ -280,6 +285,10 @@ def install_windows_deps() -> None:
     except subprocess.CalledProcessError:
         error("Winetricks failed")
         info("Retry with --debug for verbose logs")
+        raise SystemExit(1)
+    except KeyboardInterrupt:
+        print()
+        error("Installation cancelled")
         raise SystemExit(1)
 
     success("Windows dependencies installed")
