@@ -8,7 +8,7 @@ from .utils import error, info, print_banner, success
 
 def run_install(args):
     """Run full TouchDesigner installation."""
-    print_banner("2.0-dev")
+    print_banner("1.4")
     info("Starting TouchDesigner installation...\n")
 
     # Check prerequisites

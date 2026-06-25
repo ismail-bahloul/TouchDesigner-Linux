@@ -147,7 +147,7 @@ def show_uninstall_menu() -> None:
     import sys
 
     versions = discover_installed_versions()
-    print_banner("2.0-dev")
+    print_banner("1.4")
     print("\nUninstall TouchDesigner:\n")
 
     if not versions:

@@ -18,7 +18,7 @@ from .utils import (
 
 def run_diagnose():
     """Print a full system health report."""
-    print_banner("2.0-dev")
+    print_banner("1.4")
     print(f"\n{Colors.bold}System Health Check{Colors.nc}\n")
     print_hr()
 

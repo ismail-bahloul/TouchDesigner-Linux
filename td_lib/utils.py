@@ -72,7 +72,7 @@ def debug(*args):
 # ── I/O utilities ────────────────────────────────────────────────────────────
 
 
-def print_banner(version: str = "2.0"):
+def print_banner(version: str = "1.4"):
     """Print the project banner."""
     term_width = shutil.get_terminal_size().columns
     hr = "─" * min(term_width, 80)

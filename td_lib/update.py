@@ -5,7 +5,7 @@ from .utils import info, print_banner, success
 
 def run_update(args) -> None:
     """Update launcher, winetricks, DXVK, UI fixes, and icons."""
-    print_banner("2.0-dev")
+    print_banner("1.4")
     info("Starting TouchDesigner update...\n")
 
     # 1. Regenerate launcher
