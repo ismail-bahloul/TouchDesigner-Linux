@@ -168,6 +168,10 @@ def select_version_interactive(versions: list[str]) -> str | None:
 
     lines, custom_idx, skip_idx = _draw()
 
+    # Hide cursor
+    sys.stdout.write("\033[?25l")
+    sys.stdout.flush()
+
     # Print initial list
     for _, line in lines:
         print(line)
@@ -202,7 +206,6 @@ def select_version_interactive(versions: list[str]) -> str | None:
                     cursor = (cursor - 1) % total
                 elif seq == "[B":  # Down
                     cursor = (cursor + 1) % total
-                # Left/Right intentionally ignored (vertical list)
             elif key in ("\r", "\n"):  # Enter
                 if cursor == skip_idx:
                     selected = None
@@ -221,6 +224,8 @@ def select_version_interactive(versions: list[str]) -> str | None:
             sys.stdout.flush()
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        sys.stdout.write("\033[?25h")  # Show cursor
+        sys.stdout.flush()
 
     print()
     return selected
