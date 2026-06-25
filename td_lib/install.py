@@ -98,12 +98,18 @@ def run_install(args):
         info("Patching IDS Peak SDK DLLs...")
         patch_ids_dlls()
 
-    # Step 8: Launcher script
+    # Step 8: Launcher script + desktop integration
     from .launcher import LAUNCHER_PATH, create_launcher_script
 
     if not args.dry_run:
         info("Creating launcher script...")
         create_launcher_script(nvidia_offload=args.nvidia_offload)
+        from .desktop import run_desktop_integration
+
+        run_desktop_integration(
+            create_shortcuts_flag=not args.headless,
+            associate_flag=not args.headless,
+        )
 
     # Step 9: Cleanup
     from .touchdesigner import DOWNLOAD_DIR
