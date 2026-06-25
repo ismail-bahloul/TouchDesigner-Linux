@@ -210,54 +210,23 @@ def _detect_td_version(exe_path: str) -> str | None:
 
 
 def _check_ids_patch():
+    """Check IDS Peak SDK patch status."""
     info("IDS Peak SDK patch status:")
-    prefix_dir = os.path.join(TD_BASE_DIR, "prefix")
-    ids_dlls = [
-        "ids_peak_ipl.dll",
-        "ids_peak_afl.dll",
-        "ids_peak_ifl.dll",
-        "ids_peak_comfort_c.dll",
-    ]
+    from .patcher import check_ids_patch_status
 
-    found_any = False
-    for dll in ids_dlls:
-        dll_path = _find_file(prefix_dir, dll)
-        if dll_path:
-            found_any = True
-            patched = _is_ids_patched(dll_path)
-            status = (
-                f"{Colors.green}patched{Colors.nc}"
-                if patched
-                else f"{Colors.red}not patched{Colors.nc}"
-            )
-            print(f"  {dll}: {status}")
+    status = check_ids_patch_status()
 
-    if not found_any:
+    if not status:
         info("  No IDS Peak SDK DLLs found (not installed or already removed)")
+        print()
+        return
+
+    for dll_name, patched in status.items():
+        status_str = (
+            f"{Colors.green}patched{Colors.nc}"
+            if patched
+            else f"{Colors.red}not patched{Colors.nc}"
+        )
+        print(f"  {dll_name}: {status_str}")
 
     print()
-
-
-def _find_file(base_dir: str, filename: str) -> str | None:
-    """Walk a directory and return the first match for filename."""
-    if not os.path.isdir(base_dir):
-        return None
-    for root, dirs, files in os.walk(base_dir):
-        if filename in files:
-            return os.path.join(root, filename)
-    return None
-
-
-def _is_ids_patched(dll_path: str) -> bool:
-    """Check if AddressOfEntryPoint is already zeroed (patched)."""
-    import struct
-
-    try:
-        with open(dll_path, "rb") as f:
-            data = bytearray(f.read())
-        e_lfanew = struct.unpack_from("<I", data, 0x3C)[0]
-        ep_offset = e_lfanew + 4 + 20 + 16
-        ep = struct.unpack_from("<I", data, ep_offset)[0]
-        return ep == 0
-    except (IOError, struct.error, IndexError):
-        return False
