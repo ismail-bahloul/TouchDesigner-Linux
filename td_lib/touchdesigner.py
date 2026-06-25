@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -267,10 +268,20 @@ def download_touchdesigner(
 
     info(f"Downloading {filename} (~2 GB)...")
     if not download_file(
-        url, dest, filename, show_progress=True, timeout=120, retries=3
+        url,
+        dest,
+        filename,
+        show_progress=True,
+        timeout=120,
+        retries=3,
+        user_agent=USER_AGENT,
     ):
-        error("Download failed")
+        error(f"Download failed (version {version} may no longer be available)")
         safe_rm(dest)
+        info("Download manually from https://derivative.ca/download and install with:")
+        info(
+            f"  {os.path.basename(sys.argv[0]) if sys.argv else 'td-install'} -i ./TouchDesigner.{version}.exe"
+        )
         raise SystemExit(1)
 
     success("Download completed")

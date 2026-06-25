@@ -137,6 +137,7 @@ def download_file(
     show_progress: bool = True,
     timeout: int = 30,
     retries: int = 2,
+    user_agent: str = "",
 ) -> bool:
     """Download a file using curl or wget. Returns True on success."""
     label = label or os.path.basename(dest)
@@ -157,10 +158,10 @@ def download_file(
             str(retries),
             "--retry-delay",
             "1",
-            "--output",
-            dest,
-            url,
         ]
+        if user_agent:
+            cmd.extend(["-A", user_agent])
+        cmd.extend(["--output", dest, url])
         if not show_progress:
             cmd.insert(1, "--silent")
             cmd.insert(2, "--show-error")
