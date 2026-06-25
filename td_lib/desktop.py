@@ -127,9 +127,8 @@ def create_versioned_shortcuts(icon_path: str) -> None:
     for install_dir, version in versions:
         safe_version = re.sub(r"[^a-zA-Z0-9._-]", "-", version)
         label = f"TouchDesigner {version}"
-        td_exe = os.path.join(install_dir, "bin", "TouchDesigner.exe")
-        if not os.path.isfile(td_exe):
-            td_exe = os.path.join(install_dir, "TouchDesigner.exe")
+        # install_dir is already the directory containing TouchDesigner.exe
+        td_exe = os.path.join(install_dir, "TouchDesigner.exe")
         if not os.path.isfile(td_exe):
             continue
 
