@@ -2,6 +2,8 @@
 
 Run TouchDesigner on Linux via Wine — fully automated installation.
 
+![Screenshot](Screenshots/TD_Preview.png)
+
 👉 [Roadmap & planned features](ROADMAP.md)
 
 ---
