@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TouchDesigner-Linux v1.4 — Automated installer for TouchDesigner on Linux.
+TouchDesigner-Linux — Automated installer for TouchDesigner on Linux.
 
 Usage:
     td-install                      Install (auto-detect graphical / headless)
