@@ -157,6 +157,37 @@ def test_desktop_assets():
     check("wine_ui_fixes.tox exists", os.path.isfile(tox))
 
 
+def test_version_detection():
+    print("\n── Version detection ──")
+    import re
+
+    samples = [
+        ("TouchDesigner.2025.32460.exe", "2025.32460"),
+        ("TouchDesigner.2023.12120.exe", "2023.12120"),
+        ("TouchDesigner.2022.33910.exe", "2022.33910"),
+    ]
+    for filename, expected in samples:
+        m = re.search(r"(\d{4}\.\d+)", filename)
+        result = m.group(1) if m else None
+        check(f"version from '{filename}' = {result}", result == expected)
+
+
+def test_headless_auto_detect():
+    print("\n── Headless auto-detect ──")
+    old_display = os.environ.pop("DISPLAY", None)
+    old_wayland = os.environ.pop("WAYLAND_DISPLAY", None)
+    try:
+        has_display = bool(
+            os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+        )
+        check("no display detected as headless", not has_display)
+    finally:
+        if old_display:
+            os.environ["DISPLAY"] = old_display
+        if old_wayland:
+            os.environ["WAYLAND_DISPLAY"] = old_wayland
+
+
 def test_launcher_script():
     print("\n── Launcher script generation ──")
     import tempfile
@@ -192,6 +223,8 @@ def main():
     test_dry_run()
     test_version_select()
     test_desktop_assets()
+    test_version_detection()
+    test_headless_auto_detect()
     test_launcher_script()
 
     print(f"\n{'=' * 60}")
