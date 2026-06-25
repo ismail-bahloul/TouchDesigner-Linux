@@ -1,5 +1,7 @@
 """Installation workflow."""
 
+import os
+
 from .utils import error, info, print_banner, success
 
 
