@@ -1,6 +1,7 @@
 """Installation workflow."""
 
 import os
+import shutil
 
 from .utils import error, info, print_banner, success
 
@@ -87,8 +88,13 @@ def run_install(args):
             if selected is None:
                 info("Skipping TouchDesigner install")
             elif selected == "__custom__":
-                path = input("Path to TouchDesigner installer (.exe): ").strip()
-                td_exe_path = download_touchdesigner("", installer_path=path)
+                path = _pick_installer_file()
+                if path:
+                    td_exe_path = download_touchdesigner("", installer_path=path)
+                else:
+                    path = input("Path to TouchDesigner installer (.exe): ").strip()
+                    if path:
+                        td_exe_path = download_touchdesigner("", installer_path=path)
             else:
                 td_exe_path = download_touchdesigner(selected)
 
@@ -129,6 +135,74 @@ def run_install(args):
             info("Downloaded installer removed (freed ~2 GB)")
 
     info("Installation complete — use launch-touchdesigner.sh to start.")
+
+
+def _pick_installer_file() -> str | None:
+    """Open a GUI file picker for the TouchDesigner installer.
+    Falls back to None if no GUI file picker is available."""
+    import subprocess
+
+    has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    if not has_display:
+        return None
+
+    download_dir = os.path.expanduser(os.environ.get("DOWNLOAD_DIR", "~/Downloads"))
+
+    # Try zenity (GNOME)
+    if shutil.which("zenity"):
+        try:
+            result = subprocess.run(
+                [
+                    "zenity",
+                    "--file-selection",
+                    "--title=Select TouchDesigner installer (.exe)",
+                    f"--filename={download_dir}/",
+                    "--file-filter=Windows executable | *.exe",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+
+    # Try kdialog (KDE)
+    if shutil.which("kdialog"):
+        try:
+            result = subprocess.run(
+                ["kdialog", "--getopenfilename", f"{download_dir}/", "*.exe"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+
+    # Try yad (fallback)
+    if shutil.which("yad"):
+        try:
+            result = subprocess.run(
+                [
+                    "yad",
+                    "--file-selection",
+                    "--title=Select TouchDesigner installer (.exe)",
+                    f"--filename={download_dir}/",
+                    "--file-filter=Windows executable | *.exe",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+
+    return None
 
 
 def _check_prerequisites():
