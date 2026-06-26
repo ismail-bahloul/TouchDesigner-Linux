@@ -272,12 +272,9 @@ def verify_checksum(file_path: str, expected_hash: str) -> bool:
     if not expected_hash:
         return True
 
-    if not shutil.which("sha256sum"):
-        warning("sha256sum not found — skipping checksum verification")
-        return True
-
     try:
-        actual = hashlib.sha256(open(file_path, "rb").read()).hexdigest()
+        with open(file_path, "rb") as f:
+            actual = hashlib.sha256(f.read()).hexdigest()
         return actual.lower() == expected_hash.lower()
     except (IOError, OSError):
         return False

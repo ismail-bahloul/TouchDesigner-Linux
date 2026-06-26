@@ -288,19 +288,21 @@ def test_require_commands():
     print("\n\u2500\u2500 require_command / require_any_command \u2500\u2500")
     from td_lib.utils import require_any_command, require_command
 
-    check("require_command('echo') is not None", require_command("echo") is not None)
-    check("require_command('true') is not None", require_command("true") is not None)
-    check("require_command('cat') is not None", require_command("cat") is not None)
+    check("require_command('sh') is not None", require_command("sh") is not None)
+    check("require_command('ls') is not None", require_command("ls") is not None)
+    check(
+        "require_command('printf') is not None", require_command("printf") is not None
+    )
 
     check(
         "require_command('nonexistent_cmd_xyz') is None",
         require_command("nonexistent_cmd_xyz") is None,
     )
 
-    first = require_any_command("cat", "echo", "nonexistent_xyz")
+    first = require_any_command("sh", "ls", "nonexistent_xyz")
     check(
         "require_any_command returns first existing",
-        first is not None and "cat" in first,
+        first is not None and "sh" in first,
     )
 
     result = require_any_command("notacmd_a", "notacmd_b", "notacmd_c")
