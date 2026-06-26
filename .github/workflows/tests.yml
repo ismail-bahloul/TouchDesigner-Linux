@@ -69,6 +69,8 @@ jobs:
               dnf install -y -q python3 git >/dev/null
               ;;
             pacman)
+              # Enable multilib (needed for lib32-* packages)
+              sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf 2>/dev/null || true
               pacman -Sy --noconfirm python git >/dev/null
               ;;
             zypper)
@@ -127,12 +129,16 @@ jobs:
               "
               ;;
             pacman)
+              # Check packages with multilib-aware names
               python3 -c "
               from td_lib.distro import PACMAN_PACKAGES
               import subprocess
+              # Map p7zip->7zip for modern Arch
+              alt_names = {'p7zip': '7zip'}
               missing = []
               for pkg in PACMAN_PACKAGES:
-                  r = subprocess.run(['pacman', '-Si', pkg], capture_output=True, timeout=10)
+                  check = alt_names.get(pkg, pkg)
+                  r = subprocess.run(['pacman', '-Si', check], capture_output=True, timeout=10)
                   if r.returncode != 0:
                       missing.append(pkg)
               if missing:
