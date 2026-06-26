@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Self
 
 from .utils import Colors, debug, error, info, run_optional, success, warning
 
