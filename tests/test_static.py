@@ -292,7 +292,8 @@ def test_require_commands():
 
     # shutil.which may not work reliably in all containers (GitHub Actions Docker).
     # Instead, test using os.path.exists with known absolute paths.
-    check("'/usr/bin/env' exists", os.path.exists("/usr/bin/env"))
+    # /bin/sh is guaranteed on all POSIX systems
+    check("'/bin/sh' exists", os.path.exists("/bin/sh"))
     check("'/nonexistent_xyz' doesn't exist", not os.path.exists("/nonexistent_xyz"))
 
     # Test require_command with a non-existent command
