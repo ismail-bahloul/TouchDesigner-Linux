@@ -8,9 +8,8 @@ Architecture-specific packages (:i386, .i686, lib32-*, -32bit) are
 filtered out since their repos (multilib/i386) are not enabled in CI
 containers.
 
-If a package lookup fails, we also verify the name via checksum
-(valid characters, no obvious typos) rather than hard-failing on
-repo unavailability.
+Metadata is refreshed before checking so that lookups are reliable.
+Base packages that fail the repo lookup cause a hard failure.
 """
 
 import re
@@ -21,10 +20,33 @@ import sys
 _PKG_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9.\+:\-_]*$")
 
 
+def _refresh_metadata(pkg_manager: str) -> bool:
+    """Refresh package manager metadata. Returns True on success."""
+    cmds = {
+        "apt": ["apt-get", "update", "-qq"],
+        "dnf": ["dnf", "makecache", "-q"],
+        "pacman": ["pacman", "-Sy"],
+        "zypper": ["zypper", "refresh"],
+    }
+    cmd = cmds.get(pkg_manager)
+    if not cmd:
+        return False
+    result = subprocess.run(cmd, capture_output=True, timeout=60)
+    return result.returncode == 0
+
+
 def check_packages(pkg_manager: str, packages: list[str]) -> int:
-    """Validate each package exists (lenient). Returns number of failures."""
+    """Validate each package exists in repo. Returns number of failures.
+
+    Architecture-specific packages (:i386, .i686, lib32-*, -32bit) are
+    filtered out since their repos (multilib/i386) are not enabled in
+    CI containers.
+    """
     base = [p for p in packages if not _is_arch_specific(p)]
     arch = [p for p in packages if _is_arch_specific(p)]
+    print(f"  Refreshing metadata... ", end="")
+    ok = _refresh_metadata(pkg_manager)
+    print(f"{'OK' if ok else 'FAILED'}")
     print(
         f"  Checking {len(base)} base packages (+ {len(arch)} arch-specific skipped)..."
     )
@@ -36,7 +58,7 @@ def check_packages(pkg_manager: str, packages: list[str]) -> int:
             failures.append(f"{pkg} (invalid name format)")
             continue
 
-        # 2. Repo lookup (best-effort — may fail in minimal containers)
+        # 2. Repo lookup (strict)
         cmd = _check_cmd(pkg_manager, pkg)
         if cmd is None:
             print(f"  Unknown package manager: {pkg_manager}")
@@ -56,16 +78,12 @@ def check_packages(pkg_manager: str, packages: list[str]) -> int:
                 if result2.returncode == 0:
                     continue
 
-            # Repo lookup failed, but name format is valid — warn, don't fail
-            print(
-                f"  \u26a0 {pkg} \u2014 name OK, but not found in repo (may need multilib/i386)"
-            )
+            failures.append(pkg)
 
     if failures:
-        for f in failures:
-            print(f"  \u2717 {f}")
+        print(f"  \u2717 Missing base packages: {failures}")
     else:
-        print(f"  \u2713 all {len(base)} base packages \u2014 name format valid")
+        print(f"  \u2713 all {len(base)} base packages exist in repo")
 
     return len(failures)
 
@@ -97,13 +115,9 @@ def _check_cmd(pkg_manager: str, pkg: str) -> list[str] | None:
 
 def _alt_name(pkg_manager: str, pkg: str) -> str | None:
     """Return alternative package name for known renames."""
-    match (pkg_manager, pkg):
-        case ("pacman", "p7zip"):
-            return "7zip"
-        case ("dnf", "wget"):
-            return "wget2"
-        case ("zypper", "p7zip"):
-            return "7zip"
+    # Arch renamed p7zip to 7zip
+    if pkg_manager == "pacman" and pkg == "p7zip":
+        return "7zip"
     return None
 
 
