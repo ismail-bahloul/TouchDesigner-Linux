@@ -333,7 +333,7 @@ def distribute_font_fix() -> list[str]:
 
     # Wine Desktop
     wine_desktop = os.path.join(drive_c, "users", "steamuser", "Desktop")
-    ensure_dir(os.path.dirname(wine_desktop))
+    ensure_dir(wine_desktop)
     dest1 = os.path.join(wine_desktop, "wine_ui_fixes.tox")
     shutil.copy2(src, dest1)
     locations.append(dest1)
@@ -342,7 +342,7 @@ def distribute_font_fix() -> list[str]:
     wine_palette = os.path.join(
         drive_c, "users", "steamuser", "Documents", "Derivative", "Palette"
     )
-    ensure_dir(os.path.dirname(wine_palette))
+    ensure_dir(wine_palette)
     dest2 = os.path.join(wine_palette, "wine_ui_fixes.tox")
     shutil.copy2(src, dest2)
     locations.append(dest2)
