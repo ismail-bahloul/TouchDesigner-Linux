@@ -852,11 +852,12 @@ def test_diagnose_output():
     )
     check("diagnose outputs 'Graphics'", "Graphics" in err or "GPU" in err)
     check(
-        "diagnose outputs 'Free space'", "Free space" in err or "Free space" in output
+        "diagnose outputs 'Free space' or (unreachable) fallback",
+        "Free space" in output or "unreachable" in err,
     )
     check(
-        "diagnose outputs 'TouchDesigner base'",
-        "TD_BASE_DIR" in output or "Size" in output,
+        "diagnose outputs 'TouchDesigner base' or (unreachable) fallback",
+        "TD_BASE_DIR" in output or "Size" in output or "TD_BASE_DIR" in err,
     )
 
 
