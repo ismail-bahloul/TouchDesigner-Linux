@@ -239,6 +239,9 @@ def install_windows_deps() -> None:
     info("Installing compatibility libraries...")
     info("This can take several minutes depending on your network and disk speed.")
 
+    # Kill stale Wine processes before checking prefix
+    _kill_wineserver()
+
     # Check Wine prefix health
     env = _wine_env()
     try:
