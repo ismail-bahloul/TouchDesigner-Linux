@@ -184,7 +184,7 @@ def _show_menu(args):
     def _draw_menu():
         lines = []
         for i, (title, desc) in enumerate(options):
-            num = str(i) if i < 3 else "0"
+            num = str(i + 1) if i < 3 else "0"
             marker = "▶" if i == cursor else " "
             lines.append(f"  {marker}  {num}  {title}")
             if i == cursor:

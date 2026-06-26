@@ -143,55 +143,8 @@ def _update_desktop_database() -> None:
 # ── Interactive menu ─────────────────────────────────────────────────────────
 
 
-def show_uninstall_menu() -> None:
-    """Show interactive uninstall menu for selecting versions or full removal."""
-    import sys
-
-    versions = discover_installed_versions()
-    if sys.stdout.isatty():
-        print("\033[2J\033[H", end="")
-    print_banner("1.4")
-    print(f"\n{Colors.bold}{Colors.white}Uninstall TouchDesigner{Colors.nc}\n")
-
-    if not versions:
-        warning("No installed TouchDesigner versions detected")
-        print("\n  1  Uninstall everything (prefix, runner, launcher, desktop entries)")
-        print("  0  Cancel\n")
-
-        try:
-            choice = input("Select option [0]: ").strip() or "0"
-        except (EOFError, KeyboardInterrupt):
-            choice = "0"
-
-        if choice == "1":
-            uninstall_everything()
-        else:
-            info("Uninstall cancelled")
-        return
-
-    print(f"\nDetected versions in Wine prefix:\n")
-    for i, (install_dir, version) in enumerate(versions, 1):
-        pretty = install_dir.replace(WINE_PREFIX + "/drive_c/", "")
-        label = f"TouchDesigner {version}" if version != "unknown" else "TouchDesigner"
-        print(
-            f"  {Colors.white}{Colors.bold}{i}{Colors.nc}  {Colors.white}{label}{Colors.nc}"
-        )
-        print(f"     {Colors.accent}{pretty}{Colors.nc}")
-        print()
-
-    print(
-        f"\n  {len(versions) + 1}  Uninstall EVERYTHING (prefix, runner, launcher, desktop entries)"
-    )
-    print()
-    print("  0  Cancel\n")
-
-    try:
-        selection = (
-            input("Select one or multiple versions (e.g. 1,3) [0]: ").strip() or "0"
-        )
-    except (EOFError, KeyboardInterrupt):
-        selection = "0"
-
+def _process_uninstall_text_selection(selection: str, versions: list) -> None:
+    """Handle text-based uninstall selection (non-TTY fallback)."""
     if selection == "0":
         info("Uninstall cancelled")
         return
@@ -200,7 +153,6 @@ def show_uninstall_menu() -> None:
         uninstall_everything()
         return
 
-    # Parse multi-selection
     selected_roots: list[str] = []
     for token in selection.replace(",", " ").split():
         if not token.isdigit():
@@ -232,6 +184,160 @@ def show_uninstall_menu() -> None:
         success(f"Removed {removed} TouchDesigner version(s)")
     else:
         info("Uninstall cancelled")
+
+
+def show_uninstall_menu() -> None:
+    """Show interactive uninstall menu for selecting versions or full removal."""
+    import sys
+    import termios
+    import tty
+
+    versions = discover_installed_versions()
+    if sys.stdout.isatty():
+        print("\033[2J\033[H", end="")
+    print_banner("1.4")
+    print(f"\n{Colors.bold}{Colors.white}Uninstall TouchDesigner{Colors.nc}\n")
+
+    if not versions:
+        warning("No installed TouchDesigner versions detected")
+        print("\n  1  Uninstall everything (prefix, runner, launcher, desktop entries)")
+        print("  0  Cancel\n")
+
+        try:
+            choice = input("Select option [0]: ").strip() or "0"
+        except (EOFError, KeyboardInterrupt):
+            choice = "0"
+
+        if choice == "1":
+            uninstall_everything()
+        else:
+            info("Uninstall cancelled")
+        return
+
+    print(f"\nDetected versions in Wine prefix:\n")
+
+    # Build options list: versions + Uninstall Everything + Cancel
+    options = []
+    for install_dir, version in versions:
+        pretty = install_dir.replace(WINE_PREFIX + "/drive_c/", "")
+        label = f"TouchDesigner {version}" if version != "unknown" else "TouchDesigner"
+        options.append(("version", label, pretty, install_dir))
+    options.append(
+        (
+            "everything",
+            "Uninstall EVERYTHING",
+            "prefix, runner, launcher, desktop entries",
+            None,
+        )
+    )
+    options.append(("cancel", "Cancel", None, None))
+
+    total_opts = len(options)
+    cursor = 0
+
+    # Fall back to text input when not a TTY
+    if not sys.stdin.isatty():
+        for i, (typ, label, desc, _) in enumerate(options):
+            num = str(i + 1) if typ != "cancel" else "0"
+            print(f"  {num}  {label}")
+            if desc:
+                print(f"     {Colors.accent}{desc}{Colors.nc}")
+            print()
+        try:
+            selection = (
+                input("Select one or multiple versions (e.g. 1,3) [0]: ").strip() or "0"
+            )
+        except (EOFError, KeyboardInterrupt):
+            selection = "0"
+        _process_uninstall_text_selection(selection, versions)
+        return
+
+    def _draw_versions():
+        lines = []
+        for i, (typ, label, desc, _) in enumerate(options):
+            num = str(i + 1) if typ != "cancel" else "0"
+            marker = "▶" if i == cursor else " "
+            lines.append(f"  {marker}  {num}  {label}")
+            if desc:
+                lines.append(f"     {Colors.accent}{desc}{Colors.nc}")
+            lines.append("")
+        return lines
+
+    lines = _draw_versions()
+    sys.stdout.write("\033[?25l")  # Hide cursor
+    sys.stdout.flush()
+    for line in lines:
+        print(line)
+    print_count = len(lines)
+
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        new = termios.tcgetattr(fd)
+        new[tty.LFLAG] &= ~(termios.ICANON | termios.ECHO)
+        new[tty.CC][termios.VMIN] = 1
+        new[tty.CC][termios.VTIME] = 0
+        termios.tcsetattr(fd, termios.TCSADRAIN, new)
+
+        while True:
+            try:
+                key = sys.stdin.read(1)
+            except (EOFError, KeyboardInterrupt):
+                key = "\x03"
+
+            if key == "\x03":
+                info("\nUninstall cancelled")
+                sys.stdout.write("\033[?25h")
+                return
+
+            if key == "\x1b":
+                seq = ""
+                try:
+                    seq = sys.stdin.read(2)
+                except (EOFError, OSError):
+                    pass
+                if seq == "[A":
+                    cursor = (cursor - 1) % total_opts
+                elif seq == "[B":
+                    cursor = (cursor + 1) % total_opts
+            elif key in ("\r", "\n"):
+                typ = options[cursor][0]
+                if typ == "cancel":
+                    info("Uninstall cancelled")
+                    break
+                elif typ == "everything":
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                    sys.stdout.write("\033[?25h")
+                    print()
+                    confirm = (
+                        input(f"Remove everything? [Y/n]: ").strip().lower() or "y"
+                    )
+                    if confirm in ("y", "yes"):
+                        uninstall_everything()
+                    return
+                elif typ == "version":
+                    install_dir = options[cursor][3]
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                    sys.stdout.write("\033[?25h")
+                    print()
+                    confirm = (
+                        input(f"Remove this version? [Y/n]: ").strip().lower() or "y"
+                    )
+                    if confirm in ("y", "yes"):
+                        uninstall_selected_versions([install_dir])
+                    return
+
+            # Redraw
+            lines = _draw_versions()
+            for _ in range(print_count):
+                sys.stdout.write("\033[A")
+            for line in lines:
+                sys.stdout.write(f"\033[K{line}\n")
+            sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
 
 
 # ── CLI entrypoint ───────────────────────────────────────────────────────────
