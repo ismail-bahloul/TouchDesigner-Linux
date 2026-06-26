@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 # ── Terminal colors ──────────────────────────────────────────────────────────
@@ -144,6 +145,13 @@ def download_file(
     dest_dir = os.path.dirname(dest)
     os.makedirs(dest_dir, exist_ok=True)
 
+    # Use Python's urllib for a clean progress bar (no external deps)
+    if show_progress:
+        try:
+            return _download_with_progress(url, dest, label, timeout, user_agent)
+        except Exception:
+            pass  # Fall through to curl/wget
+
     curl = shutil.which("curl")
     wget = shutil.which("wget")
 
@@ -191,13 +199,69 @@ def download_file(
         else:
             cmd.insert(1, "-q")
         try:
-            subprocess.run(cmd, check=True, capture_output=True)
+            if show_progress:
+                subprocess.run(cmd, check=True)
+            else:
+                subprocess.run(cmd, check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError:
             return False
 
     error("No download tool found (need curl or wget)")
     return False
+
+
+def _download_with_progress(
+    url: str, dest: str, label: str, timeout: int, user_agent: str
+) -> bool:
+    """Download with a clean progress bar using urllib."""
+    import urllib.request
+
+    req = urllib.request.Request(url)
+    if user_agent:
+        req.add_header("User-Agent", user_agent)
+
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        total = int(response.headers.get("Content-Length", 0))
+        downloaded = 0
+        chunk_size = 8192
+
+        with open(dest, "wb") as f:
+            start = time.time()
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                downloaded += len(chunk)
+
+                if total > 0:
+                    pct = downloaded * 100 // total
+                    bar_len = 30
+                    filled = bar_len * downloaded // total
+                    bar = (
+                        "=" * (filled - 1) + ">" + "-" * (bar_len - filled)
+                        if filled > 0
+                        else "-" * bar_len
+                    )
+                    elapsed = time.time() - start
+                    speed = downloaded / (1024 * 1024 * max(elapsed, 0.1))
+                    print(
+                        f"\r  {label}: [{bar}] {pct}% ({downloaded / 1024 / 1024:.0f}/{total / 1024 / 1024:.0f} MB) {speed:.1f} MB/s",
+                        end="",
+                        flush=True,
+                    )
+                else:
+                    elapsed = time.time() - start
+                    speed = downloaded / (1024 * 1024 * max(elapsed, 0.1))
+                    print(
+                        f"\r  {label}: {downloaded / 1024 / 1024:.1f} MB @ {speed:.1f} MB/s",
+                        end="",
+                        flush=True,
+                    )
+
+        print()
+        return True
 
 
 # ── Checksums ────────────────────────────────────────────────────────────────
