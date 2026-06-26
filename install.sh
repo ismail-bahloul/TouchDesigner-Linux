@@ -46,4 +46,9 @@ else
     cd "$REPO_DIR"
 fi
 
-exec "$TD_CLI" "$@"
+# Reconnect stdin to terminal so interactive menus work through curl pipe
+if [ -c /dev/tty ]; then
+    exec "$TD_CLI" "$@" </dev/tty
+else
+    exec "$TD_CLI" "$@"
+fi
