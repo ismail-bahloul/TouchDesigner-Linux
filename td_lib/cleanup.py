@@ -182,7 +182,8 @@ def show_uninstall_menu() -> None:
     print(
         f"\n  {len(versions) + 1}  Uninstall EVERYTHING (prefix, runner, launcher, desktop entries)"
     )
-    print("\n  0  Cancel\n")
+    print()
+    print("  0  Cancel\n")
 
     try:
         selection = (
