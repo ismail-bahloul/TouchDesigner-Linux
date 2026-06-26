@@ -281,33 +281,57 @@ def install_windows_deps() -> None:
         }
     )
 
+    import tempfile
+
+    wt_log = tempfile.NamedTemporaryFile(delete=False, suffix=".log", mode="w")
+    wt_log_path = wt_log.name
+    wt_log.close()
+
     stop_heartbeat = threading.Event()
 
     def _heartbeat():
         start = time.time()
+        last_line = ""
         while not stop_heartbeat.is_set():
             elapsed = int(time.time() - start)
             if elapsed > 0 and elapsed % 10 == 0:
-                info(f"Winetricks still working... ({elapsed}s)")
+                try:
+                    with open(wt_log_path) as f:
+                        lines = f.readlines()
+                    if lines:
+                        current = lines[-1].strip()
+                        if current and current != last_line:
+                            last_line = current[:80]
+                            info(f"Winetricks ({elapsed}s): {last_line}")
+                        else:
+                            info(f"Winetricks still working... ({elapsed}s)")
+                    else:
+                        info(f"Winetricks still working... ({elapsed}s)")
+                except OSError:
+                    info(f"Winetricks still working... ({elapsed}s)")
             time.sleep(1)
 
     thread = threading.Thread(target=_heartbeat, daemon=True)
     thread.start()
 
     try:
-        result = subprocess.run(
-            ["bash", WINETRICKS_BIN, "-q", "corefonts", "d3dx11_43", "vcrun2019"],
-            env=wt_env,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        with open(wt_log_path, "w") as log:
+            subprocess.run(
+                ["bash", WINETRICKS_BIN, "-q", "corefonts", "d3dx11_43", "vcrun2019"],
+                env=wt_env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                check=True,
+            )
     except subprocess.CalledProcessError:
         error("Winetricks failed")
         info("Last output:")
-        if "result" in dir():
-            for line in result.stdout.splitlines()[-10:]:
-                info(line)
+        try:
+            with open(wt_log_path) as f:
+                for line in f.readlines()[-10:]:
+                    info(line.strip())
+        except OSError:
+            pass
         info("Retry with --debug for verbose logs")
         raise SystemExit(1)
     except KeyboardInterrupt:
@@ -316,10 +340,16 @@ def install_windows_deps() -> None:
         raise SystemExit(1)
     finally:
         stop_heartbeat.set()
+        safe_rm(wt_log_path)
 
     # Check if any verb was skipped (already installed) for a cleaner message
-    if result.stdout and "already installed, skipping" in result.stdout:
-        success("Windows dependencies already satisfied")
+    try:
+        with open(wt_log_path) as f:
+            log_content = f.read()
+        if "already installed, skipping" in log_content:
+            success("Windows dependencies already satisfied")
+    except OSError:
+        pass
 
     success("Windows dependencies installed")
 
