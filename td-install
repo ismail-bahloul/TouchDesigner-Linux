@@ -75,8 +75,9 @@ def main():
 
 def _show_menu(args):
     """Show interactive main menu (same as bash install.sh)."""
-    import shutil
-    import subprocess
+    import sys
+    import termios
+    import tty
 
     from td_lib.distro import detect_distro
     from td_lib.utils import Colors, print_banner, print_hr
@@ -126,42 +127,131 @@ def _show_menu(args):
 
     print(f"\n{Colors.white}INSTALLATION OPTIONS :{Colors.nc}\n")
 
-    print(f"  1  Install")
-    print(
-        f"{Colors.accent}     Install and run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
-    )
-    print()
-    print(f"  2  Update")
-    print(
-        f"{Colors.accent}     Update launcher, Wine components, UI fixes and icons{Colors.nc}"
-    )
-    print()
-    print(f"  3  Uninstall")
-    print(
-        f"{Colors.accent}     Remove selected versions or everything (prefix, runner, launcher){Colors.nc}"
-    )
-    print()
-    print(f"  0  Exit")
-    print(f"{Colors.accent}     Quit this script without making changes.{Colors.nc}\n")
+    options = [
+        (
+            "Install",
+            "Install and run TouchDesigner on Linux — idempotent, safe to re-run",
+        ),
+        ("Update", "Update launcher, Wine components, UI fixes and icons"),
+        (
+            "Uninstall",
+            "Remove selected versions or everything (prefix, runner, launcher)",
+        ),
+        ("Exit", "Quit this script without making changes"),
+    ]
+    actions = ["install", "update", "uninstall", None]
 
-    try:
-        choice = input("  Select option [1]: ").strip() or "1"
-    except (EOFError, KeyboardInterrupt):
+    # Fall back to simple input when stdin is not a TTY (e.g. piped)
+    if not sys.stdin.isatty():
+        print(f"  1  Install")
+        print(
+            f"{Colors.accent}     Install and run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
+        )
         print()
-        choice = "0"
+        print(f"  2  Update")
+        print(
+            f"{Colors.accent}     Update launcher, Wine components, UI fixes and icons{Colors.nc}"
+        )
+        print()
+        print(f"  3  Uninstall")
+        print(f"{Colors.accent}     Remove selected versions or everything{Colors.nc}")
+        print()
+        print(f"  0  Exit")
+        print(
+            f"{Colors.accent}     Quit this script without making changes.{Colors.nc}\n"
+        )
+        try:
+            choice = input("  Select option [1]: ").strip() or "1"
+        except (EOFError, KeyboardInterrupt):
+            print()
+            choice = "0"
+        match choice:
+            case "1":
+                args.action = "install"
+            case "2":
+                args.action = "update"
+            case "3":
+                args.action = "uninstall"
+            case "0":
+                print("Exiting...")
+                sys.exit(0)
+            case _:
+                args.action = "install"
+        return
 
-    match choice:
-        case "1":
-            args.action = "install"
-        case "2":
-            args.action = "update"
-        case "3":
-            args.action = "uninstall"
-        case "0":
-            print("Exiting...")
-            sys.exit(0)
-        case _:
-            args.action = "install"
+    cursor = 0
+
+    def _draw_menu():
+        lines = []
+        for i, (title, desc) in enumerate(options):
+            num = str(i) if i < 3 else "0"
+            marker = "▶" if i == cursor else " "
+            lines.append(f"  {marker}  {num}  {title}")
+            if i == cursor:
+                lines.append(f"{Colors.accent}     {desc}{Colors.nc}")
+            else:
+                lines.append(f"{Colors.accent}     {desc}{Colors.nc}")
+            if i < len(options) - 1:
+                lines.append("")
+        return lines
+
+    lines = _draw_menu()
+    sys.stdout.write("\033[?25l")  # Hide cursor
+    sys.stdout.flush()
+    for line in lines:
+        print(line)
+    print_count = len(lines)
+
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        new = termios.tcgetattr(fd)
+        new[tty.LFLAG] &= ~(termios.ICANON | termios.ECHO)
+        new[tty.CC][termios.VMIN] = 1
+        new[tty.CC][termios.VTIME] = 0
+        termios.tcsetattr(fd, termios.TCSADRAIN, new)
+
+        while True:
+            try:
+                key = sys.stdin.read(1)
+            except (EOFError, KeyboardInterrupt):
+                key = "\x03"
+
+            if key == "\x03":  # Ctrl+C
+                print()
+                print("Exiting...")
+                sys.exit(0)
+
+            if key == "\x1b":
+                seq = ""
+                try:
+                    seq = sys.stdin.read(2)
+                except (EOFError, OSError):
+                    pass
+                if seq == "[A":  # Up
+                    cursor = (cursor - 1) % len(options)
+                elif seq == "[B":  # Down
+                    cursor = (cursor + 1) % len(options)
+            elif key in ("\r", "\n"):  # Enter
+                if cursor == 3:  # Exit
+                    print()
+                    print("Exiting...")
+                    sys.exit(0)
+                args.action = actions[cursor]
+                break
+
+            # Redraw
+            lines = _draw_menu()
+            for _ in range(print_count):
+                sys.stdout.write("\033[A")
+            for line in lines:
+                sys.stdout.write(f"\033[K{line}\n")
+            sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        sys.stdout.write("\033[?25h")  # Show cursor
+        sys.stdout.flush()
+    print()
 
 
 def run_patch_toe(file_path: str) -> None:
