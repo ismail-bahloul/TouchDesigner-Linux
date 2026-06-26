@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [main, python-rewrite]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -32,3 +32,110 @@ jobs:
 
       - name: Run Docker tests
         run: docker run --rm td-test
+
+  distro-check:
+    name: Distro check — ${{ matrix.distro.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - image: ubuntu:24.04
+            name: Ubuntu 24.04
+            manager: apt
+          - image: ubuntu:22.04
+            name: Ubuntu 22.04
+            manager: apt
+          - image: fedora:40
+            name: Fedora 40
+            manager: dnf
+          - image: archlinux:latest
+            name: Arch Linux
+            manager: pacman
+    container:
+      image: ${{ matrix.distro.image }}
+    steps:
+      - name: Install dependencies
+        run: |
+          case "${{ matrix.distro.manager }}" in
+            apt)
+              apt-get update -qq
+              apt-get install -y -qq python3 git >/dev/null
+              ;;
+            dnf)
+              dnf install -y -q python3 git >/dev/null
+              ;;
+            pacman)
+              pacman -Sy --noconfirm python git >/dev/null
+              ;;
+          esac
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify distro detection
+        run: |
+          python3 -c "
+          from td_lib.distro import detect_distro
+          d = detect_distro()
+          expected = '${{ matrix.distro.manager }}'
+          print(f'  Distro: {d.distro_name}')
+          print(f'  ID: {d.id}')
+          print(f'  Manager: {d.package_manager} (expected: {expected})')
+          assert d.package_manager == expected, f'Expected {expected}, got {d.package_manager}'
+          print('  ✓ distro detection OK')
+          "
+
+      - name: Check package lists are valid
+        run: |
+          case "${{ matrix.distro.manager }}" in
+            apt)
+              apt-get update -qq
+              python3 -c "
+              from td_lib.distro import APT_PACKAGES
+              import subprocess
+              missing = []
+              for pkg in APT_PACKAGES:
+                  r = subprocess.run(['apt-cache', 'show', pkg], capture_output=True, timeout=10)
+                  if r.returncode != 0:
+                      missing.append(pkg)
+              if missing:
+                  print(f'  Missing APT packages: {missing}')
+                  exit(1)
+              print(f'  ✓ All {len(APT_PACKAGES)} APT packages found')
+              "
+              ;;
+            dnf)
+              python3 -c "
+              from td_lib.distro import DNF_PACKAGES
+              import subprocess
+              missing = []
+              for pkg in DNF_PACKAGES:
+                  r = subprocess.run(['dnf', 'info', pkg], capture_output=True, timeout=10)
+                  if r.returncode != 0:
+                      missing.append(pkg)
+              if missing:
+                  print(f'  Missing DNF packages: {missing}')
+                  exit(1)
+              print(f'  ✓ All {len(DNF_PACKAGES)} DNF packages found')
+              "
+              ;;
+            pacman)
+              python3 -c "
+              from td_lib.distro import PACMAN_PACKAGES
+              import subprocess
+              missing = []
+              for pkg in PACMAN_PACKAGES:
+                  r = subprocess.run(['pacman', '-Si', pkg], capture_output=True, timeout=10)
+                  if r.returncode != 0:
+                      missing.append(pkg)
+              if missing:
+                  print(f'  Missing Pacman packages: {missing}')
+                  exit(1)
+              print(f'  ✓ All {len(PACMAN_PACKAGES)} Pacman packages found')
+              "
+              ;;
+          esac
+
+      - name: Run static tests inside container
+        run: python3 tests/test_static.py
