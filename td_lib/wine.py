@@ -71,36 +71,13 @@ def download_soda_runner() -> None:
     info("Extracting compatibility runtime...")
     ensure_dir(RUNNER_DIR)
     try:
-        # Extract to temp dir first to handle the top-level directory in the tarball
-        tmp_extract = tempfile.mkdtemp(prefix="soda_extract_")
-        try:
-            subprocess.run(
-                ["tar", "-xJf", tarball, "-C", tmp_extract],
-                check=True,
-                capture_output=True,
-            )
-            # Move contents up one level (strip the top-level directory)
-            extracted_items = os.listdir(tmp_extract)
-            if extracted_items:
-                top_dir = os.path.join(tmp_extract, extracted_items[0])
-                if os.path.isdir(top_dir):
-                    for item in os.listdir(top_dir):
-                        src = os.path.join(top_dir, item)
-                        dst = os.path.join(RUNNER_DIR, item)
-                        if os.path.isdir(src):
-                            shutil.copytree(src, dst, dirs_exist_ok=True)
-                        else:
-                            shutil.copy2(src, dst)
-                else:
-                    # No top-level directory, copy directly
-                    for item in extracted_items:
-                        src = os.path.join(tmp_extract, item)
-                        dst = os.path.join(RUNNER_DIR, item)
-                        shutil.copy2(src, dst)
-        finally:
-            safe_rm(tmp_extract)
-    except (subprocess.CalledProcessError, OSError) as e:
-        error(f"Failed to extract soda runner: {e}")
+        subprocess.run(
+            ["tar", "-xJf", tarball, "-C", RUNNER_DIR, "--strip-components=1"],
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as e:
+        error(f"Failed to extract soda runner: {e.stderr or e}")
         safe_rm(tarball)
         raise SystemExit(1)
 
