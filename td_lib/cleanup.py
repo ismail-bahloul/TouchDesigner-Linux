@@ -23,8 +23,9 @@ DESKTOP_DIR = os.path.expanduser(
     subprocess.run(
         ["xdg-user-dir", "DESKTOP"], capture_output=True, text=True
     ).stdout.strip()
-    or os.path.expanduser("~/Desktop")
-)
+    if shutil.which("xdg-user-dir")
+    else "",
+) or os.path.expanduser("~/Desktop")
 APPLICATIONS_DIR = os.path.expanduser("~/.local/share/applications")
 MIME_ICON_DIR = os.path.expanduser("~/.local/share/icons/hicolor/scalable/mimetypes")
 MIME_DIR = os.path.expanduser("~/.local/share/mime/packages")
