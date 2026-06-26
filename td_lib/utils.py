@@ -166,7 +166,10 @@ def download_file(
             cmd.insert(1, "--silent")
             cmd.insert(2, "--show-error")
         try:
-            subprocess.run(cmd, check=True, capture_output=True)
+            if show_progress:
+                subprocess.run(cmd, check=True)
+            else:
+                subprocess.run(cmd, check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError:
             return False
