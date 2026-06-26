@@ -100,7 +100,8 @@ def detect_distro() -> DistroInfo:
     if shutil.which("zypper"):
         return DistroInfo(os_id, os_name, "zypper", "openSUSE/SUSE")
 
-    raise SystemExit(f"Unsupported distribution: {os_name}")
+    info(f"Unsupported distribution: {os_name}")
+    return DistroInfo(os_id, os_name, "unknown", "Unknown Linux")
 
 
 # ── Package installation ─────────────────────────────────────────────────────

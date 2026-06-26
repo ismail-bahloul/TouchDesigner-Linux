@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     p7zip-full innoextract \
     python3 \
     xz-utils cabextract unzip \
-    file \
+    file coreutils xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
