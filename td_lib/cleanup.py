@@ -8,6 +8,7 @@ from .launcher import LAUNCHER_PATH
 from .touchdesigner import detect_version_from_exe, discover_installed_versions
 from .utils import (
     TD_BASE_DIR,
+    Colors,
     error,
     info,
     print_banner,
@@ -150,7 +151,7 @@ def show_uninstall_menu() -> None:
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")
     print_banner("1.4")
-    print("\nUninstall TouchDesigner:\n")
+    print(f"\n{Colors.bold}Uninstall TouchDesigner{Colors.nc}\n")
 
     if not versions:
         warning("No installed TouchDesigner versions detected")
@@ -168,12 +169,13 @@ def show_uninstall_menu() -> None:
             info("Uninstall cancelled")
         return
 
-    print("Detected versions in Wine prefix:\n")
+    print(f"\nDetected versions in Wine prefix:\n")
     for i, (install_dir, version) in enumerate(versions, 1):
         pretty = install_dir.replace(WINE_PREFIX + "/drive_c/", "")
         label = f"TouchDesigner {version}" if version != "unknown" else "TouchDesigner"
-        print(f"  {i}  {label}")
-        print(f"      {pretty}")
+        print(f"  {Colors.bold}{i}{Colors.nc}  {Colors.white}{label}{Colors.nc}")
+        print(f"     {Colors.accent}{pretty}{Colors.nc}")
+        print()
 
     print(
         f"\n  {len(versions) + 1}  Uninstall EVERYTHING (prefix, runner, launcher, desktop entries)"
