@@ -20,11 +20,19 @@ def patch_ids_dlls() -> None:
     # Search all TouchDesigner directories (versioned and non-versioned)
     program_files = os.path.join(WINE_PREFIX, "drive_c", "Program Files")
 
+    if not os.path.isdir(program_files):
+        return
+
+    try:
+        entries = os.listdir(program_files)
+    except PermissionError:
+        return
+
     found_any = False
     patched = 0
     skipped = 0
 
-    for entry in os.listdir(program_files):
+    for entry in entries:
         if not entry.startswith("TouchDesigner"):
             continue
         td_bin = os.path.join(program_files, entry, "bin")
@@ -78,7 +86,15 @@ def check_ids_patch_status() -> dict[str, bool]:
     program_files = os.path.join(WINE_PREFIX, "drive_c", "Program Files")
     status: dict[str, bool] = {}
 
-    for entry in os.listdir(program_files):
+    if not os.path.isdir(program_files):
+        return status
+
+    try:
+        entries = os.listdir(program_files)
+    except PermissionError:
+        return status
+
+    for entry in entries:
         if not entry.startswith("TouchDesigner"):
             continue
         td_bin = os.path.join(program_files, entry, "bin")
