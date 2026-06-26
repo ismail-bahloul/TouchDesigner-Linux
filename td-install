@@ -81,6 +81,14 @@ def main():
             case _:
                 break
 
+        # Pause before returning to menu so user can read output
+        if args.action is None and not args.non_interactive:
+            try:
+                input("\nPress Enter to return to menu... ")
+            except (EOFError, KeyboardInterrupt):
+                print()
+                break
+
 
 def _show_menu(args):
     """Show interactive main menu (same as bash install.sh)."""
