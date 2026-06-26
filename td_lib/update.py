@@ -57,6 +57,12 @@ def run_update(args) -> None:
     create_shortcuts(icon_path)
     create_versioned_shortcuts(icon_path)
 
+    # 7. Patch .toe files in all installed TouchDesigner versions
+    from .patches import patch_toe_projects_in_drive
+
+    info("Patching .toe files...")
+    patch_toe_projects_in_drive()
+
     print()
     success("Update Complete")
     info("TouchDesigner components are up to date!")
