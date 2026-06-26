@@ -827,31 +827,37 @@ def test_diagnose_output():
     check("diagnose._check_td_versions exists", callable(diagnose._check_td_versions))
     check("diagnose._check_ids_patch exists", callable(diagnose._check_ids_patch))
 
-    # Run diagnose and check it doesn't crash
+    # Run diagnose and verify output content
     import io
 
     old_stdout = sys.stdout
     old_stderr = sys.stderr
     try:
+        # Redirect output so run_diagnose() doesn't flood terminal
         sys.stdout = io.StringIO()
         sys.stderr = io.StringIO()
         diagnose.run_diagnose()
         output = sys.stdout.getvalue()
-        check("diagnose outputs banner", "TouchDesigner" in output)
-        check("diagnose outputs 'System Health Check'", "System Health" in output)
-        check(
-            "diagnose outputs 'OS / Kernel'",
-            "OS / Kernel" in output or "Kernel" in output,
-        )
-        check("diagnose outputs 'Graphics'", "Graphics" in output or "GPU" in output)
-        check("diagnose outputs 'Free space'", "Free space" in output)
-        check(
-            "diagnose outputs 'TouchDesigner base'",
-            "TD_BASE_DIR" in output or "Size" in output,
-        )
+        err = sys.stderr.getvalue()
     finally:
         sys.stdout = old_stdout
         sys.stderr = old_stderr
+
+    # Now check output (stdout restored, checks are visible)
+    check("diagnose outputs banner", "TouchDesigner" in output)
+    check("diagnose outputs 'System Health Check'", "System Health" in output)
+    check(
+        "diagnose outputs 'OS / Kernel'",
+        "OS / Kernel" in err or "Kernel" in err,
+    )
+    check("diagnose outputs 'Graphics'", "Graphics" in err or "GPU" in err)
+    check(
+        "diagnose outputs 'Free space'", "Free space" in err or "Free space" in output
+    )
+    check(
+        "diagnose outputs 'TouchDesigner base'",
+        "TD_BASE_DIR" in output or "Size" in output,
+    )
 
 
 # =============================================================================
