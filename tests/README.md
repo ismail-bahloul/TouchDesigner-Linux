@@ -1,6 +1,6 @@
 # Tests
 
-Test suite for TouchDesigner-Linux V2.
+Test suite for TouchDesigner-Linux v1.4.
 
 ## Static validation (no sudo, no install)
 

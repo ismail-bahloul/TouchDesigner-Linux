@@ -1,4 +1,4 @@
-# TouchDesigner-Linux V2 — Test container
+# TouchDesigner-Linux v1.4 — Test container
 # Build:  docker build -t td-test -f tests/Dockerfile .
 # Run:    docker run --rm -it td-test
 
