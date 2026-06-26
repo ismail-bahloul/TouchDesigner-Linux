@@ -12,12 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Run test suite
         run: python3 tests/test_static.py
 
@@ -26,10 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Build Docker image
         run: docker build -t td-test -f tests/Dockerfile .
-
       - name: Run Docker tests
         run: docker run --rm td-test
 
@@ -69,7 +64,6 @@ jobs:
               dnf install -y -q python3 git >/dev/null
               ;;
             pacman)
-              # Enable multilib (needed for lib32-* packages)
               sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf 2>/dev/null || true
               pacman -Sy --noconfirm python git >/dev/null
               ;;
@@ -78,89 +72,36 @@ jobs:
               ;;
           esac
 
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Verify distro detection
-        run: |
-          python3 << 'PYEOF'
-from td_lib.distro import detect_distro
-d = detect_distro()
-expected = '${{ matrix.distro.manager }}'
-print(f'  Distro: {d.distro_name}')
-print(f'  ID: {d.id}')
-print(f'  Manager: {d.package_manager} (expected: {expected})')
-assert d.package_manager == expected, f'Expected {expected}, got {d.package_manager}'
-print('  \u2713 distro detection OK')
-PYEOF
+        run: python3 -c "from td_lib.distro import detect_distro; d = detect_distro(); assert d.package_manager == '${{ matrix.distro.manager }}'; print('  OK: ' + d.distro_name + ' (' + d.package_manager + ')')"
 
       - name: Check package lists are valid
         run: |
           case "${{ matrix.distro.manager }}" in
             apt)
               apt-get update -qq
-              python3 << 'PYEOF'
-from td_lib.distro import APT_PACKAGES
-import subprocess
-missing = []
-for pkg in APT_PACKAGES:
-    r = subprocess.run(['apt-cache', 'show', pkg], capture_output=True, timeout=10)
-    if r.returncode != 0:
-        missing.append(pkg)
-if missing:
-    print(f'  Missing APT packages: {missing}')
-    exit(1)
-print(f'  \u2713 All {len(APT_PACKAGES)} APT packages found')
-PYEOF
+              echo 'from td_lib.distro import APT_PACKAGES; import subprocess, sys; missing = [p for p in APT_PACKAGES if subprocess.run(["apt-cache", "show", p], capture_output=True, timeout=10).returncode != 0]; print("  Missing:", missing) if missing else exit(0); sys.exit(1) if missing else None; print("  OK: " + str(len(APT_PACKAGES)) + " APT packages found")' > /tmp/check_pkgs.py
+              python3 /tmp/check_pkgs.py
               ;;
             dnf)
-              python3 << 'PYEOF'
-from td_lib.distro import DNF_PACKAGES
-import subprocess
-missing = []
-for pkg in DNF_PACKAGES:
-    r = subprocess.run(['dnf', 'info', pkg], capture_output=True, timeout=10)
-    if r.returncode != 0:
-        missing.append(pkg)
-if missing:
-    print(f'  Missing DNF packages: {missing}')
-    exit(1)
-print(f'  \u2713 All {len(DNF_PACKAGES)} DNF packages found')
-PYEOF
+              echo 'from td_lib.distro import DNF_PACKAGES; import subprocess, sys; missing = [p for p in DNF_PACKAGES if subprocess.run(["dnf", "info", p], capture_output=True, timeout=10).returncode != 0]; print("  Missing:", missing) if missing else exit(0); sys.exit(1) if missing else None; print("  OK: " + str(len(DNF_PACKAGES)) + " DNF packages found")' > /tmp/check_pkgs.py
+              python3 /tmp/check_pkgs.py
               ;;
             pacman)
-              # Check packages with multilib-aware names
-              python3 << 'PYEOF'
-from td_lib.distro import PACMAN_PACKAGES
-import subprocess
-# Map p7zip->7zip for modern Arch
-alt_names = {'p7zip': '7zip'}
-missing = []
-for pkg in PACMAN_PACKAGES:
-    check = alt_names.get(pkg, pkg)
-    r = subprocess.run(['pacman', '-Si', check], capture_output=True, timeout=10)
-    if r.returncode != 0:
-        missing.append(pkg)
-if missing:
-    print(f'  Missing Pacman packages: {missing}')
-    exit(1)
-print(f'  \u2713 All {len(PACMAN_PACKAGES)} Pacman packages found')
-PYEOF
+              echo 'from td_lib.distro import PACMAN_PACKAGES; import subprocess, sys; alt_names = {"p7zip": "7zip"}; missing = []' > /tmp/check_pkgs.py
+              echo 'for pkg in PACMAN_PACKAGES:' >> /tmp/check_pkgs.py
+              echo '    check = alt_names.get(pkg, pkg)' >> /tmp/check_pkgs.py
+              echo '    if subprocess.run(["pacman", "-Si", check], capture_output=True, timeout=10).returncode != 0:' >> /tmp/check_pkgs.py
+              echo '        missing.append(pkg)' >> /tmp/check_pkgs.py
+              echo 'if missing: print("  Missing:", missing); sys.exit(1)' >> /tmp/check_pkgs.py
+              echo 'print("  OK: " + str(len(PACMAN_PACKAGES)) + " Pacman packages found")' >> /tmp/check_pkgs.py
+              python3 /tmp/check_pkgs.py
               ;;
             zypper)
-              python3 << 'PYEOF'
-from td_lib.distro import ZYPPER_BASE_PACKAGES
-import subprocess
-missing = []
-for pkg in ZYPPER_BASE_PACKAGES:
-    r = subprocess.run(['zypper', '--non-interactive', 'info', pkg], capture_output=True, timeout=10)
-    if r.returncode != 0:
-        missing.append(pkg)
-if missing:
-    print(f'  Missing Zypper packages: {missing}')
-    exit(1)
-print(f'  \u2713 All {len(ZYPPER_BASE_PACKAGES)} Zypper packages found')
-PYEOF
+              echo 'from td_lib.distro import ZYPPER_BASE_PACKAGES; import subprocess, sys; missing = [p for p in ZYPPER_BASE_PACKAGES if subprocess.run(["zypper", "--non-interactive", "info", p], capture_output=True, timeout=10).returncode != 0]; print("  Missing:", missing) if missing else exit(0); sys.exit(1) if missing else None; print("  OK: " + str(len(ZYPPER_BASE_PACKAGES)) + " Zypper packages found")' > /tmp/check_pkgs.py
+              python3 /tmp/check_pkgs.py
               ;;
           esac
 
