@@ -51,7 +51,7 @@ def _log(level: str, color: str, *args):
 
 
 def info(*args):
-    _log("→", Colors.dim, *args)
+    _log("→", Colors.accent, *args)
 
 
 def success(*args):
