@@ -52,6 +52,9 @@ jobs:
           - image: archlinux:latest
             name: Arch Linux
             manager: pacman
+          - image: opensuse/tumbleweed:latest
+            name: openSUSE Tumbleweed
+            manager: zypper
     container:
       image: ${{ matrix.distro.image }}
     steps:
@@ -67,6 +70,9 @@ jobs:
               ;;
             pacman)
               pacman -Sy --noconfirm python git >/dev/null
+              ;;
+            zypper)
+              zypper install -y python3 git >/dev/null
               ;;
           esac
 
@@ -133,6 +139,21 @@ jobs:
                   print(f'  Missing Pacman packages: {missing}')
                   exit(1)
               print(f'  ✓ All {len(PACMAN_PACKAGES)} Pacman packages found')
+              "
+              ;;
+            zypper)
+              python3 -c "
+              from td_lib.distro import ZYPPER_BASE_PACKAGES
+              import subprocess
+              missing = []
+              for pkg in ZYPPER_BASE_PACKAGES:
+                  r = subprocess.run(['zypper', '--non-interactive', 'info', pkg], capture_output=True, timeout=10)
+                  if r.returncode != 0:
+                      missing.append(pkg)
+              if missing:
+                  print(f'  Missing Zypper packages: {missing}')
+                  exit(1)
+              print(f'  ✓ All {len(ZYPPER_BASE_PACKAGES)} Zypper packages found')
               "
               ;;
           esac
