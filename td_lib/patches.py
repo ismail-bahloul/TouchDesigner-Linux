@@ -10,7 +10,7 @@ from .wine import RUNNER_DIR, WINE_PREFIX
 
 
 def patch_toe_projects_in_drive() -> None:
-    """Patch all .toe files in drive_c with wine_ui_fixes.tox during install."""
+    """Patch all .toe files in drive_c with wine_ui_fixes.tox during install/update."""
     drive_c = os.path.join(WINE_PREFIX, "drive_c")
     if not os.path.isdir(drive_c):
         return
@@ -45,9 +45,15 @@ def patch_toe_projects_in_drive() -> None:
 
     info(f"Patching {len(toe_files)} .toe file(s) with UI fixes...")
 
+    # Build Wine environment
+    wine64 = os.path.join(RUNNER_DIR, "bin", "wine64")
     env = os.environ.copy()
     env["WINEPREFIX"] = WINE_PREFIX
     env["PATH"] = f"{os.path.join(RUNNER_DIR, 'bin')}:{env.get('PATH', '')}"
+
+    def _wine_run(args: list[str], **kwargs):
+        """Run a command via wine64."""
+        return subprocess.run([wine64] + args, env=env, capture_output=True, **kwargs)
 
     # Read fix entries
     fix_entries = []
@@ -56,12 +62,7 @@ def patch_toe_projects_in_drive() -> None:
         fix_copy = os.path.join(fix_tmp, "fix.tox")
         shutil.copy2(fix_file, fix_copy)
 
-        subprocess.run(
-            [toeexpand, f"z:{fix_copy}"],
-            env=env,
-            capture_output=True,
-            timeout=30,
-        )
+        _wine_run([toeexpand, f"z:{fix_copy}"], timeout=30)
 
         toc = f"{fix_copy}.toc"
         if os.path.isfile(toc):
@@ -83,12 +84,7 @@ def patch_toe_projects_in_drive() -> None:
                 shutil.rmtree(toe_dir, ignore_errors=True)
                 safe_rm(toe_toc)
 
-                subprocess.run(
-                    [toeexpand, f"z:{toe_path}"],
-                    env=env,
-                    capture_output=True,
-                    timeout=30,
-                )
+                _wine_run([toeexpand, f"z:{toe_path}"], timeout=60)
 
                 needs_patch = True
                 if os.path.isdir(toe_dir):
@@ -108,21 +104,12 @@ def patch_toe_projects_in_drive() -> None:
                 shutil.copy2(toe_path, os.path.join(backup_dir, unique_name))
 
                 # Expand target
-                subprocess.run(
-                    [toeexpand, f"z:{toe_path}"],
-                    env=env,
-                    capture_output=True,
-                    timeout=30,
-                )
+                _wine_run([toeexpand, f"z:{toe_path}"], timeout=60)
 
                 if os.path.isdir(toe_dir):
                     # Merge fix
-                    subprocess.run(
-                        [toeexpand, f"z:{fix_copy}"],
-                        env=env,
-                        capture_output=True,
-                        timeout=30,
-                    )
+                    _wine_run([toeexpand, f"z:{fix_copy}"], timeout=30)
+
                     fix_dir = f"{fix_copy}.dir"
                     if os.path.isdir(fix_dir):
                         for item in os.listdir(fix_dir):
@@ -139,14 +126,9 @@ def patch_toe_projects_in_drive() -> None:
                             f.write(f"{entry}\n")
 
                     # Collapse back
-                    subprocess.run(
-                        [toecollapse, f"z:{toe_path}"],
-                        env=env,
-                        capture_output=True,
-                        timeout=30,
-                    )
+                    _wine_run([toecollapse, f"z:{toe_path}"], timeout=60)
 
-                    # Cleanup
+                    # Cleanup expanded files
                     shutil.rmtree(toe_dir, ignore_errors=True)
                     safe_rm(toe_toc)
 
