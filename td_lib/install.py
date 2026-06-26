@@ -129,6 +129,13 @@ def run_install(args):
         patch_ids_dlls()
     print()
 
+    # Step 7b: Patch existing .toe files in Wine prefix
+    from .patches import patch_toe_projects_in_drive
+
+    if not args.dry_run:
+        patch_toe_projects_in_drive()
+    print()
+
     # Step 8: Launcher script + desktop integration
     from .launcher import LAUNCHER_PATH, create_launcher_script
 
