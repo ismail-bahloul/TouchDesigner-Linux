@@ -81,8 +81,16 @@ def patch_toe_projects_in_drive() -> None:
                 toe_dir = f"{toe_path}.dir"
                 toe_toc = f"{toe_path}.toc"
 
+                # Detect TD version from parent directory
+                version_label = ""
+                parent_dirs = os.path.dirname(toe_path).split(os.sep)
+                for i, d in enumerate(parent_dirs):
+                    if "TouchDesigner" in d:
+                        version_label = f" [{d}]"
+                        break
+
                 # Show which file we're checking
-                info(f"Checking: {toe_name}")
+                info(f"{version_label}  Checking: {toe_name}")
 
                 # Check if already patched
                 shutil.rmtree(toe_dir, ignore_errors=True)
@@ -101,7 +109,7 @@ def patch_toe_projects_in_drive() -> None:
                     skipped += 1
                     continue
 
-                info(f"Patching: {toe_name}")
+                info(f"  Patching: {toe_name}")
 
                 # Backup
                 backup_dir = os.path.join(TD_BASE_DIR, "backups")
