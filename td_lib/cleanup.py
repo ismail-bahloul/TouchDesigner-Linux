@@ -230,7 +230,7 @@ def show_uninstall_menu() -> None:
             None,
         )
     )
-    options.append(("cancel", "Cancel", None, None))
+    options.append(("cancel", "Back", None, None))
 
     total_opts = len(options)
     cursor = 0
