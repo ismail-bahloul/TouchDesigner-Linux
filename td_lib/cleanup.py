@@ -151,7 +151,7 @@ def show_uninstall_menu() -> None:
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")
     print_banner("1.4")
-    print(f"\n{Colors.bold}Uninstall TouchDesigner{Colors.nc}\n")
+    print(f"\n{Colors.bold}{Colors.white}Uninstall TouchDesigner{Colors.nc}\n")
 
     if not versions:
         warning("No installed TouchDesigner versions detected")
