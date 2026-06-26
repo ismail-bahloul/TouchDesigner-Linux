@@ -173,7 +173,9 @@ def show_uninstall_menu() -> None:
     for i, (install_dir, version) in enumerate(versions, 1):
         pretty = install_dir.replace(WINE_PREFIX + "/drive_c/", "")
         label = f"TouchDesigner {version}" if version != "unknown" else "TouchDesigner"
-        print(f"  {Colors.bold}{i}{Colors.nc}  {Colors.white}{label}{Colors.nc}")
+        print(
+            f"  {Colors.white}{Colors.bold}{i}{Colors.nc}  {Colors.white}{label}{Colors.nc}"
+        )
         print(f"     {Colors.accent}{pretty}{Colors.nc}")
         print()
 
