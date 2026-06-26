@@ -70,5 +70,7 @@ jobs:
           cd /tmp && git clone --depth 1 https://github.com/iswad-lab/TouchDesigner-Linux.git td-repo && cp -a td-repo/. /__w/TouchDesigner-Linux/TouchDesigner-Linux
       - name: Verify distro detection
         run: python3 -c "exec('from td_lib.distro import detect_distro; d = detect_distro(); print(d.distro_name + \" (\" + d.package_manager + \")\")')"
+      - name: Validate package lists
+        run: python3 tests/check_packages.py
       - name: Run static tests
         run: python3 tests/test_static.py
