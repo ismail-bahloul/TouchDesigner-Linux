@@ -54,23 +54,32 @@ def main():
         run_patch_toe(args.patch_toe)
         return
 
-    # Show interactive menu if no action specified and not non-interactive
-    if args.action is None:
-        if args.non_interactive:
-            args.action = "install"
-        else:
-            _show_menu(args)
+    # Handle --patch-toe standalone mode
+    if args.patch_toe:
+        run_patch_toe(args.patch_toe)
+        return
 
-    match args.action:
-        case "install":
-            run_install(args)
-        case "update":
-            run_update(args)
-        case "uninstall":
-            run_uninstall(args)
-        case _:
-            error("No action selected. Run with --help for usage.")
-            sys.exit(1)
+    # Main menu loop
+    while True:
+        # Show interactive menu if no action specified
+        if args.action is None:
+            if args.non_interactive:
+                args.action = "install"
+            else:
+                _show_menu(args)
+
+        match args.action:
+            case "install":
+                run_install(args)
+                args.action = None
+            case "update":
+                run_update(args)
+                args.action = None
+            case "uninstall":
+                run_uninstall(args)
+                args.action = None
+            case _:
+                break
 
 
 def _show_menu(args):
