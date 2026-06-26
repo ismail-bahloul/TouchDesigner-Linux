@@ -37,10 +37,14 @@ if [ -f "$SCRIPT_DIR/td-install" ]; then
 else
     # Running from curl pipe — clone the repo
     REPO_DIR="$INSTALL_DIR/source"
-    if [ ! -f "$REPO_DIR/td-install" ]; then
+    if [ ! -d "$REPO_DIR/.git" ]; then
         echo "Downloading TouchDesigner-Linux..."
         mkdir -p "$(dirname "$REPO_DIR")"
         git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$REPO_DIR"
+    else
+        # Pull latest if already cloned
+        cd "$REPO_DIR"
+        git pull --ff-only origin "$REPO_BRANCH" 2>/dev/null || true
     fi
     TD_CLI="$REPO_DIR/td-install"
     cd "$REPO_DIR"
