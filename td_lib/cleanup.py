@@ -67,6 +67,8 @@ def uninstall_selected_versions(selected_roots: list[str]) -> int:
     remaining = discover_installed_versions()
     if len(remaining) <= 1:
         for d in [DESKTOP_DIR, APPLICATIONS_DIR]:
+            if not os.path.isdir(d):
+                continue
             for f in os.listdir(d):
                 if f.startswith("TouchDesigner-") and f.endswith(".desktop"):
                     safe_rm(os.path.join(d, f))
