@@ -143,20 +143,20 @@ def _show_menu(args):
 
     # Fall back to simple input when stdin is not a TTY (e.g. piped)
     if not sys.stdin.isatty():
-        print(f"  1  Install")
+        print(f"  1. Install")
         print(
             f"{Colors.accent}     Install and run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
         )
         print()
-        print(f"  2  Update")
+        print(f"  2. Update")
         print(
             f"{Colors.accent}     Update launcher, Wine components, UI fixes and icons{Colors.nc}"
         )
         print()
-        print(f"  3  Uninstall")
+        print(f"  3. Uninstall")
         print(f"{Colors.accent}     Remove selected versions or everything{Colors.nc}")
         print()
-        print(f"  0  Exit")
+        print(f"  0. Exit")
         print(
             f"{Colors.accent}     Quit this script without making changes.{Colors.nc}\n"
         )
@@ -186,7 +186,7 @@ def _show_menu(args):
         for i, (title, desc) in enumerate(options):
             num = str(i + 1) if i < 3 else "0"
             marker = "▶" if i == cursor else " "
-            lines.append(f"  {marker}  {num}  {title}")
+            lines.append(f"  {marker}  {num}. {title}")
             if i == cursor:
                 lines.append(f"{Colors.accent}     {desc}{Colors.nc}")
             else:

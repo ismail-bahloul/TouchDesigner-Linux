@@ -239,7 +239,7 @@ def show_uninstall_menu() -> None:
     if not sys.stdin.isatty():
         for i, (typ, label, desc, _) in enumerate(options):
             num = str(i + 1) if typ != "cancel" else "0"
-            print(f"  {num}  {label}")
+            print(f"  {num}. {label}")
             if desc:
                 print(f"     {Colors.accent}{desc}{Colors.nc}")
             print()
@@ -257,7 +257,7 @@ def show_uninstall_menu() -> None:
         for i, (typ, label, desc, _) in enumerate(options):
             num = str(i + 1) if typ != "cancel" else "0"
             marker = "▶" if i == cursor else " "
-            lines.append(f"  {marker}  {num}  {label}")
+            lines.append(f"  {marker}  {num}. {label}")
             if desc:
                 lines.append(f"     {Colors.accent}{desc}{Colors.nc}")
             lines.append("")
