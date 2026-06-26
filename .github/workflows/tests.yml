@@ -57,17 +57,17 @@ jobs:
         run: |
           case "${{ matrix.distro.manager }}" in
             apt)
-              apt-get update -qq && apt-get install -y -qq python3 git >/dev/null
+              apt-get update -qq && apt-get install -y -qq python3 git curl >/dev/null
               ;;
             dnf)
-              dnf install -y -q python3 git >/dev/null
+              dnf install -y -q python3 git curl >/dev/null
               ;;
             pacman)
               sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf 2>/dev/null || true
-              pacman -Sy --noconfirm python git >/dev/null
+              pacman -Sy --noconfirm python git curl >/dev/null
               ;;
             zypper)
-              zypper install -y python3 git >/dev/null
+              zypper install -y python3 git curl >/dev/null
               ;;
           esac
       - uses: actions/checkout@v4
