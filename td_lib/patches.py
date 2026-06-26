@@ -77,6 +77,7 @@ def patch_toe_projects_in_drive() -> None:
 
         for toe_path in toe_files:
             try:
+                toe_name = os.path.basename(toe_path)
                 toe_dir = f"{toe_path}.dir"
                 toe_toc = f"{toe_path}.toc"
 
@@ -96,6 +97,9 @@ def patch_toe_projects_in_drive() -> None:
                 if not needs_patch:
                     skipped += 1
                     continue
+
+                # Show which file is being patched
+                info(f"Patching: {toe_name}")
 
                 # Backup
                 backup_dir = os.path.join(TD_BASE_DIR, "backups")
