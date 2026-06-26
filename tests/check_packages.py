@@ -5,16 +5,26 @@ in the package manager's repositories.
 
 Called by CI after installing dependencies on each distro container.
 """
+
 import subprocess
 import sys
 
 
 def check_packages(pkg_manager: str, packages: list[str]) -> int:
-    """Check each package exists. Returns number of missing packages."""
-    print(f"  Checking {len(packages)} packages with {pkg_manager}...")
+    """Check each package exists. Returns number of missing packages.
+
+    Architecture-specific packages (:i386, .i686, lib32-*, -32bit) are
+    filtered out since their repos (multilib/i386) are not enabled in CI
+    containers. Base packages are validated against the live repo.
+    """
+    base = [p for p in packages if not _is_arch_specific(p)]
+    arch = [p for p in packages if _is_arch_specific(p)]
+    print(
+        f"  Checking {len(base)} base packages (+ {len(arch)} arch-specific skipped)..."
+    )
     missing = []
 
-    for pkg in packages:
+    for pkg in base:
         cmd = _check_cmd(pkg_manager, pkg)
         if cmd is None:
             print(f"  Unknown package manager: {pkg_manager}")
@@ -34,11 +44,26 @@ def check_packages(pkg_manager: str, packages: list[str]) -> int:
             missing.append(pkg)
 
     if missing:
-        print(f"  Missing packages: {missing}")
+        print(f"  Missing base packages: {missing}")
     else:
-        print(f"  OK — all {len(packages)} packages found")
+        print(f"  OK \u2014 all {len(base)} base packages found")
 
     return len(missing)
+
+
+def _is_arch_specific(pkg: str) -> bool:
+    """Return True if package is architecture-specific (multilib/i386/32bit).
+
+    These packages are only available when multilib or i386 repos are enabled,
+    which is not the case in minimal CI containers.
+    """
+    return (
+        pkg.endswith(":i386")
+        or pkg.endswith(":amd64")
+        or ".i686" in pkg
+        or pkg.endswith("-32bit")
+        or pkg.startswith("lib32-")
+    )
 
 
 def _check_cmd(pkg_manager: str, pkg: str) -> list[str] | None:
