@@ -45,6 +45,8 @@ jobs:
             manager: zypper
     container:
       image: ${{ matrix.distro.image }}
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - name: Install dependencies
         run: |
@@ -63,7 +65,9 @@ jobs:
               zypper install -y python3 git curl >/dev/null
               ;;
           esac
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        run: |
+          cd /tmp && git clone --depth 1 https://github.com/iswad-lab/TouchDesigner-Linux.git td-repo && cp -a td-repo/. /__w/TouchDesigner-Linux/TouchDesigner-Linux
       - name: Verify distro detection
         run: python3 -c "exec('from td_lib.distro import detect_distro; d = detect_distro(); print(d.distro_name + \" (\" + d.package_manager + \")\")')"
       - name: Run static tests
