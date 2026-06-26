@@ -81,6 +81,9 @@ def patch_toe_projects_in_drive() -> None:
                 toe_dir = f"{toe_path}.dir"
                 toe_toc = f"{toe_path}.toc"
 
+                # Show which file we're checking
+                info(f"Checking: {toe_name}")
+
                 # Check if already patched
                 shutil.rmtree(toe_dir, ignore_errors=True)
                 safe_rm(toe_toc)
@@ -98,7 +101,6 @@ def patch_toe_projects_in_drive() -> None:
                     skipped += 1
                     continue
 
-                # Show which file is being patched
                 info(f"Patching: {toe_name}")
 
                 # Backup
