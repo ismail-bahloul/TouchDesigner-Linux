@@ -25,6 +25,7 @@ depends=(
 )
 makedepends=()
 optdepends=('nvidia-utils: NVIDIA GPU acceleration')
+options=('!strip')
 provides=("${pkgname}-${pkgver}")
 conflicts=()
 replaces=()
