@@ -304,11 +304,10 @@ def show_uninstall_menu() -> None:
                 elif seq == "[B":
                     cursor = (cursor + 1) % total_opts
             elif key in ("\r", "\n"):
-                >
-                                typ = options[cursor][0]
-                                if typ == "cancel":
-                                    break
-                                elif typ == "everything":
+                typ = options[cursor][0]
+                if typ == "cancel":
+                    break
+                elif typ == "everything":
                     termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
                     sys.stdout.write("\033[?25h")
                     print()
