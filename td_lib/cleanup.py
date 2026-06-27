@@ -189,8 +189,12 @@ def _process_uninstall_text_selection(selection: str, versions: list) -> None:
         info("Uninstall cancelled")
 
 
-def show_uninstall_menu() -> None:
-    """Show interactive uninstall menu for selecting versions or full removal."""
+def show_uninstall_menu() -> bool:
+    """Show interactive uninstall menu for selecting versions or full removal.
+
+    Returns True if something was actually done (version removed, everything nuked).
+    Returns False if the user cancelled (Back) or no action was taken.
+    """
     import sys
     import termios
     import tty
@@ -213,9 +217,10 @@ def show_uninstall_menu() -> None:
 
         if choice == "1":
             uninstall_everything()
+            return True
         else:
             info("Uninstall cancelled")
-        return
+            return False
 
     print(f"\nDetected versions in Wine prefix:\n")
 
@@ -253,7 +258,7 @@ def show_uninstall_menu() -> None:
         except (EOFError, KeyboardInterrupt):
             selection = "0"
         _process_uninstall_text_selection(selection, versions)
-        return
+        return False
 
     def _draw_versions():
         lines = []
@@ -291,7 +296,7 @@ def show_uninstall_menu() -> None:
             if key == "\x03":
                 info("\nUninstall cancelled")
                 sys.stdout.write("\033[?25h")
-                return
+                return False
 
             if key == "\x1b":
                 seq = ""
@@ -316,7 +321,8 @@ def show_uninstall_menu() -> None:
                     )
                     if confirm in ("y", "yes"):
                         uninstall_everything()
-                    return
+                        return True
+                    return False
                 elif typ == "version":
                     install_dir = options[cursor][3]
                     termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
@@ -327,7 +333,8 @@ def show_uninstall_menu() -> None:
                     )
                     if confirm in ("y", "yes"):
                         uninstall_selected_versions([install_dir])
-                    return
+                        return True
+                    return False
 
             # Redraw
             lines = _draw_versions()
@@ -344,11 +351,12 @@ def show_uninstall_menu() -> None:
     # Print cancelled message AFTER terminal restoration
     print()
     info("Uninstall cancelled")
+    return False
 
 
 # ── CLI entrypoint ───────────────────────────────────────────────────────────
 
 
-def run_uninstall(args) -> None:
-    """Entrypoint for --uninstall."""
-    show_uninstall_menu()
+def run_uninstall(args) -> bool:
+    """Entrypoint for --uninstall. Returns True if something was removed."""
+    return show_uninstall_menu()
