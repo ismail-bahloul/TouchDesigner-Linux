@@ -73,13 +73,13 @@ build() {
     export WINEDLLOVERRIDES="mscoree="
     export PATH="${srcdir}/soda-wine/bin:${PATH}"
     mkdir -p "${WINEPREFIX}"
-    wine64 wineboot -u 2>&1 || true
+    wine64 wineboot -u >/dev/null 2>&1 || true
 
     msg2 "Installing DXVK..."
-    "${srcdir}/dxvk/setup_dxvk.sh" install 2>&1 || true
+    "${srcdir}/dxvk/setup_dxvk.sh" install >/dev/null 2>&1 || true
 
     msg2 "Installing core fonts..."
-    "${srcdir}/winetricks" -q corefonts 2>&1 || true
+    "${srcdir}/winetricks" -q corefonts >/dev/null 2>&1 || true
 
     msg2 "Wine prefix ready."
 }
@@ -122,6 +122,7 @@ package() {
     echo "Soda Wine ${_soda_version}" >> "${pkgdir}${PREFIX}/VERSION"
     echo "DXVK ${_dxvk_version}" >> "${pkgdir}${PREFIX}/VERSION"
 
+    # Wrapper script
     msg2 "Creating wrapper..."
     mkdir -p "${pkgdir}${PREFIX}/app"
     cat > "${pkgdir}${PREFIX}/app/touchdesigner-wrapper.sh" << 'WRAPPER'
@@ -144,43 +145,28 @@ export LD_LIBRARY_PATH="${RUNNER_DIR}/lib:${RUNNER_DIR}/lib64:${LD_LIBRARY_PATH:
 
 mkdir -p "$(dirname "${WINE_PREFIX}")"
 
-# Copy pre-made prefix on first run (instant)
-if [ ! -f "${WINE_PREFIX}/drive_c/windows/system.reg" ] && [ -d "${PREFIX}/default-prefix" ]; then
+[ ! -f "${WINE_PREFIX}/drive_c/windows/system.reg" ] && [ -d "${PREFIX}/default-prefix" ] && {
     echo "TouchDesigner — Placing pre-made Wine prefix..."
     mkdir -p "${WINE_PREFIX}"
     cp -r "${PREFIX}/default-prefix/"* "${WINE_PREFIX}/" 2>/dev/null
-fi
+}
 
-# ProgramData
-if [ -d "${DATA_DIR}/ProgramData" ]; then
+[ -d "${DATA_DIR}/ProgramData" ] && {
     mkdir -p "${WINE_PREFIX}/drive_c/ProgramData"
     cp -r "${DATA_DIR}/ProgramData/"* "${WINE_PREFIX}/drive_c/ProgramData/" 2>/dev/null
-fi
+}
 
-# Handle .toe argument
 INPUT_PATH=""
-if [ -n "$1" ]; then
-    INPUT_PATH="$1"
-    if [[ "$INPUT_PATH" == file://* ]]; then
-        INPUT_PATH="${INPUT_PATH#file://}"
-        INPUT_PATH="$(python3 -c "import sys,urllib.parse; print(urllib.parse.unquote(sys.argv[1]))" "$INPUT_PATH" 2>/dev/null || echo "$INPUT_PATH")"
-    fi
-fi
+[ -n "$1" ] && { INPUT_PATH="$1"; [[ "$INPUT_PATH" == file://* ]] && { INPUT_PATH="${INPUT_PATH#file://}"; INPUT_PATH="$(python3 -c "import sys,urllib.parse; print(urllib.parse.unquote(sys.argv[1]))" "$INPUT_PATH" 2>/dev/null || echo "$INPUT_PATH")"; }; }
 
-# Find toeexpand in Wine prefix or TD install dir
 TOE_EXPAND="$(find "$WINE_PREFIX/drive_c" -type f -iname 'toeexpand.exe' 2>/dev/null | head -n1 || true)"
 TOE_COLLAPSE="$(find "$WINE_PREFIX/drive_c" -type f -iname 'toecollapse.exe' 2>/dev/null | head -n1 || true)"
-if [ -z "$TOE_EXPAND" ] && [ -f "${TD_DIR}/bin/toeexpand.exe" ]; then
-    TOE_EXPAND="${TD_DIR}/bin/toeexpand.exe"
-    TOE_COLLAPSE="${TD_DIR}/bin/toecollapse.exe"
-fi
+[ -z "$TOE_EXPAND" ] && [ -f "${TD_DIR}/bin/toeexpand.exe" ] && { TOE_EXPAND="${TD_DIR}/bin/toeexpand.exe"; TOE_COLLAPSE="${TD_DIR}/bin/toecollapse.exe"; }
 
-# Find TD executable
 TD_EXE="" && for f in "${TD_DIR}/bin/TouchDesigner.exe" "${TD_DIR}/TouchDesigner.exe"; do [ -f "$f" ] && { TD_EXE="$f"; break; }; done
 [ -z "$TD_EXE" ] && TD_EXE=$(find "${TD_DIR}" -name 'TouchDesigner*.exe' -type f 2>/dev/null | head -1)
 [ -z "$TD_EXE" ] && { echo "Error: TouchDesigner not found"; exit 1; }
 
-# Auto-patching .toe files
 patch_toe() {
     local F="$1"; [ -f "$F" ] || return 0
     local B="$(basename "$F")" D="$(dirname "$F")"
@@ -190,12 +176,11 @@ patch_toe() {
     WINEPREFIX="$WINE_PREFIX" wine64 "$TOE_EXPAND" "$W" >/dev/null 2>&1 || true
     local P=false; [ ! -d "$DIR/wine_ui_fixes" ] && P=true
     rm -rf "$DIR" "$TOC"
-    if $P; then
+    $P && {
         mkdir -p "$BACKUP_DIR"
         cp -f "$F" "$BACKUP_DIR/${F//\//_}.bak"
         WINEPREFIX="$WINE_PREFIX" wine64 "$TOE_EXPAND" "$W" >/dev/null 2>&1 || true
-        [ -d "$DIR" ] && {
-            local T="$(mktemp -d /tmp/td_patch.XXXXXX)"
+        [ -d "$DIR" ] && { local T="$(mktemp -d /tmp/td_patch.XXXXXX)"
             cp -f "$FIX_FILE" "$T/fix.tox"
             WINEPREFIX="$WINE_PREFIX" wine64 "$TOE_EXPAND" "z:${T//\\/\\\\}/fix.tox" >/dev/null 2>&1 || true
             [ -d "$T/fix.tox.dir" ] && cp -rf "$T/fix.tox.dir/"* "$DIR/"
@@ -204,21 +189,20 @@ patch_toe() {
             WINEPREFIX="$WINE_PREFIX" wine64 "$TOE_COLLAPSE" "$W" >/dev/null 2>&1 || true
         }
         rm -rf "$DIR" "$TOC"
-    fi
+    }
 }
 
-if [ -n "$TOE_EXPAND" ] && [ -n "$TOE_COLLAPSE" ] && [ -f "$FIX_FILE" ]; then
+[ -n "$TOE_EXPAND" ] && [ -n "$TOE_COLLAPSE" ] && [ -f "$FIX_FILE" ] && {
     T="$(mktemp -d /tmp/td_fix.XXXXXX)"
     cp -f "$FIX_FILE" "$T/fix.tox"
     WINEPREFIX="$WINE_PREFIX" wine64 "$TOE_EXPAND" "z:${T//\\/\\\\}/fix.tox" >/dev/null 2>&1 || true
-    if [ -d "$T/fix.tox.dir" ]; then
-        FIX_ENTS=()
+    [ -d "$T/fix.tox.dir" ] && { FIX_ENTS=()
         while IFS= read -r e; do [ -n "$e" ] && [[ "$e" != \#* ]] && [ "$e" != ".build" ] && FIX_ENTS+=("$e"); done < "$T/fix.tox.toc"
         while IFS= read -r -d '' f; do patch_toe "$f"; done < <(find "$WINE_PREFIX/drive_c" -type f -iname 'NewProject.toe' -print0 2>/dev/null || true)
         [ -n "$INPUT_PATH" ] && [[ "$INPUT_PATH" == *.toe ]] && patch_toe "$INPUT_PATH"
-    fi
+    }
     rm -rf "$T"
-fi
+}
 
 find "$BACKUP_DIR" -name '*.bak' -type f -mtime +30 -delete 2>/dev/null || true
 
