@@ -56,7 +56,6 @@ build() {
     msg2 "Extracting DXVK..."
     mkdir -p dxvk && tar -xzf "dxvk-${_dxvk_version}.tar.gz" -C dxvk --strip-components=1 >/dev/null 2>&1
     chmod +x winetricks
-
     msg2 "Setting up Wine prefix..."
     export WINEPREFIX="${srcdir}/prefix-template" WINEDLLOVERRIDES="mscoree="
     export PATH="${srcdir}/soda-wine/bin:${PATH}"
@@ -65,7 +64,6 @@ build() {
     "${srcdir}/dxvk/setup_dxvk.sh" install >/dev/null 2>&1 || true
     "${srcdir}/winetricks" -q corefonts >/dev/null 2>&1 || true
     msg2 "Wine prefix ready."
-
     msg2 "Patching NewProject.toe templates..."
     TOE_EXP="$(find "${srcdir}/td" -type f -iname 'toeexpand.exe' -print -quit 2>/dev/null)"
     TOE_COL="$(find "${srcdir}/td" -type f -iname 'toecollapse.exe' -print -quit 2>/dev/null)"
@@ -127,74 +125,11 @@ package() {
 
     msg2 "Creating wrapper..."
     mkdir -p "${pkgdir}${P}/app"
-    cat > "${pkgdir}${P}/app/touchdesigner-wrapper.sh" << WRAPPER
+    install -Dm755 "${RD}/dist/arch/touchdesigner-launcher.py" "${pkgdir}${P}/app/touchdesigner-launcher.py"
+    cat > "${pkgdir}${P}/app/touchdesigner-wrapper.sh" << 'WRSH'
 #!/bin/bash
-P="/opt/touchdesigner"
-WINE="\${P}/wine/bin/wine64"
-WINE_PREFIX="\${HOME}/.local/share/touchdesigner-linux/prefix"
-export WINEDLLOVERRIDES="mscoree="
-export WINEDEBUG="fixme-all,warn-all"
-export PATH="\${P}/wine/bin:\${PATH}"
-export LD_LIBRARY_PATH="\${P}/wine/lib:\${P}/wine/lib64:\${LD_LIBRARY_PATH:-}"
-
-mkdir -p "\$(dirname "\${WINE_PREFIX}")"
-
-if [ ! -f "\${WINE_PREFIX}/drive_c/windows/system.reg" ] && [ -d "\${P}/default-prefix" ]; then
-    echo "TouchDesigner - Setting up..."
-    mkdir -p "\${WINE_PREFIX}" && cp -r "\${P}/default-prefix/"* "\${WINE_PREFIX}/" 2>/dev/null
-fi
-
-if [ -d "\${P}/data/ProgramData" ]; then
-    mkdir -p "\${WINE_PREFIX}/drive_c/ProgramData"
-    cp -r "\${P}/data/ProgramData/"* "\${WINE_PREFIX}/drive_c/ProgramData/" 2>/dev/null
-fi
-
-# If .toe file passed: patch it with Python td_lib, then open with TD
-if [ -f "\$1" ] && [[ "\$1" == *.toe ]]; then
-    python3 -c "
-import sys, os
-sys.path.insert(0, '/usr/share/touchdesigner-linux')
-os.environ['WINE'] = '\${P}/wine/bin/wine64'
-os.environ['WINEPREFIX'] = '\${WINE_PREFIX}'
-os.environ['WINEDLLOVERRIDES'] = 'mscoree='
-# Patch the .toe file
-TOE_EXPAND = os.path.join("/opt/touchdesigner", "td/bin/toeexpand.exe")
-TOE_COLLAPSE = os.path.join("/opt/touchdesigner", "td/bin/toecollapse.exe")
-FIX_FILE = "/opt/touchdesigner/wine_ui_fixes.tox"
-import subprocess, tempfile, shutil
-if os.path.exists(TOE_EXPAND) and os.path.exists(TOE_COLLAPSE) and os.path.exists(FIX_FILE):
-    toe = sys.argv[1]
-    toe_dir = toe + '.dir'
-    toe_toc = toe + '.toc'
-    shutil.rmtree(toe_dir, True); shutil.rmtree(toe_toc, True)
-    subprocess.run(['wine64', TOE_EXPAND, 'z:' + toe], capture_output=True, env=os.environ)
-    needs = not os.path.isdir(os.path.join(toe_dir, 'wine_ui_fixes'))
-    shutil.rmtree(toe_dir, True); shutil.rmtree(toe_toc, True)
-    if needs:
-        subprocess.run(['wine64', TOE_EXPAND, 'z:' + toe], capture_output=True, env=os.environ)
-        if os.path.isdir(toe_dir):
-            t = tempfile.mkdtemp(prefix='td_patch_')
-            shutil.copy2(FIX_FILE, os.path.join(t, 'fix.tox'))
-            subprocess.run(['wine64', TOE_EXPAND, 'z:' + os.path.join(t, 'fix.tox')], capture_output=True, env=os.environ)
-            fix_dir = os.path.join(t, 'fix.tox.dir')
-            if os.path.isdir(fix_dir):
-                for f in os.listdir(fix_dir):
-                    dst = os.path.join(toe_dir, f)
-                    if os.path.isdir(os.path.join(fix_dir, f)):
-                        shutil.copytree(os.path.join(fix_dir, f), dst, dirs_exist_ok=True)
-                    else:
-                        shutil.copy2(os.path.join(fix_dir, f), dst)
-            shutil.rmtree(t, True)
-            subprocess.run(['wine64', TOE_COLLAPSE, 'z:' + toe], capture_output=True, env=os.environ)
-            shutil.rmtree(toe_dir, True); shutil.rmtree(toe_toc, True)
-" "\$1" 2>/dev/null || true
-fi
-
-TD_EXE="" && for f in "\${P}/td/bin/TouchDesigner.exe" "\${P}/td/TouchDesigner.exe"; do [ -f "\$f" ] && { TD_EXE="\$f"; break; }; done
-[ -z "\$TD_EXE" ] && TD_EXE=\$(find "\${P}/td" -name 'TouchDesigner*.exe' -type f 2>/dev/null | head -1)
-[ -z "\$TD_EXE" ] && { echo "Error: TouchDesigner not found"; exit 1; }
-WINEPREFIX="\${WINE_PREFIX}" "\${WINE}" "\${TD_EXE}" "\$@"
-WRAPPER
+exec /opt/touchdesigner/app/touchdesigner-launcher.py "$@"
+WRSH
     chmod 755 "${pkgdir}${P}/app/touchdesigner-wrapper.sh"
     mkdir -p "${pkgdir}/usr/bin" && ln -s "${P}/app/touchdesigner-wrapper.sh" "${pkgdir}/usr/bin/touchdesigner"
 
