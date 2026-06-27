@@ -128,6 +128,8 @@ package() {
     msg2 "Installing DXVK..."
     mkdir -p "${pkgdir}${P}/dxvk" && cp -r dxvk/* "${pkgdir}${P}/dxvk/" >/dev/null 2>&1
     install -Dm755 winetricks "${pkgdir}${P}/winetricks"
+    mkdir -p "${pkgdir}${P}/backups"
+    chmod 777 "${pkgdir}${P}/backups"
     [ -d prefix-template ] && { msg2 "Packaging pre-made Wine prefix..."; mkdir -p "${pkgdir}${P}/default-prefix"; cp -r prefix-template/* "${pkgdir}${P}/default-prefix/" >/dev/null 2>&1; }
     { echo "TouchDesigner ${_td_ver}"; echo "Soda Wine ${_soda_version}"; echo "DXVK ${_dxvk_version}"; } > "${pkgdir}${P}/VERSION"
 
@@ -141,7 +143,7 @@ TD_DIR="\${P}/td"
 WINE_PREFIX="\${HOME}/.local/share/touchdesigner-linux/prefix"
 BACKUP_DIR="\${P}/backups"
 FIX_FILE="\${P}/wine_ui_fixes.tox"
-export WINEDLLOVERRIDES="mscoree=" WINEDEBUG="-all"
+export WINEDLLOVERRIDES="mscoree=" WINEDEBUG="fixme-all"
 export PATH="\${P}/wine/bin:\${PATH}"
 export LD_LIBRARY_PATH="\${P}/wine/lib:\${P}/wine/lib64:\${LD_LIBRARY_PATH:-}"
 
