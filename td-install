@@ -81,9 +81,10 @@ def main():
                 run_update(args)
                 args.action = None
             case "uninstall":
-                if not run_uninstall(args):
-                    continue  # Back pressed, skip pause
+                did_uninstall = run_uninstall(args)
                 args.action = None
+                if not did_uninstall:
+                    continue  # Back pressed, skip pause
             case _:
                 break
 
