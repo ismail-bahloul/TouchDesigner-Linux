@@ -125,7 +125,7 @@ package() {
 
     msg2 "Creating wrapper..."
     mkdir -p "${pkgdir}${P}/app"
-    install -Dm755 "${RD}/dist/arch/touchdesigner-launcher.py" "${pkgdir}${P}/app/touchdesigner-launcher.py"
+    install -Dm755 "${RD}/touchdesigner-launcher.py" "${pkgdir}${P}/app/touchdesigner-launcher.py"
     cat > "${pkgdir}${P}/app/touchdesigner-wrapper.sh" << 'WRSH'
 #!/bin/bash
 exec /opt/touchdesigner/app/touchdesigner-launcher.py "$@"
