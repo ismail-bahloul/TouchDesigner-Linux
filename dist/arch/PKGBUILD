@@ -236,6 +236,7 @@ MIME
         mkdir -p "${pkgdir}/usr/share/touchdesigner-linux"
         cp -r "${RD}/td_lib" "${pkgdir}/usr/share/touchdesigner-linux/" >/dev/null 2>&1
         if [ -f "${RD}/Assets/wine_ui_fixes.tox" ]; then
+            install -Dm644 "${RD}/Assets/wine_ui_fixes.tox" "${pkgdir}${P}/wine_ui_fixes.tox"
             install -Dm644 "${RD}/Assets/wine_ui_fixes.tox" "${pkgdir}/usr/share/touchdesigner-linux/wine_ui_fixes.tox"
         fi
     fi
