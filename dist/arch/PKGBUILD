@@ -1,0 +1,76 @@
+# Maintainer: Iswad <iswad@archlinux.org>
+# Contributor: Iswad
+
+pkgname=touchdesigner-linux
+pkgver=1.4
+pkgrel=1
+pkgdesc="Automated installer for TouchDesigner on Linux — Wine-based, Vulkan-accelerated"
+arch=('x86_64')
+url="https://github.com/iswad-lab/TouchDesigner-Linux"
+license=('GPL3')
+depends=(
+    'python'
+    'git'
+    'curl'
+    'wget'
+    'tar'
+    'xz'
+    'cabextract'
+    'unzip'
+    'p7zip'
+    'innoextract'
+    'mesa-utils'
+    'vulkan-tools'
+    'vulkan-icd-loader'
+    'lib32-vulkan-icd-loader'
+    'lib32-glib2'
+    'lib32-gcc-libs'
+    'lib32-libx11'
+    'lib32-libxext'
+    'lib32-libxrender'
+    'lib32-libxrandr'
+    'lib32-libxi'
+    'lib32-libxcursor'
+    'lib32-libxfixes'
+    'lib32-libxinerama'
+    'lib32-libxxf86vm'
+    'lib32-libxcomposite'
+    'lib32-gnutls'
+    'lib32-freetype2'
+    'lib32-fontconfig'
+    'lib32-alsa-lib'
+    'xorg-xwayland'
+)
+makedepends=()
+checkdepends=()
+optdepends=(
+    'nvidia-utils: NVIDIA GPU acceleration'
+)
+provides=('touchdesigner-linux')
+conflicts=()
+replaces=()
+source=("$pkgname-$pkgver.tar.gz::https://github.com/iswad-lab/TouchDesigner-Linux/archive/refs/tags/v$pkgver.tar.gz")
+b2sums=('SKIP')
+
+package() {
+    cd "$srcdir/TouchDesigner-Linux-$pkgver"
+
+    # Main launcher
+    install -Dm755 td-install "$pkgdir/usr/bin/td-install"
+
+    # Python library
+    mkdir -p "$pkgdir/usr/share/touchdesigner-linux"
+    cp -r td_lib "$pkgdir/usr/share/touchdesigner-linux/td_lib"
+
+    # Icons
+    install -Dm644 Assets/Icons/TouchDesigner.svg \
+        "$pkgdir/usr/share/icons/hicolor/scalable/apps/touchdesigner.svg"
+    install -Dm644 Assets/Icons/TouchDesigner-toe.svg \
+        "$pkgdir/usr/share/icons/hicolor/scalable/apps/touchdesigner-toe.svg"
+    install -Dm644 Assets/Icons/TouchDesigner-tox.svg \
+        "$pkgdir/usr/share/icons/hicolor/scalable/apps/touchdesigner-tox.svg"
+
+    # Font fix file
+    install -Dm644 Assets/wine_ui_fixes.tox \
+        "$pkgdir/usr/share/touchdesigner-linux/wine_ui_fixes.tox"
+}

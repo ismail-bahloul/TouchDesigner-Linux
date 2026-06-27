@@ -16,6 +16,11 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
+# Also check system-installed location (AUR, system package)
+SHARE_DIR = "/usr/share/touchdesigner-linux"
+if os.path.isdir(SHARE_DIR) and SHARE_DIR not in sys.path:
+    sys.path.append(SHARE_DIR)
+
 from td_lib.cleanup import run_uninstall
 from td_lib.cli import parse_args
 from td_lib.diagnose import run_diagnose
