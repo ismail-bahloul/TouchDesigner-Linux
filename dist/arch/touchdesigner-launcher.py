@@ -182,13 +182,29 @@ def find_td_exe():
     return None
 
 
+def resolve_path(path):
+    """Resolve a path that may be a file:// URI or Wine path."""
+    if not path:
+        return None
+    # Strip file:// prefix and URL-decode
+    if path.startswith("file://"):
+        from urllib.parse import unquote
+        path = unquote(path[7:])
+    # Strip z:/ or Z:/ Wine prefix if present
+    if path[1:3] in (":/", ":\\"):
+        path = path[2:]
+    return os.path.realpath(path) if os.path.isfile(path) else path
+
+
 def main():
     setup_prefix()
     copy_programdata()
     ensure_wine_ready()
 
+    # Resolve input path (handle file:// URIs from double-click)
+    input_path = resolve_path(sys.argv[1] if len(sys.argv) > 1 else None)
+
     # Patch .toe argument if provided
-    input_path = sys.argv[1] if len(sys.argv) > 1 else None
     if input_path and os.path.isfile(input_path) and input_path.lower().endswith(".toe"):
         patch_toe(input_path)
 
