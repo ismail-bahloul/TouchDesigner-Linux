@@ -63,6 +63,12 @@ def run_update(args) -> None:
     info("Patching .toe files...")
     patch_toe_projects_in_drive()
 
+    # 8. Re-apply file associations (in case of update)
+    from .desktop import associate_files
+
+    info("Updating file associations...")
+    associate_files()
+
     print()
     success("Update Complete")
     info("TouchDesigner components are up to date!")

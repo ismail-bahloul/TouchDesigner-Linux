@@ -11,9 +11,8 @@ from .utils import (
     download_file,
     ensure_dir,
     info,
-    run_optional,
+    safe_rm,
     success,
-    warning,
 )
 from .wine import WINE_PREFIX
 
@@ -52,6 +51,7 @@ def install_icons() -> str:
     ensure_dir(TD_BASE_DIR)
 
     # Main TouchDesigner app icon
+    app_icon_dir = os.path.expanduser("~/.local/share/icons/hicolor/scalable/apps")
     local_svg = os.path.join(SCRIPT_DIR, "Assets", "Icons", "TouchDesigner.svg")
     dest_svg = os.path.join(TD_BASE_DIR, "TouchDesigner.svg")
 
@@ -65,6 +65,22 @@ def install_icons() -> str:
         show_progress=False,
     ):
         icon_path = dest_svg
+
+    # Also install in hicolor theme so Icon=TouchDesigner works everywhere
+    ensure_dir(app_icon_dir)
+    shutil.copy2(dest_svg, os.path.join(app_icon_dir, "TouchDesigner.svg"))
+
+    # Refresh icon cache (silent, ignore if index.theme missing)
+    subprocess.run(
+        [
+            "gtk-update-icon-cache",
+            "-q",
+            "-f",
+            os.path.dirname(os.path.dirname(app_icon_dir)),
+        ],
+        capture_output=True,
+        timeout=10,
+    )
 
     # MIME type icons (.toe, .tox)
     ensure_dir(MIME_ICON_DIR)
@@ -117,7 +133,7 @@ def create_shortcuts(icon_path: str) -> None:
 
     _update_desktop_database()
 
-    success(f"Shortcuts created (Desktop + Application menu)")
+    success("Shortcuts created (Desktop + Application menu)")
 
 
 def create_versioned_shortcuts(icon_path: str) -> None:
@@ -264,7 +280,7 @@ def associate_files() -> None:
             "Categories=Graphics;\n"
         )
 
-    # Set default application
+    # Set default application via xdg-mime
     if shutil.which("xdg-mime"):
         subprocess.run(
             [
@@ -285,7 +301,23 @@ def associate_files() -> None:
             capture_output=True,
         )
 
-    success(".toe and .tox files associated with TouchDesigner")
+    # GNOME/Wayland fallback: write directly to mimeapps.list
+    mimeapps = os.path.expanduser("~/.config/mimeapps.list")
+    ensure_dir(os.path.dirname(mimeapps))
+    toe_assoc = "application/x-touchdesigner-toe=touchdesigner-file.desktop"
+    tox_assoc = "application/x-touchdesigner-tox=touchdesigner-file.desktop"
+    if os.path.isfile(mimeapps):
+        with open(mimeapps, "r") as f:
+            content = f.read()
+    else:
+        content = "[Default Applications]\n"
+    for assoc in [toe_assoc, tox_assoc]:
+        if assoc not in content:
+            content += assoc + "\n"
+    with open(mimeapps, "w") as f:
+        f.write(content)
+
+    success(".toe files associated with TouchDesigner")
 
 
 # ── Font fix (wine_ui_fixes.tox) ────────────────────────────────────────────
