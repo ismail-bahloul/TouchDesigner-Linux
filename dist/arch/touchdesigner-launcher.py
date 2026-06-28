@@ -32,12 +32,16 @@ def setup_prefix():
         print("TouchDesigner - Setting up...")
         os.makedirs(os.path.dirname(WINE_PREFIX), exist_ok=True)
         for item in os.listdir(default_prefix):
-            src = os.path.join(default_prefix, item)
-            dst = os.path.join(WINE_PREFIX, item)
-            if os.path.isdir(src):
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-            else:
-                shutil.copy2(src, dst)
+                # Skip dosdevices - Wine recreates them and they contain
+                # circular symlinks (z:/ -> /) that cause infinite recursion
+                if item == "dosdevices":
+                    continue
+                src = os.path.join(default_prefix, item)
+                dst = os.path.join(WINE_PREFIX, item)
+                if os.path.isdir(src):
+                    shutil.copytree(src, dst, dirs_exist_ok=True, symlinks=True)
+                else:
+                    shutil.copy2(src, dst)
 
 
 def copy_programdata():

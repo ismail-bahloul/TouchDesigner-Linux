@@ -43,8 +43,10 @@ source=(
     "TouchDesigner.${_td_ver}.exe::${_td_url}"
     "dxvk-${_dxvk_version}.tar.gz::${_dxvk_url}"
     "winetricks::${_winetricks_url}"
+    "touchdesigner-launcher.py"
+    "touchdesigner-linux.install"
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 build() {
     msg2 "Extracting TouchDesigner..."
@@ -172,7 +174,7 @@ package() {
 
     # ── Launcher Python script ──
     msg2 "Installing launcher..."
-    install -Dm755 "${RD}/dist/arch/touchdesigner-launcher.py" "${pkgdir}${P}/app/touchdesigner-launcher.py"
+    install -Dm755 "${srcdir}/touchdesigner-launcher.py" "${pkgdir}${P}/app/touchdesigner-launcher.py"
     mkdir -p "${pkgdir}/usr/bin"
     ln -sf "${P}/app/touchdesigner-launcher.py" "${pkgdir}/usr/bin/touchdesigner"
 
@@ -192,7 +194,7 @@ package() {
 Version=1.0
 Type=Application
 Name=TouchDesigner ${_td_ver}
-Comment=Visual development platform
+Comment=Real-time visual development platform
 Exec=${P}/app/touchdesigner-launcher.py
 Icon=touchdesigner
 Terminal=false
@@ -254,12 +256,6 @@ MIME
             "${pkgdir}/usr/share/icons/hicolor/scalable/apps/touchdesigner-tox.svg"
     fi
 
-    # ── Default file associations via xdg ──
-    msg2 "Setting default file associations..."
-    mkdir -p "${pkgdir}/usr/share/applications"
-    cat > "${pkgdir}/usr/share/glib-2.0/schemas/touchdesigner.gschema.override" << SCHEMA
-[org.gnome.desktop.default-applications]
-mime-handler/application-x-touchdesigner-toe='touchdesigner-file.desktop'
-mime-handler/application-x-touchdesigner-tox='touchdesigner-file.desktop'
-SCHEMA
+    # ── Default file associations via post-install hook (.install) ──
+    msg2 "File associations will be set on install via xdg-mime"
 }
