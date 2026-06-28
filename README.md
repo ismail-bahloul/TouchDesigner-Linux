@@ -3,7 +3,6 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/iswad-lab/TouchDesigner-Linux/tests.yml?label=Tests)](https://github.com/iswad-lab/TouchDesigner-Linux/actions)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://python.org)
 [![AUR](https://img.shields.io/aur/version/touchdesigner-linux?label=AUR)](https://aur.archlinux.org/packages/touchdesigner-linux)
-[![License](https://img.shields.io/aur/license/touchdesigner-linux?label=License)](https://aur.archlinux.org/packages/touchdesigner-linux)
 
 Run TouchDesigner on Linux via Wine — fully automated installation.
 
