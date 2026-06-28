@@ -43,9 +43,9 @@ Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An o
 
 Currently requires `USE_NVIDIA_DGPU=Y` manually. Could detect NVIDIA + Intel/AMD hybrid setups automatically and offer config on first launch.
 
-### 6. Distribution packages (AUR / Flatpak)
+### 6. Distribution packages (Flatpak)
 
-**AUR package** — An Arch Linux PKGBUILD for `yay -S touchdesigner-linux` with automatic updates.
+**AUR package** — ✅ **Done!** `paru -S touchdesigner-linux` with automatic updates.
 
 **Flatpak** — Distro-agnostic, sandboxed, one-command install. Requires more work around GPU driver access and sandboxing.
 
@@ -59,17 +59,9 @@ Installing multiple versions of TouchDesigner adds up quickly. A menu entry to r
 
 ---
 
-## Long-term: Python rewrite
+## Long-term
 
-The current `install.sh` is **3340 lines of bash**. As features grow, this is becoming hard to maintain. A Python rewrite would bring:
-
-- Modular structure (small files, clear responsibilities)
-- Proper CLI (argparse) for free
-- Error handling that doesn't rely on `|| exit 1`
-- Easier contributions from the community
-- Testability (pytest)
-
-The installer already depends on `python3` (IDS patch, URI decoding), so this adds zero new requirements for users.
+- ~~Python rewrite~~ ✅ **Done!** The installer now uses modular Python (`td-install`, `td_lib/`).
 
 ---
 

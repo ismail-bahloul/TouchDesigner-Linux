@@ -14,12 +14,24 @@ Run TouchDesigner on Linux via Wine — fully automated installation.
 
 ## Quick Install
 
+### Arch Linux (AUR)
+
+```bash
+paru -S touchdesigner-linux
+```
+
+Installs everything pre-configured from the Arch User Repository. Update with `paru -Syu`.
+
+### Any other distro
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
 
 **That's it.** One command for any environment:
 
+- **Any distro** → auto-install
+- **Arch Linux (AUR)** → `paru -S touchdesigner-linux`
 - **Graphical session** → full install with shortcuts
 - **SSH / headless** → auto-detected, prepares everything except GUI-only steps
 
@@ -46,10 +58,20 @@ Arch, CachyOS, Manjaro, Ubuntu, Mint, Pop!_OS, Fedora, RHEL, openSUSE — and de
 
 ## Update
 
+### AUR
+```bash
+paru -Syu
+```
+### Other distros
 Run the installer and choose **2 – Update**. Regenerates launcher, updates winetricks, DXVK, and UI fixes. No need to reinstall TouchDesigner or recreate the Wine prefix.
 
 ## Uninstall
 
+### AUR
+```bash
+sudo pacman -Rns touchdesigner-linux
+```
+### Other distros
 Run the installer and choose **3 – Uninstall**. Remove specific versions or everything (runtime, prefix, launcher, desktop entries, backups).
 
 ---
