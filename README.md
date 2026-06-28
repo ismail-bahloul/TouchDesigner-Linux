@@ -1,5 +1,7 @@
 # TouchDesigner-Linux
 
+[![AUR package](https://img.shields.io/aur/version/touchdesigner-linux?label=AUR)](https://aur.archlinux.org/packages/touchdesigner-linux) [![AUR package](https://img.shields.io/aur/license/touchdesigner-linux?label=License)](https://aur.archlinux.org/packages/touchdesigner-linux)
+
 Run TouchDesigner on Linux via Wine — fully automated installation.
 
 ![Screenshot](Screenshots/TD_Preview.png)
