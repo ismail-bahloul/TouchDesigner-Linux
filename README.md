@@ -14,15 +14,7 @@ Run TouchDesigner on Linux via Wine — fully automated installation.
 
 ## Quick Install
 
-### Arch Linux (AUR)
-
-```bash
-paru -S touchdesigner-linux
-```
-
-Installs everything pre-configured from the Arch User Repository. Update with `paru -Syu`.
-
-### Any other distro
+### Any distro (recommended)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
@@ -30,8 +22,7 @@ curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/i
 
 **That's it.** One command for any environment:
 
-- **Any distro** → auto-install
-- **Arch Linux (AUR)** → `paru -S touchdesigner-linux`
+- **All distros** → auto-install (Arch, Ubuntu, Fedora, etc.)
 - **Graphical session** → full install with shortcuts
 - **SSH / headless** → auto-detected, prepares everything except GUI-only steps
 
@@ -44,6 +35,16 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-L
 ```
 
 The script detects your distro, installs required packages, sets up a Wine environment, downloads and installs TouchDesigner. It supports **multiple versions side-by-side**, auto-patches `.toe` files for font fixes, and creates desktop shortcuts.
+
+### Arch Linux (AUR)
+
+```bash
+paru -S touchdesigner-linux
+```
+
+Installs everything pre-configured from the Arch User Repository. Update with `paru -Syu`.
+
+> **Note:** the `curl` method above also works on Arch — the AUR package is an alternative for users who prefer native package management.
 
 ![Screenshot](Screenshots/Script_Preview.png)
 
