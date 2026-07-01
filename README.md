@@ -59,21 +59,23 @@ Arch, CachyOS, Manjaro, Ubuntu, Mint, Pop!_OS, Fedora, RHEL, openSUSE — and de
 
 ## Update
 
-### AUR
+### Any distro
+Run the installer and choose **2 – Update**. Regenerates launcher, updates winetricks, DXVK, and UI fixes. No need to reinstall TouchDesigner or recreate the Wine prefix.
+
+### Arch Linux (AUR)
 ```bash
 paru -Syu
 ```
-### Other distros
-Run the installer and choose **2 – Update**. Regenerates launcher, updates winetricks, DXVK, and UI fixes. No need to reinstall TouchDesigner or recreate the Wine prefix.
 
 ## Uninstall
 
-### AUR
+### Any distro
+Run the installer and choose **3 – Uninstall**. Remove specific versions or everything (runtime, prefix, launcher, desktop entries, backups).
+
+### Arch Linux (AUR)
 ```bash
 sudo pacman -Rns touchdesigner-linux
 ```
-### Other distros
-Run the installer and choose **3 – Uninstall**. Remove specific versions or everything (runtime, prefix, launcher, desktop entries, backups).
 
 ---
 
