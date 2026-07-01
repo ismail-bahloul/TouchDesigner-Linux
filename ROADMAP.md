@@ -13,17 +13,7 @@ Currently locked to **Soda Wine 9.0-1**. Wine-GE (GloriousEggroll) and Proton-GE
 
 ### 2. Diagnostic / Health check (`--diagnose`)
 
-A single command that checks everything at once:
-
-- Installed TD versions
-- Wine runner + version
-- GPU drivers (NVIDIA / Vulkan / OpenGL)
-- Missing 32-bit dependencies
-- Patched vs unpatched DLLs
-- Disk space
-- Wine prefix health
-
-Users could paste the full output into an issue — saving multiple rounds of back-and-forth debugging.
+✅ **Done!** Run `td-install --diagnose` to check OS, GPU, Vulkan, disk space, Wine, installed TD versions, and IDS patch status in one go.
 
 ### 3. Containerized mode (Distrobox / Docker)
 
@@ -35,7 +25,9 @@ Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An o
 
 ### 4. Richer version management
 
-- Set a default version (when double-clicking a `.toe` file)
+Partially done — **multi-version side-by-side**, version picker on install, versioned shortcuts, and `--exe` flag work. Still missing:
+
+- Set a default version for double-clicking `.toe` files
 - Menu to switch between installed versions without reinstalling
 - Update TD to a newer version without re-downloading everything
 
