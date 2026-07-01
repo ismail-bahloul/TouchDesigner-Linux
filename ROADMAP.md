@@ -47,7 +47,9 @@ Currently the IDS Peak SDK DLLs are patched automatically. If someone ever needs
 
 ### 8. Auto-cleanup of old versions
 
-Installing multiple versions of TouchDesigner adds up quickly. A menu entry to remove specific versions with estimated freed space would be a nice quality-of-life improvement.
+Mostly done — the uninstall menu (`td-install --uninstall`) already lets you select and remove specific versions, and backups are auto-cleaned after 30 days.
+
+Still missing: show estimated freed space per version before removal.
 
 ---
 
