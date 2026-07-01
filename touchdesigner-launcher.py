@@ -215,6 +215,20 @@ def find_td_exe():
 
 
 def main():
+    # Handle --help / -h before anything that touches Wine
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print("Usage: touchdesigner [.toe file]")
+        print()
+        print("Launch TouchDesigner (Wine) on Linux.")
+        print()
+        print("Positional:")
+        print("  .toe file        Open a project file")
+        print()
+        print("Options:")
+        print("  --exe <path>     Use a specific TouchDesigner.exe")
+        print("  --help, -h       Show this help")
+        sys.exit(0)
+
     setup_prefix()
     copy_programdata()
     ensure_wine_ready()

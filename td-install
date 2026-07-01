@@ -21,6 +21,15 @@ SHARE_DIR = "/usr/share/touchdesigner-linux"
 if os.path.isdir(SHARE_DIR) and SHARE_DIR not in sys.path:
     sys.path.append(SHARE_DIR)
 
+# Fallback: look for td_lib relative to this script when run in-tree
+PARENT_DIR = os.path.dirname(SCRIPT_DIR)
+if PARENT_DIR not in sys.path and os.path.isdir(os.path.join(PARENT_DIR, "td_lib")):
+    sys.path.insert(0, PARENT_DIR)
+# Another fallback: /opt/touchdesigner (AUR package td_lib might live there)
+for p in ["/opt/touchdesigner", "/opt/touchdesigner/app"]:
+    if os.path.isdir(os.path.join(p, "td_lib")) and p not in sys.path:
+        sys.path.append(p)
+
 from td_lib.cleanup import run_uninstall
 from td_lib.cli import parse_args
 from td_lib.diagnose import run_diagnose
