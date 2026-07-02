@@ -19,11 +19,19 @@ Currently locked to **Soda Wine 9.0-1**. Wine-GE (GloriousEggroll) and Proton-GE
 
 Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An optional Distrobox (Podman/Docker) mode would sidestep these issues entirely and work on any distro without touching the host system.
 
+### 4. Pip wrapper / Python package manager
+
+Wrap `wine64 python.exe -m pip install <package>` into `td-install --pip`. Lets users install Python packages (numpy, svgwrite, etc.) into TD's bundled Python environment without manually juggling Wine paths.
+
+### 5. Watchdog / systemd service
+
+Systemd user service that launches TD with auto-restart on crash and logs to journald. Makes TD viable for 24/7 installations (exhibitions, kiosks, servers).
+
 ---
 
 ## Under Consideration
 
-### 4. Richer version management
+### 6. Richer version management
 
 Partially done — **multi-version side-by-side**, version picker on install, versioned shortcuts, and `--exe` flag work. Still missing:
 
@@ -31,25 +39,37 @@ Partially done — **multi-version side-by-side**, version picker on install, ve
 - Menu to switch between installed versions without reinstalling
 - Update TD to a newer version without re-downloading everything
 
-### 5. Auto-detect NVIDIA + Optimus switching
+### 7. Auto-detect NVIDIA + Optimus switching
 
 Currently requires `USE_NVIDIA_DGPU=Y` manually. Could detect NVIDIA + Intel/AMD hybrid setups automatically and offer config on first launch.
 
-### 6. Distribution packages (Flatpak)
+### 8. Distribution packages (Flatpak)
 
 **AUR package** — ✅ **Done!** `paru -S touchdesigner-linux` with automatic updates.
 
 **Flatpak** — Distro-agnostic, sandboxed, one-command install. Requires more work around GPU driver access and sandboxing.
 
-### 7. Toggle for each patch (IDS, Engine COMP, WebRender)
+### 9. Toggle for each patch (IDS, Engine COMP, WebRender)
 
 Currently the IDS Peak SDK DLLs are patched automatically. If someone ever needs to use IDS cameras under Wine (or if support improves), each patch should be togglable individually. Same applies to Engine COMP and WebRender fixes.
 
-### 8. Auto-cleanup of old versions
+### 10. Auto-cleanup of old versions
 
 Mostly done — the uninstall menu (`td-install --uninstall`) already lets you select and remove specific versions, and backups are auto-cleaned after 30 days.
 
 Still missing: show estimated freed space per version before removal.
+
+### 11. Config file
+
+Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: default runner, patch toggles, NVIDIA mode, default TD version. Reduces need for CLI flags on every command.
+
+### 12. Headless / kiosk mode
+
+`td-install --headless project.toe` — launch TD without GUI. Useful for automated rendering, server deployment, and export pipelines. Combined with the watchdog and container mode, unlocks serious production use.
+
+### 13. CI/CD pipeline tools
+
+`td-install --expand`, `--collapse`, `--patch-toe` as stable CLI commands for version-controlling and manipulating `.toe` files outside TD. Enables Git-based workflows and automated testing.
 
 ---
 
