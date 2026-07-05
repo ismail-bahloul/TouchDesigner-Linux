@@ -200,7 +200,6 @@ Icon=touchdesigner
 Terminal=false
 Categories=Development;Graphics;
 StartupNotify=true
-StartupWMClass=steam_proton
 DESKTOP
 
     # ── File handler desktop entry (for double-click on .toe) ──
