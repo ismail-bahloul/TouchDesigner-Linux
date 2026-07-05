@@ -1,0 +1,77 @@
+name: Publish to AUR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dist/arch/**"
+  workflow_dispatch:
+
+jobs:
+  aur-publish:
+    runs-on: ubuntu-latest
+    if: github.repository == 'iswad-lab/TouchDesigner-Linux'
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse version info
+        id: version
+        run: |
+          PKGVER=$(grep -m1 '^pkgver=' dist/arch/PKGBUILD | cut -d= -f2)
+          PKGREL=$(grep -m1 '^pkgrel=' dist/arch/PKGBUILD | cut -d= -f2)
+          echo "pkgver=$PKGVER" >> "$GITHUB_OUTPUT"
+          echo "pkgrel=$PKGREL" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout AUR repo
+        uses: actions/checkout@v4
+        with:
+          repository: iswad-lab/touchdesigner-linux
+          ref: master
+          ssh-key: ${{ secrets.AUR_SSH_KEY }}
+          path: aur
+
+      - name: Sync files to AUR repo
+        run: |
+          AUR="${{ github.workspace }}/aur"
+          SRC="${{ github.workspace }}/dist/arch"
+
+          # Copy files that AUR tracks
+          for f in PKGBUILD .SRCINFO touchdesigner-launcher.py touchdesigner-linux.install; do
+            if [ -f "$SRC/$f" ]; then
+              cp "$SRC/$f" "$AUR/$f"
+            fi
+          done
+
+          # Regenerate .SRCINFO from PKGBUILD
+          cd "$AUR"
+          if command -v makepkg &>/dev/null; then
+            makepkg --printsrcinfo > .SRCINFO
+          fi
+
+      - name: Commit and push to AUR
+        run: |
+          AUR="${{ github.workspace }}/aur"
+          cd "$AUR"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if anything changed
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to publish"
+            exit 0
+          fi
+
+          git add -A
+          VERSION="${{ steps.version.outputs.pkgver }}-${{ steps.version.outputs.pkgrel }}"
+          git commit -m "Update to v$VERSION
+
+        Automated publish from iswad-lab/TouchDesigner-Linux
+        Commit: ${{ github.sha }}
+        Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          git push origin master
