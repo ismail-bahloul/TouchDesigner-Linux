@@ -196,9 +196,10 @@ def _write_desktop_file(
         f"Comment={comment}\n"
         f"Exec={exec_cmd}\n"
         f"Icon={icon}\n"
-        "Terminal=false\n"
-        "StartupNotify=true\n"
-        "Categories=Graphics;\n"
+        "Terminal=false"
+        "StartupNotify=true"
+        "StartupWMClass=steam_proton"
+        "Categories=Graphics;"
     )
     with open(path, "w") as f:
         f.write(content)
