@@ -42,7 +42,9 @@ def ensure_drives():
     if not os.path.islink(z_path):
         if os.path.isdir(z_path):
             # Was copied as a regular directory — huge copy of root filesystem
-            print("  Repairing z: drive (was copied as directory instead of symlink)...")
+            print(
+                "  Repairing z: drive (was copied as directory instead of symlink)..."
+            )
             shutil.rmtree(z_path)
         os.symlink("/", z_path)
 
@@ -54,6 +56,27 @@ def ensure_drives():
             os.symlink("../drive_c", c_path)
         else:
             print("Warning: drive_c not found, wineboot may fail")
+
+
+LICENSE_DIR = f"{WINE_PREFIX}/drive_c/ProgramData/Derivative"
+
+
+def backup_license():
+    """Backup license files before wineboot (which may reset prefix state)."""
+    if os.path.isdir(LICENSE_DIR):
+        bak = f"{LICENSE_DIR}.bak"
+        shutil.rmtree(bak, True)
+        shutil.copytree(LICENSE_DIR, bak, symlinks=True, dirs_exist_ok=True)
+        return True
+    return False
+
+
+def restore_license():
+    """Restore license files if wineboot cleared them."""
+    bak = f"{LICENSE_DIR}.bak"
+    if os.path.isdir(bak) and not os.path.isdir(LICENSE_DIR):
+        shutil.copytree(bak, LICENSE_DIR, symlinks=True, dirs_exist_ok=True)
+    shutil.rmtree(bak, True)
 
 
 def setup_prefix():
@@ -245,7 +268,10 @@ def main():
 
     setup_prefix()
     copy_programdata()
+    had_license = backup_license()
     ensure_wine_ready()
+    if had_license:
+        restore_license()
 
     # Patch .toe argument if provided
     input_path = sys.argv[1] if len(sys.argv) > 1 else None
