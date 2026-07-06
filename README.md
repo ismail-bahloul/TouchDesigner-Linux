@@ -85,6 +85,20 @@ sudo pacman -Rns touchdesigner-linux
 - [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
 - [Advanced tools (toeexpand / toecollapse)](docs/advanced-tools.md)
 
+## First launch
+
+On the very first launch, TouchDesigner will show a license activation screen.
+**The font fix is not applied yet at this stage** — you may notice missing or broken text at the bottom of the window.
+
+This is normal and temporary:
+
+1. First launch → license screen appears → text may look broken
+2. Enter your license
+3. Close TouchDesigner
+4. Launch again → font fix is applied
+
+The font patch (`wine_ui_fixes.tox`) only gets injected into project files at launch, but the license screen is part of the native exe and runs before any `.toe` is loaded.
+
 ## Useful paths
 
 | Path | Description |
