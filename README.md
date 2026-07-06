@@ -89,9 +89,9 @@ File icons installed by the project:
 
 ## Support
 
-If this project helps you, consider:
+If this project helps you:
 - ⭐ **Star** the repo on [GitHub](https://github.com/iswad-lab/TouchDesigner-Linux)
-- Consider supporting via [GitHub Sponsors](https://github.com/sponsors/iswad-lab)
+- Support via [GitHub Sponsors](https://github.com/sponsors/iswad-lab)
 
 ---
 
