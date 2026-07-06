@@ -44,8 +44,8 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-L
 ## Update & Uninstall
 
 ### Any distro
-- **Update** -> Run the installer and choose **2 - Update**
-- **Uninstall** -> Run the installer and choose **3 - Uninstall**
+- **Update** -> Run the installer and choose **2. Update**
+- **Uninstall** -> Run the installer and choose **3. Uninstall**
 
 Regenerates launcher, winetricks, DXVK, and UI fixes. No need to reinstall TD or recreate the Wine prefix.
 
