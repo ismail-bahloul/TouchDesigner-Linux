@@ -50,8 +50,16 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-L
 Regenerates launcher, winetricks, DXVK, and UI fixes. No need to reinstall TD or recreate the Wine prefix.
 
 ### Arch Linux (AUR)
-- **Update** -> `paru -Syu`
-- **Uninstall** -> `sudo pacman -Rns touchdesigner-linux`
+
+**Update**
+```bash
+paru -Syu
+```
+
+**Uninstall**
+```bash
+sudo pacman -Rns touchdesigner-linux
+```
 
 ---
 
