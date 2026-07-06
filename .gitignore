@@ -36,6 +36,15 @@ tmp/
 
 # Inno Setup extraction artifacts
 $/
+
+# AUR package build artifacts
+dist/arch/pkg/
+dist/arch/src/
+dist/arch/*.zst
+dist/arch/winetricks
+
+# Reaper icons (accidentally added)
+reaper*.png
 commonappdata/
 
 # Safety (Wine / local env)
