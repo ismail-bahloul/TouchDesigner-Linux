@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://python.org)
 [![AUR](https://img.shields.io/aur/version/touchdesigner-linux?label=AUR)](https://aur.archlinux.org/packages/touchdesigner-linux)
 
-Run TouchDesigner on Linux via Wine — fully automated.  
+Run TouchDesigner on Linux via Wine, fully automated.
 One command, works on any distro.
 
 ![Screenshot](Screenshots/TD_Preview.png)
@@ -15,7 +15,7 @@ One command, works on any distro.
 
 ## Quick Install
 
-**Recommended — any distro:**
+**Recommended - any distro:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
@@ -25,12 +25,12 @@ curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/i
 paru -S touchdesigner-linux
 ```
 
-> 5–10 min · ~3–5 GB disk · Auto-cleanup
+> 5-10 min, ~3-5 GB disk, auto-cleanup
 
 The installer auto-detects your distro and environment:
-- **Graphical session** → full install with desktop shortcuts
-- **SSH / headless** → auto-detected, skips GUI-only steps
-- **NVIDIA users** → install GPU driver first, then reboot
+- **Graphical session** -> full install with desktop shortcuts
+- **SSH / headless** -> auto-detected, skips GUI-only steps
+- **NVIDIA users** -> install GPU driver first, then reboot
 
 **Debug mode:**
 ```bash
@@ -43,22 +43,22 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-L
 
 | Distro | Command |
 |--------|---------|
-| Any | Run installer → choose **2 – Update** |
+| Any | Run installer -> choose **2 - Update** |
 | Arch (AUR) | `paru -Syu` |
 
 ## Uninstall
 
 | Distro | Command |
 |--------|---------|
-| Any | Run installer → choose **3 – Uninstall** |
+| Any | Run installer -> choose **3 - Uninstall** |
 | Arch (AUR) | `sudo pacman -Rns touchdesigner-linux` |
 
 ---
 
 ## First Launch
 
-The font fix (`wine_ui_fixes.tox`) is injected into `.toe` files on launch.  
-The **license activation screen** loads before any `.toe` — so text may look broken.
+The font fix (`wine_ui_fixes.tox`) is injected into `.toe` files on launch.
+The **license activation screen** loads before any `.toe`, so text may look broken.
 
 1. Launch TD → license screen (missing text is **normal**)
 2. Enter your license, close TD
@@ -68,9 +68,9 @@ The **license activation screen** loads before any `.toe` — so text may look b
 
 ## Documentation
 
-- [Compatibility status](docs/compatibility.md) — what works and what doesn't
-- [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
-- [Advanced tools](docs/advanced-tools.md) — toeexpand / toecollapse
+- [Compatibility status](docs/compatibility.md) - what works and what doesn't
+- [Troubleshooting](docs/troubleshooting.md) - common issues and fixes
+- [Advanced tools](docs/advanced-tools.md) - toeexpand / toecollapse
 
 ### Useful paths
 
@@ -81,6 +81,10 @@ The **license activation screen** loads before any `.toe` — so text may look b
 | `~/.local/share/touchdesigner-linux/prefix/` | Wine prefix |
 | `~/.local/share/touchdesigner-linux/backups/` | Auto-backups of patched `.toe` files |
 
+File icons installed by the project:
+
+![Screenshot](Screenshots/SVG_Preview.png)
+
 ---
 
 ## Support
@@ -89,4 +93,4 @@ Consider supporting via [GitHub Sponsors](https://github.com/sponsors/iswad-lab)
 
 ---
 
-<div align="center">Built with care — **Iswad**</div>
+<div align="center">Built with care - **Iswad**</div>
