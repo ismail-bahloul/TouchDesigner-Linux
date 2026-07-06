@@ -41,19 +41,17 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-L
 
 ---
 
-## Update
+## Update & Uninstall
 
-| Distro | Command |
-|--------|---------|
-| Any | Run installer -> choose **2 - Update** |
-| Arch (AUR) | `paru -Syu` |
+### Any distro
+- **Update** -> Run the installer and choose **2 - Update**
+- **Uninstall** -> Run the installer and choose **3 - Uninstall**
 
-## Uninstall
+Regenerates launcher, winetricks, DXVK, and UI fixes. No need to reinstall TD or recreate the Wine prefix.
 
-| Distro | Command |
-|--------|---------|
-| Any | Run installer -> choose **3 - Uninstall** |
-| Arch (AUR) | `sudo pacman -Rns touchdesigner-linux` |
+### Arch Linux (AUR)
+- **Update** -> `paru -Syu`
+- **Uninstall** -> `sudo pacman -Rns touchdesigner-linux`
 
 ---
 
@@ -91,7 +89,9 @@ File icons installed by the project:
 
 ## Support
 
-Consider supporting via [GitHub Sponsors](https://github.com/sponsors/iswad-lab).
+If this project helps you, consider:
+- ⭐ **Star** the repo on [GitHub](https://github.com/iswad-lab/TouchDesigner-Linux)
+- 💖 Sponsor via [GitHub Sponsors](https://github.com/sponsors/iswad-lab)
 
 ---
 
