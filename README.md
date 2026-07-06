@@ -37,6 +37,8 @@ The installer auto-detects your distro and environment:
 DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
 
+![Screenshot](Screenshots/Script_Preview.png)
+
 ---
 
 ## Update
@@ -93,4 +95,4 @@ Consider supporting via [GitHub Sponsors](https://github.com/sponsors/iswad-lab)
 
 ---
 
-<div align="center">Built with care - **Iswad**</div>
+<div align="center">Built with care - <b>Iswad</b></div>
