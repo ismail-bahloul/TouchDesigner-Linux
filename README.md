@@ -15,7 +15,7 @@ One command, works on any distro.
 
 ## Quick Install
 
-**Recommended - any distro:**
+**Any distro (recommended)**
 ```bash
 curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
