@@ -58,7 +58,7 @@ paru -Syu
 
 **Uninstall**
 ```bash
-sudo pacman -Rns touchdesigner-linux
+paru -R touchdesigner-linux
 ```
 
 ---
