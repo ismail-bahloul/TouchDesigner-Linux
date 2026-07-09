@@ -21,7 +21,9 @@ Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An o
 
 ### 4. Pip wrapper / Python package manager
 
-Wrap `wine64 python.exe -m pip install <package>` into `td-install --pip`. Lets users install Python packages (numpy, svgwrite, etc.) into TD's bundled Python environment without manually juggling Wine paths.
+Recent TouchDesigner versions now ship pip directly on Windows (`python.exe -m pip`). Since we run TD through Wine, the same pip is available to us.
+
+Goal: wrap `wine64 python.exe -m pip install <package>` into a simple `td-install --pip` command, so users can install packages (numpy, opencv, requests, etc.) into TD's Python environment without manually juggling Wine paths.
 
 ### 5. Watchdog / systemd service
 
