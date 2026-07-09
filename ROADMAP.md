@@ -21,7 +21,7 @@ Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An o
 
 ### 4. Pip wrapper / Python package manager
 
-Recent TouchDesigner versions now ship pip directly on Windows (`python.exe -m pip`). Since we run TD through Wine, the same pip is available to us.
+Recent TouchDesigner versions now ship pip directly on Windows (`python.exe -m pip`). Since we run TD through Wine, the same pip is available to us. (Thanks to community testing for confirming this.)
 
 Goal: wrap `wine64 python.exe -m pip install <package>` into a simple `td-install --pip` command, so users can install packages (numpy, opencv, requests, etc.) into TD's Python environment without manually juggling Wine paths.
 
