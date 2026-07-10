@@ -168,26 +168,35 @@ def _check_wine():
 
 def _check_td_versions():
     info("Installed TouchDesigner versions:")
-    prefix_dir = os.path.join(TD_BASE_DIR, "prefix")
-    drive_c = os.path.join(prefix_dir, "drive_c")
-
-    if not os.path.isdir(drive_c):
-        warning("  No TouchDesigner installation found")
-        print()
-        return
-
     found = False
-    for root, dirs, files in os.walk(drive_c):
-        for f in files:
-            if f.lower() == "touchdesigner.exe":
-                found = True
-                version = _detect_td_version(os.path.join(root, f))
-                install_dir = os.path.relpath(root, drive_c)
-                version_str = version or "(unknown version)"
-                print(f"  {install_dir} → {version_str}")
+
+    # Check Wine prefix (curl install method)
+    drive_c = os.path.join(TD_BASE_DIR, "prefix", "drive_c")
+    if os.path.isdir(drive_c):
+        for root, dirs, files in os.walk(drive_c):
+            for f in files:
+                if f.lower() == "touchdesigner.exe":
+                    found = True
+                    version = _detect_td_version(os.path.join(root, f))
+                    install_dir = os.path.relpath(root, drive_c)
+                    version_str = version or "(unknown version)"
+                    print(f"  {install_dir} \u2192 {version_str}")
+
+    # Check AUR package path
+    aur_td = "/opt/touchdesigner/td"
+    if os.path.isdir(aur_td):
+        for root, dirs, files in os.walk(aur_td):
+            for f in files:
+                if f.lower() == "touchdesigner.exe":
+                    found = True
+                    version = _detect_td_version(os.path.join(root, f))
+                    version_str = version or "(unknown version)"
+                    print(f"  /opt/touchdesigner/td/ \u2192 {version_str}")
 
     if not found:
-        warning("  No TouchDesigner.exe found in Wine prefix")
+        warning(
+            "  No TouchDesigner.exe found (checked Wine prefix and /opt/touchdesigner)"
+        )
 
     print()
 
