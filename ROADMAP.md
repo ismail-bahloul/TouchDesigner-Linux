@@ -73,7 +73,9 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 `td-install --headless project.toe` — launch TD without GUI. Useful for automated rendering, server deployment, and export pipelines. Combined with the watchdog and container mode, unlocks serious production use.
 
-### 13. CI/CD pipeline tools
+### 14. Dedicated fix documentation page
+
+Create a standalone page (or section) explaining each patch applied by the installer: why `ids_peak_ipl.dll` needs its entrypoint zeroed, why Soda Wine is used over Proton, how the font fix works, LogPixels DPI, wineboot behavior, etc. Target audience: users who prefer manual setup but want to understand what the script does before running it.
 
 `td-install --expand`, `--collapse`, `--patch-toe` as stable CLI commands for version-controlling and manipulating `.toe` files outside TD. Enables Git-based workflows and automated testing.
 
