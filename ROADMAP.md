@@ -11,6 +11,10 @@ This is a living document — priorities may shift based on feedback and contrib
 
 Currently locked to **Soda Wine 9.0-1**. Wine-GE (GloriousEggroll) and Proton-GE often deliver better GPU performance and fewer bugs with graphics-heavy Windows apps. Allow users to pick their runner — or different runners per installed TouchDesigner version.
 
+**Known Proton 10 issue:** TD hangs due to mimalloc + DWrite incompatibility. Fix: set `MIMALLOC_DISABLE_REDIRECT=1`. Must be auto-applied when using Proton runners.
+
+**Spout2PW:** Bridges Spout2 video from Windows apps under Proton to PipeWire on Linux. Useful for OBS capture. AUR package: `spout2pw-bin`. Worth documenting or integrating when Spout output is needed.
+
 ### 2. Diagnostic / Health check (`--diagnose`)
 
 ✅ **Done!** Run `td-install --diagnose` to check OS, GPU, Vulkan, disk space, Wine, installed TD versions, and IDS patch status in one go.
