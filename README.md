@@ -76,9 +76,10 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 
 ## Documentation
 
-- [Compatibility status](docs/compatibility.md) - what works and what doesn't
-- [Troubleshooting](docs/troubleshooting.md) - common issues and fixes
-- [Advanced tools](docs/advanced-tools.md) - toeexpand / toecollapse
+- [How it works](docs/how-it-works.md) — explains each fix and why it's applied
+- [Compatibility status](docs/compatibility.md) — what works and what doesn't
+- [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
+- [Advanced tools](docs/advanced-tools.md) — toeexpand / toecollapse
 
 ### Useful paths
 
