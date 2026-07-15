@@ -421,6 +421,18 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
         if os.path.isdir(commonappdata):
             programdata = os.path.join(WINE_PREFIX, "drive_c", "ProgramData")
             ensure_dir(programdata)
+
+            # Backup Derivative license before commonappdata overwrites it
+            derivative_dir = os.path.join(programdata, "Derivative")
+            bak_dir = None
+            if os.path.isdir(derivative_dir):
+                bak_dir = tempfile.mkdtemp(prefix="td_license_bak_")
+                shutil.copytree(
+                    derivative_dir,
+                    os.path.join(bak_dir, "Derivative"),
+                    dirs_exist_ok=True,
+                )
+
             for item in os.listdir(commonappdata):
                 src = os.path.join(commonappdata, item)
                 dst = os.path.join(programdata, item)
@@ -428,6 +440,18 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
                     shutil.copytree(src, dst, dirs_exist_ok=True)
                 else:
                     shutil.copy2(src, dst)
+
+            # Restore Derivative (license) after commonappdata copy
+            if bak_dir:
+                bak_derivative = os.path.join(bak_dir, "Derivative")
+                if os.path.isdir(bak_derivative):
+                    shutil.rmtree(derivative_dir, ignore_errors=True)
+                    shutil.copytree(
+                        bak_derivative,
+                        derivative_dir,
+                        dirs_exist_ok=True,
+                    )
+                safe_rm(bak_dir)
 
     finally:
         safe_rm(extract_root)
