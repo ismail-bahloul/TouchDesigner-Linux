@@ -201,6 +201,60 @@ if [ -n "$TOE_EXPAND" ] && [ -n "$TOE_COLLAPSE" ] && [ -f "$FIX_FILE" ]; then
     fi
 fi
 
+# ── First-launch setup: wineboot, license, DPI ────────────────────
+INIT_FLAG="$WINE_PREFIX/.td_initialized"
+
+if [ ! -f "$INIT_FLAG" ] && [ -f "$RUNNER_DIR/bin/wineboot" ]; then
+echo "TouchDesigner - Setting up..."
+
+# Backup license before wineboot
+if [ -d "$WINE_PREFIX/drive_c/ProgramData/Derivative" ]; then
+    rm -rf "$WINE_PREFIX/drive_c/ProgramData/Derivative.bak" 2>/dev/null || true
+    cp -r "$WINE_PREFIX/drive_c/ProgramData/Derivative" \
+          "$WINE_PREFIX/drive_c/ProgramData/Derivative.bak" 2>/dev/null || true
+fi
+
+# Initialize prefix
+WINEPREFIX="$WINE_PREFIX" "$RUNNER_DIR/bin/wineboot" -u >/dev/null 2>&1 || true
+sleep 2
+
+# Restore license after wineboot
+if [ -d "$WINE_PREFIX/drive_c/ProgramData/Derivative.bak" ]; then
+    rm -rf "$WINE_PREFIX/drive_c/ProgramData/Derivative" 2>/dev/null || true
+    cp -r "$WINE_PREFIX/drive_c/ProgramData/Derivative.bak" \
+          "$WINE_PREFIX/drive_c/ProgramData/Derivative" 2>/dev/null || true
+    rm -rf "$WINE_PREFIX/drive_c/ProgramData/Derivative.bak" 2>/dev/null || true
+fi
+
+# Auto-detect and apply DPI from Xft.dpi
+XFT_DPI=$(xrdb -query 2>/dev/null | grep "^Xft.dpi" | awk '{{print $2}}' | head -1)
+if [ -z "$XFT_DPI" ]; then
+    XFT_DPI=$(xdpyinfo 2>/dev/null | grep "resolution" | grep -oP '[0-9]+(?=x)' | head -1)
+fi
+XFT_DPI=${{XFT_DPI:-96}}
+
+if [ "$XFT_DPI" -lt 108 ]; then
+    LOGPX=96
+elif [ "$XFT_DPI" -lt 132 ]; then
+    LOGPX=120
+elif [ "$XFT_DPI" -lt 168 ]; then
+    LOGPX=144
+else
+    LOGPX=192
+fi
+
+WINEPREFIX="$WINE_PREFIX" "$RUNNER_DIR/bin/wine64" reg add \
+    "HKEY_CURRENT_CONFIG\\\\Software\\\\Fonts" \
+    /v LogPixels /t REG_DWORD /d $LOGPX /f >/dev/null 2>&1 || true
+
+touch "$INIT_FLAG"
+elif [ -n "${{TD_DPI:-}}" ]; then
+# Apply DPI override on any launch
+WINEPREFIX="$WINE_PREFIX" "$RUNNER_DIR/bin/wine64" reg add \
+    "HKEY_CURRENT_CONFIG\\\\Software\\\\Fonts" \
+    /v LogPixels /t REG_DWORD /d "${{TD_DPI}}" /f >/dev/null 2>&1 || true
+fi
+
 # Auto-cleanup backups older than 30 days
 if [ -d "$BACKUP_DIR" ]; then
     find "$BACKUP_DIR" -name '*.bak' -type f -mtime +30 -delete 2>/dev/null || true

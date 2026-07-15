@@ -430,6 +430,7 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
                 shutil.copytree(
                     derivative_dir,
                     os.path.join(bak_dir, "Derivative"),
+                    symlinks=True,
                     dirs_exist_ok=True,
                 )
 
@@ -449,6 +450,7 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
                     shutil.copytree(
                         bak_derivative,
                         derivative_dir,
+                        symlinks=True,
                         dirs_exist_ok=True,
                     )
                 safe_rm(bak_dir)
