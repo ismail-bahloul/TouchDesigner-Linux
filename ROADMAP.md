@@ -85,7 +85,11 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ### 15. Native external editor support
 
-TouchDesigner on Windows lets you open Text DATs in an external editor (Ctrl+E). Under Wine, you currently need a Windows editor installed in the prefix. Goal: redirect the editor launch to a Linux native editor (VSCode, Codium, Sublime Text, etc.) instead.
+✅ **Done!** (v1.5) TouchDesigner now opens Text DATs (Ctrl+E) in the user's default Linux editor via `winebrowser.exe` -> `xdg-open`. Configured automatically in `pref.txt` (`dats.texteditor`). Change editor with `xdg-mime default <editor.desktop> text/plain`.
+
+### 16. Auto-detect display DPI
+
+✅ **Done!** (v1.5) The launcher now reads `Xft.dpi` from the display server on first launch and applies the correct LogPixels value to Wine (96/120/144/192). No more hardcoded 120 DPI forced on every launch. Override with `TD_DPI=96 touchdesigner`.
 
 ## Long-term
 
