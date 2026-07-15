@@ -83,6 +83,10 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ---
 
+### 15. Native external editor support
+
+TouchDesigner on Windows lets you open Text DATs in an external editor (Ctrl+E). Under Wine, you currently need a Windows editor installed in the prefix. Goal: redirect the editor launch to a Linux native editor (VSCode, Codium, Sublime Text, etc.) instead.
+
 ## Long-term
 
 - ~~Python rewrite~~ ✅ **Done!** The installer now uses modular Python (`td-install`, `td_lib/`).
