@@ -95,6 +95,14 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ✅ **Done!** (v1.5) Bug fix — the installer's `commonappdata/` was overwriting the user's activated license files (`ins2.dat`, `ins5.dat`) on every fresh install, reinstall, or version update. Now backs up `ProgramData/Derivative/` before copying and restores it after.
 
+### 18. Code review bug fixes
+
+✅ **Done!** (v1.5) Systematic code review of all `td_lib/` modules found and fixed:
+- Missing `import re` causing `NameError` on uninstall (`cleanup.py`)
+- Winetricks log read after file deletion — "already installed" message was dead code (`wine.py`)
+- Unreachable `raise SystemExit(1)` after `_handle_wineboot_error` (`wine.py`)
+- Guard against empty version list before `versions[0]` access (`install.py`)
+
 ## Long-term
 
 - ~~Python rewrite~~ ✅ **Done!** The installer now uses modular Python (`td-install`, `td_lib/`).
