@@ -139,7 +139,6 @@ def setup_wine_prefix(headless: bool = False) -> None:
         )
         if result.returncode != 0:
             _handle_wineboot_error(result.stdout + result.stderr)
-            raise SystemExit(1)
     except FileNotFoundError:
         error("wineboot not found — is the Wine runner installed?")
         raise SystemExit(1)

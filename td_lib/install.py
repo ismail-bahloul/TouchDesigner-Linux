@@ -85,6 +85,9 @@ def run_install(args):
         versions = fetch_available_versions()
 
         if args.non_interactive or args.headless:
+            if not versions:
+                error("No TouchDesigner versions available (network issue?)")
+                raise SystemExit(1)
             td_version = args.td_version if args.td_version != "latest" else versions[0]
             info(f"Non-interactive mode: selected version {td_version}")
             td_exe_path = download_touchdesigner(td_version)
