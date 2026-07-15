@@ -149,7 +149,15 @@ def run_install(args):
             associate_flag=not args.headless,
         )
 
-    # Step 9: Cleanup
+    # Step 9: Native external editor support
+    from .editor import setup_native_editor
+
+    if not args.dry_run:
+        info("Configuring native external editor support...")
+        setup_native_editor()
+    print()
+
+    # Step 10: Cleanup
     from .touchdesigner import DOWNLOAD_DIR
     from .utils import safe_rm
 

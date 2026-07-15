@@ -128,6 +128,13 @@ def uninstall_everything() -> None:
         if os.path.isfile(path):
             safe_rm(path)
 
+    # Remove editor bridge configuration
+    try:
+        from .editor import remove_editor_config
+        remove_editor_config()
+    except ImportError:
+        pass
+
     _update_desktop_database()
     print_hr()
     success("Uninstall Complete")

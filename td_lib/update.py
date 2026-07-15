@@ -69,6 +69,12 @@ def run_update(args) -> None:
     info("Updating file associations...")
     associate_files()
 
+    # 9. Update native editor support
+    from .editor import setup_native_editor
+
+    info("Updating native external editor support...")
+    setup_native_editor()
+
     print()
     success("Update Complete")
     info("TouchDesigner components are up to date!")
