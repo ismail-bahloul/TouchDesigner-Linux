@@ -326,6 +326,12 @@ def install_windows_deps() -> None:
                 stderr=subprocess.STDOUT,
                 check=True,
             )
+        log_content = ""
+        try:
+            with open(wt_log_path) as f:
+                log_content = f.read()
+        except OSError:
+            pass
     except subprocess.CalledProcessError:
         error("Winetricks failed")
         info("Last output:")
@@ -346,13 +352,8 @@ def install_windows_deps() -> None:
         safe_rm(wt_log_path)
 
     # Check if any verb was skipped (already installed) for a cleaner message
-    try:
-        with open(wt_log_path) as f:
-            log_content = f.read()
-        if "already installed, skipping" in log_content:
-            success("Windows dependencies already satisfied")
-    except OSError:
-        pass
+    if "already installed, skipping" in log_content:
+        success("Windows dependencies already satisfied")
 
     success("Windows dependencies installed")
 
