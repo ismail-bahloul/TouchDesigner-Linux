@@ -91,6 +91,10 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ✅ **Done!** (v1.5) The launcher now reads `Xft.dpi` from the display server on first launch and applies the correct LogPixels value to Wine (96/120/144/192). No more hardcoded 120 DPI forced on every launch. Override with `TD_DPI=96 touchdesigner`.
 
+### 17. License preservation on install/reinstall
+
+✅ **Done!** (v1.5) Bug fix — the installer's `commonappdata/` was overwriting the user's activated license files (`ins2.dat`, `ins5.dat`) on every fresh install, reinstall, or version update. Now backs up `ProgramData/Derivative/` before copying and restores it after.
+
 ## Long-term
 
 - ~~Python rewrite~~ ✅ **Done!** The installer now uses modular Python (`td-install`, `td_lib/`).
