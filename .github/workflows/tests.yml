@@ -15,10 +15,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install Python
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3 >/dev/null 2>&1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
       - name: Run test suite
-        run: python3 tests/test_static.py
+        run: python tests/test_static.py
 
   distro-detect:
     name: Distro detect — ${{ matrix.distro.name }}
