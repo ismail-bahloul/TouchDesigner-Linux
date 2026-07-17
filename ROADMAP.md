@@ -25,9 +25,17 @@ Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An o
 
 ### 4. Pip wrapper / Python package manager
 
-Recent TouchDesigner versions now ship pip directly on Windows (`python.exe -m pip`). Since we run TD through Wine, the same pip is available to us. (Thanks to community testing for confirming this.)
+✅ **Done!** (v1.5) `td-install --pip install <package>` wraps `wine64 python.exe -m pip install` with proper Wine environment setup.
 
-Goal: wrap `wine64 python.exe -m pip install <package>` into a simple `td-install --pip` command, so users can install packages (numpy, opencv, requests, etc.) into TD's Python environment without manually juggling Wine paths.
+Usage:
+```bash
+td-install --pip install numpy
+td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
+td-install --pip list
+td-install --pip uninstall <package>
+```
+
+**Known issue:** OpenMP crash (`GetNumaNodeProcessorMaskEx` not implemented) when importing torch. **Fixed** with `KMP_AFFINITY=disabled` (auto-set in launcher). CPU-only torch 2.13.0 confirmed working on Wine TkG. See [issue #20](https://github.com/iswad-lab/TouchDesigner-Linux/issues/20).
 
 ### 5. Watchdog / systemd service
 

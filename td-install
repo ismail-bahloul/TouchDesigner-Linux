@@ -34,6 +34,7 @@ from td_lib.cleanup import run_uninstall
 from td_lib.cli import parse_args
 from td_lib.diagnose import run_diagnose
 from td_lib.install import run_install
+from td_lib.pip import run_pip
 from td_lib.update import run_update
 from td_lib.utils import error, print_banner, setup_logging
 
@@ -68,10 +69,9 @@ def main():
         run_patch_toe(args.patch_toe)
         return
 
-    # Handle --patch-toe standalone mode
-    if args.patch_toe:
-        run_patch_toe(args.patch_toe)
-        return
+    # Handle --pip standalone mode
+    if args.pip_args is not None:
+        sys.exit(run_pip(args.pip_args))
 
     # Main menu loop
     while True:

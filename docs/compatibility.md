@@ -13,6 +13,8 @@
 | Engine COMP | ❌ | The background process may start (PID assigned), but the IPC bridge fails to initialize. Workaround: move your logic into a Base or Container COMP to run within the main process |
 | WebRender TOP | ❌ | Web pages do not render (no errors thrown). Known upstream limitation with Chromium-based components in Wine environments |
 | External installs / integrations | ❓ | Third-party installs, Kinect, extra plugins, and advanced external production pipelines still need broader testing |
+| Python packages (pip) | ⚠️ | Works for pure-Python packages (numpy, opencv, requests). Native extensions (.pyd) may fail under Wine — see troubleshooting |
+| PyTorch (torch, CPU-only) | ⚠️ | Works with `KMP_AFFINITY=disabled` (auto-set in launcher). Tested 2.13.0+cpu on Wine TkG — see [issue #20](https://github.com/iswad-lab/TouchDesigner-Linux/issues/20) |
 
 ## Notes
 

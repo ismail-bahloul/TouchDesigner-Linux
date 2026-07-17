@@ -271,7 +271,7 @@ def install_windows_deps() -> None:
 
     ensure_dir(WINETRICKS_TMP)
 
-    info("Running winetricks (corefonts, d3dx11_43, vcrun2019)...")
+    info("Running winetricks (corefonts, d3dx11_43, vcrun2019, vcrun2022)...")
     wt_env = env["env"].copy()
     wt_env.update(
         {
@@ -319,7 +319,7 @@ def install_windows_deps() -> None:
     try:
         with open(wt_log_path, "w") as log:
             subprocess.run(
-                ["bash", WINETRICKS_BIN, "-q", "corefonts", "d3dx11_43", "vcrun2019"],
+                ["bash", WINETRICKS_BIN, "-q", "corefonts", "d3dx11_43", "vcrun2019", "vcrun2022"],
                 env=wt_env,
                 stdout=log,
                 stderr=subprocess.STDOUT,

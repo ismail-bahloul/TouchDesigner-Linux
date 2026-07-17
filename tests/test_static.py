@@ -204,6 +204,12 @@ def test_cli_args():
     args = parse_args(["--fast"])
     check("--fast", args.fast)
 
+    args = parse_args(["--pip", "install", "numpy"])
+    check("--pip install numpy", args.pip_args == ["install", "numpy"])
+
+    args = parse_args(["--pip", "list"])
+    check("--pip list", args.pip_args == ["list"])
+
 
 # =============================================================================
 #  Dry-run
@@ -803,10 +809,53 @@ def test_launcher_script():
         check("NVIDIA offload = Y", 'USE_NVIDIA_DGPU="Y"' in content2)
         check("WAYLAND_DISPLAY cleared", 'export WAYLAND_DISPLAY=""' in content)
         check("GL YIELD = USLEEP", 'export __GL_YIELD="USLEEP"' in content)
+        check("KMP_AFFINITY=disabled", 'KMP_AFFINITY="disabled"' in content)
+        check("PYTHONPATH set for user site", 'PYTHONPATH' in content and 'steamuser' in content)
+        check("find_wine64 function", 'find_wine64()' in content)
+        check("WINE64_BIN variable", 'WINE64_BIN=' in content)
+        check("AUR fallback path", '/opt/touchdesigner/wine/bin/wine64' in content)
+
+        # Validate bash syntax (no execution, just parse)
+        result = subprocess.run(
+            ["bash", "-n", path],
+            capture_output=True, text=True,
+        )
+        check("launcher has valid bash syntax", result.returncode == 0)
+        if result.returncode != 0:
+            print(f"  bash syntax error: {result.stderr.strip()}")
     finally:
         if backup:
             with open(LAUNCHER_PATH, "w") as f:
                 f.write(backup)
+
+
+# =============================================================================
+#  Pip module
+# =============================================================================
+
+
+def test_pip_module():
+    print("\n── Pip module ──")
+    from td_lib.pip import find_td_python, _find_wine64, _wine_env
+
+    # find_td_python returns None when TD not installed (test env)
+    result = find_td_python()
+    check("find_td_python returns None or str", result is None or isinstance(result, str))
+
+    # _find_wine64 should find system wine64 or return None
+    wine64 = _find_wine64()
+    check("_find_wine64 returns valid path or None",
+          wine64 is None or (isinstance(wine64, str) and os.path.isfile(wine64)))
+
+    # _wine_env builds env dict with correct keys
+    if wine64:
+        env = _wine_env()
+        check("_wine_env has wine64 key", "wine64" in env)
+        check("_wine_env has env dict", "env" in env)
+        check("KMP_AFFINITY=disabled in env",
+              env["env"].get("KMP_AFFINITY") == "disabled")
+        check("WINEPREFIX set in env", "WINEPREFIX" in env["env"])
+        check("WINEARCH=win64 in env", env["env"].get("WINEARCH") == "win64")
 
 
 # =============================================================================
@@ -994,6 +1043,7 @@ def main():
     test_desktop_assets()
     test_headless_auto_detect()
     test_launcher_script()
+    test_pip_module()
     test_diagnose_output()
     test_uninstall_text_selection()
     test_distro_package_lists()

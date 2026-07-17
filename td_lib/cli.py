@@ -123,6 +123,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="FILE",
         help="Apply wine_ui_fixes.tox to a .toe file",
     )
+    opts.add_argument(
+        "--pip",
+        dest="pip_args",
+        nargs=argparse.REMAINDER,
+        metavar="...",
+        help="Run pip inside TouchDesigner's embedded Python (e.g. --pip install numpy)",
+    )
 
     args = parser.parse_args(argv)
     return args
