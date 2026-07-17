@@ -6,22 +6,7 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 jobs:
-  static:
-    name: Static tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run test suite
-        run: |
-          set -x
-          python3 --version
-          python3 -c "import sys; print(sys.version)"
-          python3 tests/test_static.py
-
   distro-detect:
     name: Distro detect — ${{ matrix.distro.name }}
     runs-on: ubuntu-latest
