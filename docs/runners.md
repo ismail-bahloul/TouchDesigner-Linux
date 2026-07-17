@@ -83,7 +83,6 @@ export KMP_AFFINITY="disabled"
 ```
 
 ### Known issues
-- **Splash only** — main window never appears
 - **NVENC** — not available (missing `nvEncodeAPI64.dll`)
 - **CUDA TOPs** — not available (NVIDIA CUDA under Wine limitation)
 
@@ -128,7 +127,7 @@ Not working reliably. TD either hangs on splash screen or crashes during initial
 ## Proton-CachyOS
 
 ### Status
-Splash only — same as other Proton builds. Main window never opens.
+Tested briefly — TD process launched successfully (process alive). Window visibility not confirmed. Likely same behavior as GE-Proton10 (window appears with deformed fonts).
 
 ### Differences from GE-Proton
 - Based on Wine 11.0 Staging (same base as GE-Proton11)
@@ -143,6 +142,8 @@ Same as GE-Proton10: use `files/lib/wine/x86_64-unix/wine64` as the wine binary.
 
 ### Status
 Works with vanilla Wine 9.x from distro packages. No GE patches needed.
+
+**Note:** Tested with system wine (not standalone). Results should be the same as any vanilla Wine 9.x build. Not independently verified with a standalone Wine 9.21 build.
 
 ### Key finding
 Wine 9.x (both Soda and vanilla Staging) is fully compatible with TD. The mimalloc/DWrite issue only appeared in Wine 10+.
