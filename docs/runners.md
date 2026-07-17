@@ -2,18 +2,54 @@
 
 A technical reference for the Wine runners tested with TouchDesigner under Linux.
 
-## Tested runners
+## Recommended setup (the "secret recipe")
 
-| Runner | Base | Status | Notes |
-|--------|------|--------|-------|
-| **Soda 9.0-1** | Wine 9.0 | ✅ Default | Stable, fully supported, included in installer |
-| **Wine Staging (system)** | Wine 9.21 | ✅ Works | Vanilla Wine 9.x from distro packages |
-| **Wine TkG** | Wine 9.0+ | ✅ AUR | CachyOS/Arch default via AUR, similar to Soda |
-| **GE-Proton10-34** | Wine 10.0 (Staging) | ✅ Works* | Font rendering needs `wine_ui_fixes.tox`, vkd3d bundled |
-| **GE-Proton11-1** | Wine 11.0 (Staging) | ✅ Works* | Same, needs vkd3d DLLs copied manually |
-| **Proton-CachyOS** | Wine 11.0 (Staging) | ✅ Works* | Same as GE-P11, vkd3d bundled |
-| **Wine-GE (Lutris) 8-26** | Wine 8.0 (Staging) | ❌ | Too old, missing dependencies |
-| **UMU-Proton-10.0-4** | Wine 10.0 (Staging) | ❌ | pressure-vessel sandbox conflicts with TD |
+Based on extensive testing and source code analysis, this is the optimal configuration:
+
+| Component | Choice | Reason |
+|-----------|--------|--------|
+| **Runner** | **Soda 9.0-1** (Wine TkG, Valve 9.0 based) | No Wine Staging patches = no DWrite/mimalloc/Mutter bugs |
+| **DXVK** | 2.4+ | Vulkan translation for D3D10/11 |
+| **Winetricks** | corefonts, vcrun2019, vcrun2022 | Missing fonts and MSVC runtimes |
+| **IDS patch** | Required | Zero AddressOfEntryPoint in 4 IDS DLLs |
+| **Font fix** | `wine_ui_fixes.tox` | Corrects font rendering (auto-injected by launcher) |
+| **DPI** | LogPixels auto-detect | Readability on HiDPI displays |
+| **KMP_AFFINITY** | `disabled` | Fixes torch import (Intel OpenMP + Wine) |
+| **PYTHONPATH** | Set automatically | Makes pip packages visible to TD |
+
+This is exactly what `td-install` sets up, and what `launch-touchdesigner.sh` configures at runtime.
+
+## Why Wine 9 works and Wine 10+ doesn't (short version)
+
+| Version | Works? | Why |
+|---------|--------|-----|
+| **Wine 9.x** (Soda, TkG, vanilla) | ✅ | No Mutter workaround, stable DWrite |
+| **Wine 10.x** (GE-Proton10, Proton) | ⚠️ | Window OK but fonts deformed → `wine_ui_fixes.tox` helps |
+| **Wine 11.x** (vanilla, GE-P11, Proton) | ❌ | Mutter workaround added in Valve fork → window invisible on KWin |
+
+The key: Soda 9.0 is built with `_use_staging="false"` (no Wine Staging patches). Staging introduced the DWrite rewrite in Wine 10, and Valve added the Mutter workaround in Wine 11. Both are incompatible with TouchDesigner on KDE/Wayland.
+
+
+## Soda build recipe (the "secret sauce")
+
+Soda 9.0-1 is built using **wine-tkg** (Frogging-Family) with this configuration:
+
+```bash
+_LOCAL_PRESET="valve-exp-bleeding"
+_use_staging="false"        # ← KEY: no Staging patches
+_use_GE_patches="true"
+_proton_rawinput="true"
+_proton_fs_hack="true"
+_use_fsync="true"
+_use_plasma_systray_fix="true"  # KDE fix
+```
+
+- **Source:** ValveSoftware/wine (tag `experimental_9.0`), not WineHQ
+- **Staging:** Explicitly disabled (`_use_staging="false"`)
+- **GE/Proton patches:** Active but compatible (`_use_GE_patches="true"`)
+- **Result:** A Wine 9.0 build without the problematic Staging patches that break TD on Wine 10+
+
+This is why Soda works perfectly while GE-Proton (which enables Staging) has issues on Wine 10/11.
 
 ## Wine 9.x: Soda / Staging / TkG
 ## GE-Proton10-34 (works with fixes)

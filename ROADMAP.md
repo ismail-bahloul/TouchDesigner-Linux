@@ -9,7 +9,13 @@ This is a living document — priorities may shift based on feedback and contrib
 
 ### 1. Multiple Wine runners (Wine-GE / Proton)
 
-Currently locked to **Soda Wine 9.0-1**. Wine-GE (GloriousEggroll) and Proton-GE often deliver better GPU performance and fewer bugs with graphics-heavy Windows apps. Allow users to pick their runner — or different runners per installed TouchDesigner version.
+Currently locked to **Soda Wine 9.0-1**. See [`docs/runners.md`](docs/runners.md) for the full comparison (8 runners tested).
+
+**Key findings:**
+- **Wine 9.x** (Soda, TkG, vanilla) → fully compatible
+- **Wine 10.x** (GE-Proton10) → works with `wine_ui_fixes.tox` but fonts need correction
+- **Wine 11.x** → Mutter workaround in Valve fork breaks window creation on KWin
+- **Reason:** Soda disables Wine Staging patches (`_use_staging="false"`). Staging introduced the DWrite/mimalloc bug in Wine 10, and Valve added a Mutter workaround in Wine 11.
 
 **Known Proton 10 issue:** TD hangs due to mimalloc + DWrite incompatibility. Fix: set `MIMALLOC_DISABLE_REDIRECT=1`. Must be auto-applied when using Proton runners.
 
