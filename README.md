@@ -37,6 +37,13 @@ The installer auto-detects your distro and environment:
 DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
 ```
 
+**Install Python packages into TD:**
+```bash
+td-install --pip install numpy
+td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
+td-install --pip list
+```
+
 ![Screenshot](Screenshots/Script_Preview.png)
 
 ---
@@ -78,6 +85,7 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 
 - [How it works](docs/how-it-works.md) — explains each fix and why it's applied
 - [Compatibility status](docs/compatibility.md) — what works and what doesn't
+- [Wine runners comparison](docs/runners.md) — tested runners, source analysis, compatibility
 - [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
 - [Advanced tools](docs/advanced-tools.md) — toeexpand / toecollapse
 
