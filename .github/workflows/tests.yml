@@ -15,13 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Debug environment
-        run: |
-          which python3 || echo "python3 not found"
-          which python || echo "python not found"
-          ls -la /usr/bin/python* || true
-          echo "---"
-          printenv
       - name: Run test suite
         run: python3 tests/test_static.py
 
