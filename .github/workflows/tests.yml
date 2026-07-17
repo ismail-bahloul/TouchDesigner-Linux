@@ -15,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check Python
-        run: |
-          python --version || python3 --version || echo "No Python!"
-          ls -la tests/test_static.py || echo "No test file!"
       - name: Run test suite
-        run: python tests/test_static.py 2>&1 || python3 tests/test_static.py 2>&1
+        run: |
+          set -x
+          python3 --version
+          python3 -c "import sys; print(sys.version)"
+          python3 tests/test_static.py
 
   distro-detect:
     name: Distro detect — ${{ matrix.distro.name }}
