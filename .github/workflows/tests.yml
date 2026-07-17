@@ -5,8 +5,56 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
 
 jobs:
+  # ── End-to-end smoke test with real Wine + winetricks ──
+  weekly-smoke:
+    name: Weekly smoke — real deps install
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable i386 and install Wine + deps
+        run: |
+          dpkg --add-architecture i386
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            python3 curl wget xz-utils cabextract unzip p7zip-full innoextract \
+            wine64 wine32 file coreutils ca-certificates 2>&1 | tail -5
+      - name: Run static tests first
+        run: python3 tests/test_static.py
+      - name: Run full install (headless, no display)
+        run: |
+          # Real install: downloads Soda Wine + winetricks + DXVK + TouchDesigner
+          # Headless skips desktop integration (shortcuts, MIME)
+          ./td-install --install --headless 2>&1
+          echo "--- Install done ---"
+      - name: Verify no vcrun conflict in logs
+        run: |
+          LOG_DIR="$HOME/.local/share/touchdesigner-linux/logs"
+          if [ -d "$LOG_DIR" ]; then
+            latest_log=$(ls -t "$LOG_DIR"/*.log 2>/dev/null | head -1)
+            if [ -n "$latest_log" ]; then
+              if grep -qi "conflict\|vcrun2019.*already installed" "$latest_log"; then
+                echo "❌ vcrun conflict detected!"
+                tail -30 "$latest_log"
+                exit 1
+              else
+                echo "✅ No vcrun conflict"
+              fi
+              if grep -qi "error" "$latest_log"; then
+                echo "⚠️  Errors in log (may be expected in headless CI)"
+                grep -i "error" "$latest_log"
+              fi
+            fi
+          fi
+      - name: Diagnose
+        run: td-install --diagnose 2>&1 | head -40
+
   distro-detect:
     name: Distro detect — ${{ matrix.distro.name }}
     runs-on: ubuntu-latest
