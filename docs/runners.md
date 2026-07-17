@@ -55,7 +55,9 @@ This is why Soda works perfectly while GE-Proton (which enables Staging) has iss
 ## GE-Proton10-34 (works with fixes)
 
 ### Status
-Main window opens and renders, including fonts (slightly deformed). Needs the same fixes as Soda: IDS DLL patch, corefonts, vcrun2019, and the `wine_ui_fixes.tox` for proper font rendering.
+Main window opens and renders. **Fonts are present** (unlike Soda without fix, where fonts are missing entirely), but slightly deformed. The `wine_ui_fixes.tox` should correct them. Needs the same fixes as Soda: IDS DLL patch, corefonts, vcrun2019.
+
+Note: GE-Proton10's default font rendering is actually **better** than Soda without the `.tox` fix — fonts are visible, just not perfectly shaped.
 
 Tested with GE-Proton10-34. The `MIMALLOC_DISABLE_REDIRECT=1` fix is required (Wine 10+ DWrite incompatibility).
 
@@ -201,7 +203,17 @@ Stable, fully supported. This is what the `td-install` script installs and the l
 ### Limitations
 - Wine 9.0 base (older than GE-Proton10/11)
 - No vkd3d-proton (not needed for TD)
+- Fonts require `wine_ui_fixes.tox` (auto-injected by launcher, transparent to user)
 - Same hardware access limitations as all Wine runners
+
+### Font rendering comparison
+
+| Runner | Without fix | With `wine_ui_fixes.tox` |
+|--------|-------------|--------------------------|
+| **Soda 9.0** | ❌ Fonts missing on timeline | ✅ Fully working |
+| **GE-Proton10/11** | ⚠️ Fonts **present** but slightly deformed | ✅ Expected to work |
+
+Soda's font fix is auto-injected by the launcher. GE-Proton has better base font rendering (visible without fix) but needs the same `.tox` for proper appearance.
 
 ## Common issues across all runners
 
