@@ -128,6 +128,23 @@ Both Soda 9 and Wine 11 create D3D11 swapchains and call Present identically. Th
 ### Likely cause
 Changes in Wine 10's `dlls/win32u/` or `dlls/winex11.drv/` — the X11 driver that handles native window creation and mapping.
 
+### Root cause identified
+
+**Wine 10 vs Wine 11 are two different issues:**
+
+**Wine 10+ (GE-Proton10, Proton-CachyOS):** The main window appears but fonts are deformed. This is the same font rendering issue that Soda 9 solves with `wine_ui_fixes.tox`. No Mutter workaround exists in Wine 10.
+
+**Wine 11.0 (vanilla):** The main window never appears. Wine 11.0 added a workaround for **Mutter (GNOME)** in `dlls/winex11.drv/window.c`:
+```c
+/* When transitioning a window from IconicState to NormalState and the window is managed, go
+ * through WithdrawnState. This is needed because Mutter doesn't unmap windows when making
+ * windows iconic/minimized as Mutter needs to support live preview for minimized windows. */
+WARN("window %p/%lx is iconic, remapping to workaround Mutter issues.\n");
+```
+This workaround adds an extra state transition (Iconic → Withdrawn → Normal) instead of (Iconic → Normal). On **KWin (KDE Wayland)**, this likely leaves the window stuck in WithdrawnState — invisible on screen.
+
+**Conclusion:** GE-Proton10-34 + `wine_ui_fixes.tox` is the best path for a working Proton runner. Wine 11's issue is a Wine bug to report upstream.
+
 ### Download
 ```bash
 curl -L https://github.com/Kron4ek/Wine-Builds/releases/download/11.0/wine-11.0-staging-amd64.tar.xz
