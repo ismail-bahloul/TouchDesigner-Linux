@@ -271,7 +271,12 @@ def install_windows_deps() -> None:
 
     ensure_dir(WINETRICKS_TMP)
 
-    info("Running winetricks (corefonts, d3dx11_43, vcrun2022)...")
+    import tempfile
+
+    wt_log = tempfile.NamedTemporaryFile(delete=False, suffix=".log", mode="w")
+    wt_log_path = wt_log.name
+    wt_log.close()
+
     wt_env = env["env"].copy()
     wt_env.update(
         {
@@ -283,76 +288,77 @@ def install_windows_deps() -> None:
         }
     )
 
-    import tempfile
+    def _run_wt(args: list[str], label: str) -> str:
+        """Run a winetricks command with heartbeat logging."""
+        stop_heartbeat = threading.Event()
 
-    wt_log = tempfile.NamedTemporaryFile(delete=False, suffix=".log", mode="w")
-    wt_log_path = wt_log.name
-    wt_log.close()
-
-    stop_heartbeat = threading.Event()
-
-    def _heartbeat():
-        start = time.time()
-        last_line = ""
-        while not stop_heartbeat.is_set():
-            elapsed = int(time.time() - start)
-            if elapsed > 0 and elapsed % 10 == 0:
-                try:
-                    with open(wt_log_path) as f:
-                        lines = f.readlines()
-                    if lines:
-                        current = lines[-1].strip()
-                        if current and current != last_line:
-                            last_line = current[:80]
-                            info(f"Winetricks ({elapsed}s): {last_line}")
+        def _heartbeat():
+            start = time.time()
+            last_line = ""
+            while not stop_heartbeat.is_set():
+                elapsed = int(time.time() - start)
+                if elapsed > 0 and elapsed % 10 == 0:
+                    try:
+                        with open(wt_log_path) as f:
+                            lines = f.readlines()
+                        if lines:
+                            current = lines[-1].strip()
+                            if current and current != last_line:
+                                last_line = current[:80]
+                                info(f"Winetricks ({elapsed}s): {last_line}")
+                            else:
+                                info(f"Winetricks still working... ({elapsed}s)")
                         else:
                             info(f"Winetricks still working... ({elapsed}s)")
-                    else:
+                    except OSError:
                         info(f"Winetricks still working... ({elapsed}s)")
-                except OSError:
-                    info(f"Winetricks still working... ({elapsed}s)")
-            time.sleep(1)
+                time.sleep(1)
 
-    thread = threading.Thread(target=_heartbeat, daemon=True)
-    thread.start()
+        thread = threading.Thread(target=_heartbeat, daemon=True)
+        thread.start()
 
-    try:
-        with open(wt_log_path, "w") as log:
-            subprocess.run(
-                ["bash", WINETRICKS_BIN, "-q", "corefonts", "d3dx11_43", "vcrun2022"],
-                env=wt_env,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                check=True,
-            )
-        log_content = ""
+        info(f"Running winetricks ({label})...")
         try:
-            with open(wt_log_path) as f:
-                log_content = f.read()
-        except OSError:
-            pass
-    except subprocess.CalledProcessError:
-        error("Winetricks failed")
-        info("Last output:")
-        try:
-            with open(wt_log_path) as f:
-                for line in f.readlines()[-10:]:
-                    info(line.strip())
-        except OSError:
-            pass
-        info("Retry with --debug for verbose logs")
-        raise SystemExit(1)
-    except KeyboardInterrupt:
-        print()
-        error("Installation cancelled")
-        raise SystemExit(1)
-    finally:
-        stop_heartbeat.set()
-        safe_rm(wt_log_path)
+            with open(wt_log_path, "w") as log:
+                subprocess.run(
+                    ["bash", WINETRICKS_BIN] + args,
+                    env=wt_env,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    check=True,
+                )
+            content = ""
+            try:
+                with open(wt_log_path) as f:
+                    content = f.read()
+            except OSError:
+                pass
+            return content
+        except subprocess.CalledProcessError:
+            error(f"Winetricks failed ({label})")
+            info("Last output:")
+            try:
+                with open(wt_log_path) as f:
+                    for line in f.readlines()[-10:]:
+                        info(line.strip())
+            except OSError:
+                pass
+            info("Retry with --debug for verbose logs")
+            raise SystemExit(1)
+        except KeyboardInterrupt:
+            print()
+            error("Installation cancelled")
+            raise SystemExit(1)
+        finally:
+            stop_heartbeat.set()
 
-    # Check if any verb was skipped (already installed) for a cleaner message
-    if "already installed, skipping" in log_content:
-        success("Windows dependencies already satisfied")
+    # Step 1: packages with no known conflicts
+    _run_wt(["-q", "corefonts", "d3dx11_43"], "corefonts, d3dx11_43")
+
+    # Step 2: vcrun2022 with --force to gracefully override any existing vcrun2019
+    _run_wt(["-q", "--force", "vcrun2022"], "vcrun2022")
+
+    safe_rm(wt_log_path)
 
     success("Windows dependencies installed")
 
