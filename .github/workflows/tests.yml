@@ -15,12 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run test suite
+      - name: Debug environment
         run: |
-          python3 --version
-          python3 -c "import sys; print(sys.path)"
-          ls -la tests/test_static.py
-          python3 tests/test_static.py
+          which python3 || echo "python3 not found"
+          which python || echo "python not found"
+          ls -la /usr/bin/python* || true
+          echo "---"
+          printenv
+      - name: Run test suite
+        run: python3 tests/test_static.py
 
   distro-detect:
     name: Distro detect — ${{ matrix.distro.name }}
