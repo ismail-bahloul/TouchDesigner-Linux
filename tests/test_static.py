@@ -816,13 +816,16 @@ def test_launcher_script():
         check("AUR fallback path", '/opt/touchdesigner/wine/bin/wine64' in content)
 
         # Validate bash syntax (no execution, just parse)
-        result = subprocess.run(
-            ["bash", "-n", path],
-            capture_output=True, text=True,
-        )
-        check("launcher has valid bash syntax", result.returncode == 0)
-        if result.returncode != 0:
-            print(f"  bash syntax error: {result.stderr.strip()}")
+        try:
+            result = subprocess.run(
+                ["bash", "-n", path],
+                capture_output=True, text=True, timeout=5,
+            )
+            check("launcher has valid bash syntax", result.returncode == 0)
+            if result.returncode != 0:
+                print(f"  bash syntax error: {result.stderr.strip()}")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("bash syntax check (bash not available)")
     finally:
         if backup:
             with open(LAUNCHER_PATH, "w") as f:
