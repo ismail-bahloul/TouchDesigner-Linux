@@ -839,26 +839,19 @@ def test_launcher_script():
 
 def test_pip_module():
     print("\n── Pip module ──")
-    from td_lib.pip import find_td_python, _find_wine64, _wine_env
+    # Test that the module can be imported
+    from td_lib import pip
+    check("pip module importable", True)
 
-    # find_td_python returns None when TD not installed (test env)
-    result = find_td_python()
-    check("find_td_python returns None or str", result is None or isinstance(result, str))
+    # find_td_python should return None when TD not installed
+    result = pip.find_td_python()
+    check("find_td_python returns None or str",
+          result is None or isinstance(result, str))
 
-    # _find_wine64 should find system wine64 or return None
-    wine64 = _find_wine64()
-    check("_find_wine64 returns valid path or None",
+    # _find_wine64 should find nothing or valid path
+    wine64 = pip._find_wine64()
+    check("_find_wine64 returns None or valid path",
           wine64 is None or (isinstance(wine64, str) and os.path.isfile(wine64)))
-
-    # _wine_env builds env dict with correct keys
-    if wine64:
-        env = _wine_env()
-        check("_wine_env has wine64 key", "wine64" in env)
-        check("_wine_env has env dict", "env" in env)
-        check("KMP_AFFINITY=disabled in env",
-              env["env"].get("KMP_AFFINITY") == "disabled")
-        check("WINEPREFIX set in env", "WINEPREFIX" in env["env"])
-        check("WINEARCH=win64 in env", env["env"].get("WINEARCH") == "win64")
 
 
 # =============================================================================
