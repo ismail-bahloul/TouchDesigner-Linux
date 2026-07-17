@@ -7,13 +7,15 @@ A technical reference for the Wine runners tested with TouchDesigner under Linux
 | Runner | Base | Status | Notes |
 |--------|------|--------|-------|
 | **Soda 9.0-1** | Wine 9.0 | ✅ Default | Stable, fully supported, included in installer |
+| **Wine Staging (system)** | Wine 9.21 | ✅ Works | Vanilla Wine 9.x from distro packages |
 | **Wine TkG** | Wine 9.0+ | ✅ AUR | CachyOS/Arch default via AUR, similar to Soda |
 | **GE-Proton10-34** | Wine 10.0 (Staging) | ✅ Works | Best Proton option, vkd3d-proton bundled |
 | **GE-Proton11-1** | Wine 11.0 (Staging) | ✅ Works | Needs vkd3d DLLs copied manually |
+| **Proton-CachyOS** | Wine 11.0 (Staging) | ✅ Works | CachyOS-optimized Proton, vkd3d bundled |
+| **Wine-GE (Lutris) 8-26** | Wine 8.0 (Staging) | ❌ | Too old, missing dependencies |
 | **UMU-Proton-10.0-4** | Wine 10.0 (Staging) | ❌ | pressure-vessel sandbox conflicts with TD |
-| **Proton-CachyOS** | Wine 10.0 (Staging) | ❓ | Not tested |
 
-## GE-Proton10-34 (recommended Proton runner)
+## Wine 9.x: Soda / Staging / TkG
 
 ### Status
 Fully working. TD launches, renders, and is stable.
@@ -81,7 +83,35 @@ Not working reliably. TD either hangs on splash screen or crashes during initial
 
 **Recommendation:** Use GE-Proton directly instead of UMU-Proton wrappers.
 
-## Soda Wine 9.0-1 (default)
+## Proton-CachyOS
+
+### Status
+Works out of the box, including vkd3d DLLs bundled. Optimized for CachyOS by the CachyOS team.
+
+### Differences from GE-Proton
+- Based on Wine 11.0 Staging (same base as GE-Proton11)
+- vkd3d-proton bundled and deployed automatically
+- CachyOS-specific compiler optimizations
+- Compatible with the same prefix as GE-Proton10/11
+
+### Launch command
+Same as GE-Proton10: use `files/lib/wine/x86_64-unix/wine64` as the wine binary.
+
+## Wine Staging 9.21 (system package)
+
+### Status
+Works with vanilla Wine 9.x from distro packages. No GE patches needed.
+
+### Key finding
+Wine 9.x (both Soda and vanilla Staging) is fully compatible with TD. The mimalloc/DWrite issue only appeared in Wine 10+.
+
+### Launch
+Use the system `wine64` binary with the same prefix and env vars as other runners.
+
+## Wine-GE (Lutris) 8-26
+
+### Status
+Does not work. Wine 8.x is too old — TD 2025+ requires DLL features only available in Wine 9+.
 
 ### Status
 Stable, fully supported. This is what the `td-install` script installs and the launcher uses.
@@ -125,15 +155,14 @@ Wine's native Wayland support can cause window creation issues. Always set `WAYL
 
 ## Summary
 
-| Feature | Soda 9.0 | GE-Proton10 | GE-Proton11 | UMU-Proton |
-|---------|----------|-------------|-------------|------------|
-| TD launches | ✅ | ✅ | ✅* | ❌ |
-| Font rendering | ✅ | ✅ | ✅ | ❌ |
-| D3D11/Vulkan | ✅ | ✅ | ✅ | ❌ |
-| NDI output | ✅ | ✅ | ✅ | ❌ |
-| Video Stream Out (NVENC) | ❌ | ❌ | ❌ | ❌ |
-| CUDA TOPs | ❌ | ❌ | ❌ | ❌ |
-| Spout2 | ❓ | ❓ | ❓ | ❓ |
-| Setup complexity | Low | Medium | Medium | High |
+| Feature | Soda 9.0 | Wine 9.21 | GE-P10 | GE-P11 | P-CachyOS |
+|---------|----------|----------|--------|--------|----------|
+| TD launches | ✅ | ✅ | ✅ | ✅* | ✅ |
+| Font rendering | ✅ | ✅ | ✅ | ✅ | ✅ |
+| D3D11/Vulkan | ✅ | ✅ | ✅ | ✅ | ✅ |
+| NDI output | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Video Stream Out (NVENC) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| CUDA TOPs | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Setup complexity | Low | Low | Medium | Medium | Medium |
 
 *\* Requires vkd3d DLLs copied manually*
