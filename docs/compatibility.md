@@ -11,6 +11,7 @@
 | Video Device In | ⚠️ | USB Webcams work on first init, but Wine "locks" the device. Replug or TD restart required to reset |
 | NVIDIA TOP | ❌ | Background, Flow and Denoise fail to init CUDA/TensorRT in this environment |
 | Engine COMP | ❌ | The background process may start (PID assigned), but the IPC bridge fails to initialize. Workaround: move your logic into a Base or Container COMP to run within the main process |
+| Video Stream Out TOP | ❌ | Requires NVENC (`nvEncodeAPI64.dll`) which is not available under Wine. Use Spout2PW + OBS, NDI, or FFmpeg instead |
 | WebRender TOP | ❌ | Web pages do not render (no errors thrown). Known upstream limitation with Chromium-based components in Wine environments |
 | External installs / integrations | ❓ | Third-party installs, Kinect, extra plugins, and advanced external production pipelines still need broader testing |
 | Python packages (pip) | ⚠️ | Works for pure-Python packages (numpy, opencv, requests). Native extensions (.pyd) may fail under Wine — see troubleshooting |
