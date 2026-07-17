@@ -12,9 +12,11 @@ env:
 jobs:
   static:
     name: Static tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Install Python
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3 >/dev/null 2>&1
       - name: Run test suite
         run: python3 tests/test_static.py
 
