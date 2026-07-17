@@ -9,16 +9,17 @@ A technical reference for the Wine runners tested with TouchDesigner under Linux
 | **Soda 9.0-1** | Wine 9.0 | ✅ Default | Stable, fully supported, included in installer |
 | **Wine Staging (system)** | Wine 9.21 | ✅ Works | Vanilla Wine 9.x from distro packages |
 | **Wine TkG** | Wine 9.0+ | ✅ AUR | CachyOS/Arch default via AUR, similar to Soda |
-| **GE-Proton10-34** | Wine 10.0 (Staging) | ✅ Works | Best Proton option, vkd3d-proton bundled |
-| **GE-Proton11-1** | Wine 11.0 (Staging) | ✅ Works | Needs vkd3d DLLs copied manually |
-| **Proton-CachyOS** | Wine 11.0 (Staging) | ✅ Works | CachyOS-optimized Proton, vkd3d bundled |
+| **GE-Proton10-34** | Wine 10.0 (Staging) | ⚠️ Splash only | Splash screen appears, main window never opens |
+| **GE-Proton11-1** | Wine 11.0 (Staging) | ⚠️ Splash only | Same — splash OK, main window never shows |
+| **Proton-CachyOS** | Wine 11.0 (Staging) | ⚠️ Splash only | Same — splash OK, main window never shows |
 | **Wine-GE (Lutris) 8-26** | Wine 8.0 (Staging) | ❌ | Too old, missing dependencies |
 | **UMU-Proton-10.0-4** | Wine 10.0 (Staging) | ❌ | pressure-vessel sandbox conflicts with TD |
 
 ## Wine 9.x: Soda / Staging / TkG
+## GE-Proton10-34 (splash only)
 
 ### Status
-Fully working. TD launches, renders, and is stable.
+Splash screen renders but the main TouchDesigner window never opens. The Vulkan/D3D11/D2D rendering pipeline initializes successfully (visible in Wine logs), but something blocks after the splash — likely the mimalloc/DWrite hang occurring during project loading rather than splash rendering.
 
 ### Requirements
 - GE-Proton10-34 extracted to `~/.local/share/Steam/compatibilitytools.d/`
@@ -42,14 +43,14 @@ export KMP_AFFINITY="disabled"
 ```
 
 ### Known issues
+- **Splash only** — main window never appears
 - **NVENC** — not available (missing `nvEncodeAPI64.dll`)
 - **CUDA TOPs** — not available (NVIDIA CUDA under Wine limitation)
-- Same limitations as Soda Wine for hardware access
 
 ## GE-Proton11-1
 
 ### Status
-Works after manually installing vkd3d DLLs. Most recent GE-Proton build.
+Splash only — same as GE-Proton10-34. Main window never appears despite successful splash rendering.
 
 ### Differences from GE-Proton10-34
 - vkd3d DLLs not deployed to prefix automatically when using `files/bin/wine` directly
@@ -86,7 +87,7 @@ Not working reliably. TD either hangs on splash screen or crashes during initial
 ## Proton-CachyOS
 
 ### Status
-Works out of the box, including vkd3d DLLs bundled. Optimized for CachyOS by the CachyOS team.
+Splash only — same as other Proton builds. Main window never opens.
 
 ### Differences from GE-Proton
 - Based on Wine 11.0 Staging (same base as GE-Proton11)
@@ -157,10 +158,10 @@ Wine's native Wayland support can cause window creation issues. Always set `WAYL
 
 | Feature | Soda 9.0 | Wine 9.21 | GE-P10 | GE-P11 | P-CachyOS |
 |---------|----------|----------|--------|--------|----------|
-| TD launches | ✅ | ✅ | ✅ | ✅* | ✅ |
+| TD launches | ✅ | ✅ | ⚠️ Splash | ⚠️ Splash | ⚠️ Splash |
 | Font rendering | ✅ | ✅ | ✅ | ✅ | ✅ |
 | D3D11/Vulkan | ✅ | ✅ | ✅ | ✅ | ✅ |
-| NDI output | ✅ | ✅ | ✅ | ✅ | ✅ |
+| NDI output | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
 | Video Stream Out (NVENC) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | CUDA TOPs | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Setup complexity | Low | Low | Medium | Medium | Medium |
