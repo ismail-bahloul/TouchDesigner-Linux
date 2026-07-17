@@ -117,6 +117,24 @@ Use the system `wine64` binary with the same prefix and env vars as other runner
 ### Status
 Does not work. Wine 8.x is too old — TD 2025+ requires DLL features only available in Wine 9+.
 
+## Vanilla Wine 11.0 Staging (Kron4ek)
+
+### Status
+TD process starts, DXVK/Vulkan/D3D11 initialize successfully, swapchain created, Present called — but the X11 window never appears. The difference with Soda 9 is in the X11 window creation layer, not in D3D11/DXGI.
+
+### Key finding
+Both Soda 9 and Wine 11 create D3D11 swapchains and call Present identically. The divergence is in the X11 window mapping — Wine 9 creates a visible X11 window, Wine 10+ doesn't.
+
+### Likely cause
+Changes in Wine 10's `dlls/win32u/` or `dlls/winex11.drv/` — the X11 driver that handles native window creation and mapping.
+
+### Download
+```bash
+curl -L https://github.com/Kron4ek/Wine-Builds/releases/download/11.0/wine-11.0-staging-amd64.tar.xz
+```
+
+## Soda Wine 9.0-1 (default)
+
 ### Status
 Stable, fully supported. This is what the `td-install` script installs and the launcher uses.
 
