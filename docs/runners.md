@@ -243,16 +243,14 @@ Wine's native Wayland support can cause window creation issues. Always set `WAYL
 
 ## Summary
 
-| Feature | Soda 9.0 | GE-P10 | GE-P11 | P-CachyOS |
-|---------|----------|--------|--------|----------|
-| TD launches | ✅ | ✅* | ✅* | ✅* |
-| Font rendering | ✅ | ⚠️ | ⚠️ | ⚠️ |
-| D3D11/Vulkan | ✅ | ✅ | ✅ | ✅ |
-| NDI output | ✅ | ❓ | ❓ | ❓ |
-| Video Stream Out (NVENC) | ❌ | ❌ | ❌ | ❌ |
-| CUDA TOPs | ❌ | ❌ | ❌ | ❌ |
-| Setup complexity | Low | Medium | Medium | Medium |
+| Feature | Soda 9.0 | GE-P10 | GE-P11 |
+|---------|----------|--------|--------|
+| TD launches | ✅ | ✅* | ✅* |
+| Font rendering | ✅ (via .tox) | ⚠️ Present but deformed | ⚠️ Present but deformed |
+| D3D11/Vulkan | ✅ | ✅ | ✅ |
+| NDI output | ✅ | ❓ | ❓ |
+| Video Stream Out (NVENC) | ❌ | ❌ | ❌ |
+| CUDA TOPs | ❌ | ❌ | ❌ |
+| Setup complexity | Low | Medium | Medium |
 
 * *Requires IDS patch, corefonts, vcrun2019, mimalloc fix*
-
-*\* Requires vkd3d DLLs copied manually*
