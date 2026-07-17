@@ -52,13 +52,21 @@ def restore_license():
 
 
 def ensure_drives():
-    """Ensure essential drive symlinks exist (c:, z:)."""
+    """Ensure essential drive symlinks exist (c:, z:).
+
+    These are skipped during prefix copy because copytree with symlinks=True
+    can't safely recreate circular/device symlinks (z:/ -> /, com* -> /dev/ttyS*)
+    when the destination already exists. Wine will create additional symlinks
+    (d:, com*, etc.) on first wineboot.
+    """
     os.makedirs(DOSDEVICES, exist_ok=True)
 
     z_path = os.path.join(DOSDEVICES, "z:")
     if not os.path.islink(z_path):
         if os.path.isdir(z_path):
-            print("  Repairing z: drive (was copied as directory instead of symlink)...")
+            print(
+                "  Repairing z: drive (was copied as directory instead of symlink)..."
+            )
             shutil.rmtree(z_path)
         os.symlink("/", z_path)
 
@@ -128,12 +136,13 @@ def ensure_wine_ready():
         open(INIT_FLAG, "w").close()
 
 
-def _detect_logical_dpi():
+def _detect_logical_dpi() -> int | None:
     """Detect the logical display DPI from Xft.dpi or xdpyinfo.
 
     This already accounts for the user's display scale factor.
     Returns the DPI value (typically 96, 120, 144, etc.) or None.
     """
+    # Method 1: Xft.dpi from xrdb (fast, reliable)
     try:
         result = subprocess.run(
             ["xrdb", "-query"],
@@ -145,6 +154,7 @@ def _detect_logical_dpi():
                 if len(parts) == 2:
                     val = int(parts[1].strip())
                     if 72 <= val <= 240:
+                        # Round to standard values (96, 120, 144, 192)
                         if val < 108:
                             return 96
                         elif val < 132:
@@ -156,6 +166,7 @@ def _detect_logical_dpi():
     except (FileNotFoundError, ValueError, subprocess.TimeoutExpired):
         pass
 
+    # Method 2: xdpyinfo (fallback)
     try:
         result = subprocess.run(
             ["xdpyinfo"],
@@ -349,6 +360,7 @@ def resolve_path(path):
         return None
     if path.startswith("file://"):
         from urllib.parse import unquote
+
         path = unquote(path[7:])
     if len(path) > 2 and path[1:3] in (":/", ":\\"):
         path = path[2:]
