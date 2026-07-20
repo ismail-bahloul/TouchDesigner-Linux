@@ -12,7 +12,7 @@ jobs:
   # ── End-to-end smoke test with real Wine + winetricks ──
   weekly-smoke:
     name: Weekly smoke — real deps install
-    # if: github.event_name == 'schedule'  # temporarily disabled for testing
+    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
