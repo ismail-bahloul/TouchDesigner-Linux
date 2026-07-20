@@ -20,9 +20,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Enable i386 and install Wine + deps
         run: |
-          dpkg --add-architecture i386
-          apt-get update -qq
-          apt-get install -y -qq --no-install-recommends \
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
             python3 curl wget xz-utils cabextract unzip p7zip-full innoextract \
             wine64 wine32 file coreutils ca-certificates 2>&1 | tail -5
       - name: Run static tests first
