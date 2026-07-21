@@ -1,0 +1,70 @@
+diff --git a/dlls/winex11.drv/window.c b/dlls/winex11.drv/window.c
+index cf0c8004b60..f02e95804e7 100644
+--- a/dlls/winex11.drv/window.c
++++ b/dlls/winex11.drv/window.c
+@@ -30,6 +30,7 @@
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <unistd.h>
++#include <string.h>
+ 
+ #include <X11/Xlib.h>
+ #include <X11/Xresource.h>
+@@ -1808,6 +1809,27 @@ static int skip_iconify(void)
+     return cached;
+ }
+ 
++
++/***********************************************************************
++ *              is_mutter_desktop
++ *
++ * Check if running under Mutter (GNOME) window manager.
++ * The Mutter workaround (Iconic -> Withdrawn -> Normal) breaks
++ * window creation on KDE/KWin. Only apply it on GNOME/Mutter.
++ */
++static BOOL is_mutter_desktop(void)
++{
++    const char *desktop = getenv("XDG_CURRENT_DESKTOP");
++    if (!desktop) return FALSE;
++    /* GNOME uses Mutter */
++    if (strstr(desktop, "GNOME") || strstr(desktop, "gnome") || strstr(desktop, "Mutter") || strstr(desktop, "mutter"))
++        return TRUE;
++    /* Also check for explicit Mutter WM detection */
++    if (X11DRV_HasWindowManager("Mutter (GNOME Mutter)"))
++        return TRUE;
++    return FALSE;
++}
++
+ static void window_set_wm_state( struct x11drv_win_data *data, UINT new_state, BOOL activate )
+ {
+     UINT old_state = data->pending_state.wm_state;
+@@ -1828,14 +1850,22 @@ static void window_set_wm_state( struct x11drv_win_data *data, UINT new_state, B
+      * to WithdrawnState first, then to NormalState */
+     if (data->managed && MAKELONG(old_state, new_state) == MAKELONG(IconicState, NormalState))
+     {
+-        /* Previous IconicState request is still pending, wait for it to complete so that there is no
+-         * unexpected IconicState WM_STATE notify that will override the NormalState soon to be queued */
+-        if (data->wm_state_serial) return;
++        /* Only apply Mutter workaround on GNOME/Mutter.
++         * On KDE/KWin, Iconic -> Withdrawn -> Normal transition
++         * gets the window stuck in WithdrawnState (invisible).
++         * See: https://github.com/iswad-lab/TouchDesigner-Linux */
++        if (is_mutter_desktop())
++        {
++            /* Previous IconicState request is still pending, wait for it to complete */
++            if (data->wm_state_serial) return;
+ 
+-        WARN( "window %p/%lx is iconic, remapping to workaround Mutter issues.\n", data->hwnd, data->whole_window );
+-        window_set_wm_state( data, WithdrawnState, FALSE );
+-        window_set_wm_state( data, NormalState, activate );
+-        return;
++            WARN( "window %p/%lx is iconic, remapping to workaround Mutter issues.\n",
++                  data->hwnd, data->whole_window );
++            window_set_wm_state( data, WithdrawnState, FALSE );
++            window_set_wm_state( data, NormalState, activate );
++            return;
++        }
++        /* Not Mutter (KWin, etc.) -> direct Iconic -> Normal transition */
+     }
+     /* Bug 27190 - XCOM® 2 (268500) Keyboard Controls Not Working
+      *
