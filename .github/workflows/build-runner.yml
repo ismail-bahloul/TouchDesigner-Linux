@@ -1,0 +1,104 @@
+name: Build Tact Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      wine_version:
+        description: 'Wine version to build (e.g. 11.0, 11.1)'
+        required: true
+        default: '11.0'
+        type: string
+  push:
+    tags:
+      - 'runner-v*'  # Déclenché sur git tag runner-v1.0, runner-v1.1, etc.
+
+jobs:
+  build:
+    name: Build Tact Wine runner
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    env:
+      RUNNER_VERSION: ${{ github.ref_name }}
+      OUTPUT_DIR: /tmp/tact-output
+    steps:
+      - name: Install build dependencies
+        run: |
+          sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf
+          pacman -Sy --noconfirm --needed \
+            base-devel git wget xz \
+            python3 \
+            gcc gcc-libs \
+            flex bison \
+            libx11 libx11-32bit \
+            libxext libxext-32bit \
+            libxrandr libxrandr-32bit \
+            libxrender libxrender-32bit \
+            libxcomposite libxcomposite-32bit \
+            libxcursor libxcursor-32bit \
+            libxi libxi-32bit \
+            libxxf86vm libxxf86vm-32bit \
+            libxinerama libxinerama-32bit \
+            libxdamage libxdamage-32bit \
+            libxfixes libxfixes-32bit \
+            libxkbcommon libxkbcommon-32bit \
+            libxcb libxcb-32bit \
+            libgl libgl-32bit \
+            libpcap libpcap-32bit \
+            cups cups-32bit \
+            samba \
+            gnutls gnutls-32bit \
+            libgpg-error libgpg-error-32bit \
+            libunwind libunwind-32bit \
+            alsa-lib alsa-lib-32bit \
+            libpulse libpulse-32bit \
+            libusb libusb-32bit \
+            mesa mesa-32bit \
+            ocl-icd ocl-icd-32bit \
+            opencl-headers \
+            freetype2 freetype2-32bit \
+            fontconfig fontconfig-32bit \
+            lcms2 lcms2-32bit \
+            gettext gettext-32bit \
+            v4l-utils v4l-utils-32bit \
+            sdl2 sdl2-32bit \
+            gtk3 gtk3-32bit \
+            dbus dbus-32bit \
+            sqlite sqlite-32bit \
+            2>&1 | tail -5
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Build Tact runner (wine-tkg)
+        run: |
+          mkdir -p "$OUTPUT_DIR"
+          cd repo
+          bash runner/build.sh ci
+        env:
+          RUNNER_VERSION: ${{ env.RUNNER_VERSION }}
+          OUTPUT_DIR: ${{ env.OUTPUT_DIR }}
+          # Désactiver les prompts wine-tkg
+          _NON_INTERACTIVE: "true"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tact-runner-${{ env.RUNNER_VERSION }}
+          path: |
+            ${{ env.OUTPUT_DIR }}/
+
+      - name: Create release
+        if: startsWith(github.ref, 'refs/tags/runner-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.OUTPUT_DIR }}/*.tar.xz
+            ${{ env.OUTPUT_DIR }}/*.sha256
+          name: Tact Runner ${{ env.RUNNER_VERSION }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
