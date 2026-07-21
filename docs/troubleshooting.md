@@ -34,25 +34,25 @@ Remove stale `.desktop` files in `~/.local/share/applications` and run `update-d
 
 ## Backup files piling up
 
-Backups are automatically cleaned up after 30 days. You can also delete `~/.local/share/touchdesigner-linux/backups/` manually.
+Backups are automatically cleaned up after 30 days. You can also delete `~/.local/share/tact/backups/` manually.
 
 ## NVIDIA hybrid laptop uses wrong GPU
 
-Set `USE_NVIDIA_DGPU=Y` before launching, or edit `~/.local/bin/launch-touchdesigner.sh` and change `USE_NVIDIA_DGPU="N"` to `"Y"`. The setting is preserved across updates.
+Set `USE_NVIDIA_DGPU=Y` before launching, or edit `~/.local/bin/tact` and change `USE_NVIDIA_DGPU="N"` to `"Y"`. The setting is preserved across updates.
 
 ## Python packages fail to install or import (pip)
 
 TouchDesigner ships with its own embedded Python and pip. Use the `--pip` command to install packages:
 
 ```bash
-td-install --pip install numpy
-td-install --pip list
+tact pip install numpy
+tact pip list
 ```
 
 If `--pip` is not available, run pip manually:
 ```bash
-WINEPREFIX=~/.local/share/touchdesigner-linux/prefix \
-  ~/.local/share/touchdesigner-linux/runner/bin/wine64 \
+WINEPREFIX=~/.local/share/tact/prefix \
+  ~/.local/share/tact/runner/bin/wine64 \
   "c:\Program Files\TouchDesigner <version>\bin\python.exe" -m pip install <package>
 ```
 
@@ -74,13 +74,13 @@ Error loading "...torch\\lib\\c10.dll" or one of its dependencies.
 
 **Fix:** Set `KMP_AFFINITY=disabled` to disable Intel OpenMP thread affinity:
 ```bash
-export KMP_AFFINITY=disabled
-td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
+	export KMP_AFFINITY=disabled
+	tact pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
 This environment variable is already set automatically:
-- In the **launcher** (`launch-touchdesigner.sh`) — torch works in TOP Scripts out of the box
-- In **`td-install --pip`** — pip installs and `--pip run` commands work automatically
+- In the **launcher** (`tact`) — torch works in TOP Scripts out of the box
+- In **`tact pip`** — pip installs and `pip run` commands work automatically
 
 **Works with:** PyTorch CPU-only (tested 2.13.0+cpu under Wine TkG)
 **CUDA support:** Not yet tested

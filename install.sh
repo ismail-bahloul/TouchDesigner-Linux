@@ -1,6 +1,6 @@
 #!/bin/bash
-# TouchDesigner-Linux — Automated installer for TouchDesigner on Linux.
-# This is a lightweight launcher that downloads and runs td-install (Python).
+# Tact — TouchDesigner on Linux.
+# Lightweight launcher that downloads and runs the tact CLI.
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
@@ -11,7 +11,7 @@ set -e
 
 REPO_URL="https://github.com/iswad-lab/TouchDesigner-Linux.git"
 REPO_BRANCH="${TD_BRANCH:-main}"
-INSTALL_DIR="${TD_INSTALL_DIR:-$HOME/.local/share/touchdesigner-linux}"
+INSTALL_DIR="${TACT_INSTALL_DIR:-${TD_INSTALL_DIR:-$HOME/.local/share/tact}}"
 
 # Check for Linux
 if [ "$(uname)" != "Linux" ]; then
@@ -31,14 +31,17 @@ fi
 
 # Determine where the repo is
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || pwd)"
-if [ -f "$SCRIPT_DIR/td-install" ]; then
+if [ -f "$SCRIPT_DIR/tact" ]; then
     # Running from a local clone
+    TD_CLI="$SCRIPT_DIR/tact"
+elif [ -f "$SCRIPT_DIR/td-install" ]; then
+    # Legacy fallback
     TD_CLI="$SCRIPT_DIR/td-install"
 else
     # Running from curl pipe — clone the repo
     REPO_DIR="$INSTALL_DIR/source"
     if [ ! -d "$REPO_DIR/.git" ]; then
-        echo "Downloading TouchDesigner-Linux..."
+        echo "Downloading Tact..."
         mkdir -p "$(dirname "$REPO_DIR")"
         git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$REPO_DIR"
     else
@@ -46,7 +49,7 @@ else
         cd "$REPO_DIR"
         git pull --ff-only origin "$REPO_BRANCH" 2>/dev/null || true
     fi
-    TD_CLI="$REPO_DIR/td-install"
+    TD_CLI="$REPO_DIR/tact"
     cd "$REPO_DIR"
 fi
 

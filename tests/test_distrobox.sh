@@ -58,11 +58,11 @@ distrobox enter "$CONTAINER_NAME" -- bash -c '
 
     echo ""
     echo "=== Dry-run install ==="
-    ./td-install --install --dry-run
+    ./tact --install --dry-run
 
     echo ""
     echo "=== Diagnose ==="
-    ./td-install --diagnose
+    ./tact --diagnose
 
     echo ""
     echo "=== Tests complete ==="

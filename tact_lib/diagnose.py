@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 from .utils import (
-    TD_BASE_DIR,
+    TACT_BASE_DIR,
     Colors,
     error,
     info,
@@ -21,7 +21,8 @@ def run_diagnose():
     """Print a full system health report."""
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")
-    print_banner("1.4")
+    from . import __version__
+    print_banner(__version__)
     print(f"\n{Colors.bold}System Health Check{Colors.nc}\n")
     print_hr()
 
@@ -109,20 +110,20 @@ def _check_gpu():
 
 def _check_disk():
     info("Disk:")
-    td_dir = TD_BASE_DIR
+    td_dir = TACT_BASE_DIR
     try:
         stat = os.statvfs(td_dir)
         free_gb = (stat.f_frsize * stat.f_bfree) / (1024**3)
-        print(f"  TD_BASE_DIR: {td_dir}")
+        print(f"  Base dir: {td_dir}")
         print(f"  Free space:  {free_gb:.1f} GB")
     except OSError:
-        warning(f"  TD_BASE_DIR: {td_dir} (unreachable)")
+        warning(f"  Base dir: {td_dir} (unreachable)")
     print()
 
 
 def _check_td_base():
     info("TouchDesigner base directory:")
-    td_dir = TD_BASE_DIR
+    td_dir = TACT_BASE_DIR
 
     if not os.path.isdir(td_dir):
         warning(f"  {td_dir} — not found")
@@ -145,8 +146,8 @@ def _check_td_base():
 
 def _check_wine():
     info("Wine environment:")
-    runner_dir = os.path.join(TD_BASE_DIR, "runner")
-    prefix_dir = os.path.join(TD_BASE_DIR, "prefix")
+    runner_dir = os.path.join(TACT_BASE_DIR, "runner")
+    prefix_dir = os.path.join(TACT_BASE_DIR, "prefix")
 
     wine64 = os.path.join(runner_dir, "bin", "wine64")
     if os.path.isfile(wine64):
@@ -171,7 +172,7 @@ def _check_td_versions():
     found = False
 
     # Check Wine prefix (curl install method)
-    drive_c = os.path.join(TD_BASE_DIR, "prefix", "drive_c")
+    drive_c = os.path.join(TACT_BASE_DIR, "prefix", "drive_c")
     if os.path.isdir(drive_c):
         for root, dirs, files in os.walk(drive_c):
             for f in files:

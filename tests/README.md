@@ -37,8 +37,8 @@ for SELinux systems.
 
 | Environment | Goal | Command |
 |---|---|---|
-| Bare metal | Full install + launch | `./td-install` |
-| VM (no GPU) | Headless extraction | `./td-install -H` |
-| VM + GPU passthrough | GPU acceleration | `./td-install` |
+| Bare metal | Full install + launch | `./tact` |
+| VM (no GPU) | Headless extraction | `./tact -H` |
+| VM + GPU passthrough | GPU acceleration | `./tact` |
 | Distrobox | Container + desktop | `bash tests/test_distrobox.sh` |
 | Docker | Smoke test | `docker build -t td-test -f tests/Dockerfile .` |

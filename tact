@@ -1,42 +1,49 @@
 #!/usr/bin/env python3
 """
-TouchDesigner-Linux — Automated installer for TouchDesigner on Linux.
+Tact — TouchDesigner on Linux.
 
 Usage:
-    td-install                      Install (auto-detect graphical / headless)
-    td-install --diagnose           System health check
-    td-install --help               Full options
+    tact                            Install (auto-detect graphical / headless)
+    tact --diagnose                 System health check
+    tact --help                     Full options
+    tact run [project.toe]          Launch TouchDesigner
+    tact pip install numpy          Install Python packages
 """
 
 import os
 import sys
 
-# Ensure the td_lib package is importable
+# Ensure the tact_lib package is importable
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 # Also check system-installed location (AUR, system package)
-SHARE_DIR = "/usr/share/touchdesigner-linux"
+SHARE_DIR = "/usr/share/tact"
 if os.path.isdir(SHARE_DIR) and SHARE_DIR not in sys.path:
     sys.path.append(SHARE_DIR)
 
-# Fallback: look for td_lib relative to this script when run in-tree
+# Fallback: look for tact_lib relative to this script when run in-tree
 PARENT_DIR = os.path.dirname(SCRIPT_DIR)
-if PARENT_DIR not in sys.path and os.path.isdir(os.path.join(PARENT_DIR, "td_lib")):
+if PARENT_DIR not in sys.path and os.path.isdir(os.path.join(PARENT_DIR, "tact_lib")):
     sys.path.insert(0, PARENT_DIR)
-# Another fallback: /opt/touchdesigner (AUR package td_lib might live there)
-for p in ["/opt/touchdesigner", "/opt/touchdesigner/app"]:
-    if os.path.isdir(os.path.join(p, "td_lib")) and p not in sys.path:
+# Another fallback: /opt/tact (AUR package tact_lib might live there)
+for p in ["/opt/tact", "/opt/tact/app"]:
+    if os.path.isdir(os.path.join(p, "tact_lib")) and p not in sys.path:
         sys.path.append(p)
 
-from td_lib.cleanup import run_uninstall
-from td_lib.cli import parse_args
-from td_lib.diagnose import run_diagnose
-from td_lib.install import run_install
-from td_lib.pip import run_pip
-from td_lib.update import run_update
-from td_lib.utils import error, print_banner, setup_logging
+# Legacy fallback: /opt/touchdesigner
+for p in ["/opt/touchdesigner", "/opt/touchdesigner/app"]:
+    if os.path.isdir(os.path.join(p, "tact_lib")) and p not in sys.path:
+        sys.path.append(p)
+
+from tact_lib.cleanup import run_uninstall
+from tact_lib.cli import parse_args
+from tact_lib.diagnose import run_diagnose
+from tact_lib.install import run_install
+from tact_lib.pip import run_pip
+from tact_lib.update import run_update
+from tact_lib.utils import error, print_banner, setup_logging
 
 
 def main():
@@ -59,9 +66,9 @@ def main():
         return
 
     if args.version:
-        from td_lib import __version__
+        from tact_lib import __version__
 
-        print(f"td-install {__version__}")
+        print(f"tact {__version__}")
         return
 
     # Handle --patch-toe standalone mode
@@ -107,17 +114,17 @@ def main():
 
 
 def _show_menu(args):
-    """Show interactive main menu (same as bash install.sh)."""
+    """Show interactive main menu."""
     import sys
     import termios
     import tty
 
-    from td_lib.distro import detect_distro
-    from td_lib.utils import Colors, print_banner, print_hr
+    from tact_lib.distro import detect_distro
+    from tact_lib.utils import Colors, print_banner, print_hr
 
     if sys.stdout.isatty():
-        print("\033[2J\033[H", end="")  # clear screen (like bash's `clear`)
-    print_banner("v1.4")
+        print("\033[2J\033[H", end="")  # clear screen
+    print_banner("2.0-dev")
 
     OS_NAME = "Unknown"
     try:
@@ -153,12 +160,13 @@ def _show_menu(args):
             f"  {Colors.dim}[{Colors.nc}{Colors.white}{Colors.bold}{label:<7}{Colors.nc}{Colors.dim}]{Colors.nc}  {text}"
         )
 
-    _item("Runner", "Soda Wine 9.0-1 (standalone)")
+    runner_label = "Tact Wine 11 (custom)" if getattr(args, 'runner', 'tact') == 'tact' else "Soda Wine 9.0-1 (standalone)"
+    _item("Runner", runner_label)
     _item("GPU", "Vulkan acceleration (3D graphics)")
     _item("Font", "Microsoft core fonts (corefonts)")
     _item("App", "Latest TouchDesigner version installation")
 
-    print(f"\n{Colors.white}INSTALLATION OPTIONS :{Colors.nc}\n")
+    print(f"\n{Colors.white}OPTIONS :{Colors.nc}\n")
 
     options = [
         (
@@ -170,11 +178,11 @@ def _show_menu(args):
             "Uninstall",
             "Remove selected versions or everything (prefix, runner, launcher)",
         ),
-        ("Exit", "Quit this script without making changes"),
+        ("Exit", "Quit without making changes"),
     ]
     actions = ["install", "update", "uninstall", None]
 
-    # Fall back to simple input when stdin is not a TTY (e.g. piped)
+    # Fall back to simple input when stdin is not a TTY
     if not sys.stdin.isatty():
         print(f"  1. Install")
         print(
@@ -191,7 +199,7 @@ def _show_menu(args):
         print()
         print(f"  0. Exit")
         print(
-            f"{Colors.accent}     Quit this script without making changes.{Colors.nc}\n"
+            f"{Colors.accent}     Quit without making changes.{Colors.nc}\n"
         )
         try:
             choice = input("  Select option [1]: ").strip() or "1"
@@ -289,8 +297,8 @@ def _show_menu(args):
 
 def run_patch_toe(file_path: str) -> None:
     """Apply wine_ui_fixes.tox to a single .toe file (--patch-toe)."""
-    from td_lib.utils import ensure_dir, error, info
-    from td_lib.wine import RUNNER_DIR, WINE_PREFIX
+    from tact_lib.utils import TACT_BASE_DIR, ensure_dir, error, info
+    from tact_lib.wine import RUNNER_DIR, WINE_PREFIX
 
     file_path = os.path.expanduser(file_path)
     if not os.path.isfile(file_path):
@@ -299,7 +307,7 @@ def run_patch_toe(file_path: str) -> None:
 
     runner_bin = os.path.join(RUNNER_DIR, "bin")
     if not os.path.isdir(runner_bin):
-        error("TouchDesigner Wine environment not found. Run td-install first.")
+        error("TouchDesigner Wine environment not found. Run 'tact install' first.")
         sys.exit(1)
 
     # Find toeexpand and toecollapse
@@ -318,9 +326,9 @@ def run_patch_toe(file_path: str) -> None:
         sys.exit(1)
 
     # Find fix file
-    fix_file = os.path.join(TD_BASE_DIR, "wine_ui_fixes.tox")
+    fix_file = os.path.join(TACT_BASE_DIR, "wine_ui_fixes.tox")
     if not os.path.isfile(fix_file):
-        from td_lib.desktop import install_font_fix
+        from tact_lib.desktop import install_font_fix
 
         fix_file = install_font_fix()
         if not fix_file:
@@ -332,7 +340,7 @@ def run_patch_toe(file_path: str) -> None:
     import subprocess
     import tempfile
 
-    fix_tmpdir = tempfile.mkdtemp(prefix="td_fix_")
+    fix_tmpdir = tempfile.mkdtemp(prefix="tact_fix_")
     try:
         fix_copy = os.path.join(fix_tmpdir, "fix.tox")
         shutil.copy2(fix_file, fix_copy)
@@ -359,7 +367,7 @@ def run_patch_toe(file_path: str) -> None:
                         fix_entries.append(line)
 
         # Backup original .toe
-        backup_dir = os.path.join(TD_BASE_DIR, "backups")
+        backup_dir = os.path.join(TACT_BASE_DIR, "backups")
         ensure_dir(backup_dir)
         unique_name = file_path.replace("/", "_") + ".bak"
         shutil.copy2(file_path, os.path.join(backup_dir, unique_name))

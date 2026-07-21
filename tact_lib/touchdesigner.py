@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 
 from .utils import (
-    TD_BASE_DIR,
+    TACT_BASE_DIR,
     download_file,
     ensure_dir,
     error,
@@ -314,7 +314,7 @@ def download_touchdesigner(
         safe_rm(dest)
         info("Download manually from https://derivative.ca/download and install with:")
         info(
-            f"  {os.path.basename(sys.argv[0]) if sys.argv else 'td-install'} -i ./TouchDesigner.{version}.exe"
+            f"  tact install -i ./TouchDesigner.{version}.exe"
         )
         raise SystemExit(1)
 
@@ -364,7 +364,7 @@ def install_touchdesigner(exe_path: str, version: str | None = None) -> bool:
         raise SystemExit(1)
 
     ensure_dir(WINETRICKS_TMP)
-    extract_root = tempfile.mkdtemp(dir=WINETRICKS_TMP, prefix="td_install_")
+    extract_root = tempfile.mkdtemp(dir=WINETRICKS_TMP, prefix="tact_install_")
 
     try:
         # Step 1: 7z extraction

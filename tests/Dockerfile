@@ -26,7 +26,7 @@ WORKDIR /opt/touchdesigner-linux
 RUN python3 tests/test_static.py
 
 # Test 2: Distro detection
-RUN python3 -c "from td_lib.distro import detect_distro; d = detect_distro(); print(f'Detected: {d.distro_name} ({d.package_manager})')"
+RUN python3 -c "from tact_lib.distro import detect_distro; d = detect_distro(); print(f'Detected: {d.distro_name} ({d.package_manager})')"
 
 # Test 3: Dry-run install (no sudo, no packages)
 RUN ./td-install --install --dry-run --headless

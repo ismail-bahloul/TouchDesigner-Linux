@@ -80,8 +80,8 @@ def print_banner(version: str = "1.4"):
     hr = "─" * min(term_width, 80)
     print(f"{Colors.dim}{hr}{Colors.nc}")
     print(
-        f"{Colors.bold}{Colors.white}TouchDesigner Linux installer {Colors.dim}{version}{Colors.nc}"
-    )
+            f"{Colors.bold}{Colors.white}Tact — TouchDesigner on Linux {Colors.dim}{version}{Colors.nc}"
+        )
     print(f"{Colors.gray}By Iswad{Colors.nc}")
     print(f"{Colors.dim}{hr}{Colors.nc}")
 
@@ -282,10 +282,16 @@ def verify_checksum(file_path: str, expected_hash: str) -> bool:
 
 # ── Directory helpers ────────────────────────────────────────────────────────
 
-TD_BASE_DIR = os.environ.get(
-    "TD_BASE_DIR",
-    os.path.expanduser("~/.local/share/touchdesigner-linux"),
+TACT_BASE_DIR = os.environ.get(
+    "TACT_BASE_DIR",
+    os.environ.get(
+        "TD_BASE_DIR",
+        os.path.expanduser("~/.local/share/tact"),
+    ),
 )
+
+# Deprecated alias for backward compatibility
+TD_BASE_DIR = TACT_BASE_DIR
 
 
 def ensure_dir(path: str):

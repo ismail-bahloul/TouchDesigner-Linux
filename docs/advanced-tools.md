@@ -8,9 +8,9 @@ TouchDesigner includes two utility programs in its `bin/` directory:
 All commands use the launcher's Wine environment:
 
 ```bash
-TD_BASE_DIR="$HOME/.local/share/touchdesigner-linux"
-WINE_PREFIX="$TD_BASE_DIR/prefix"
-WINEPREFIX="$WINE_PREFIX" "$TD_BASE_DIR/runner/bin/wine64" \
+TACT_BASE_DIR="$HOME/.local/share/tact"
+WINE_PREFIX="$TACT_BASE_DIR/prefix"
+WINEPREFIX="$WINE_PREFIX" "$TACT_BASE_DIR/runner/bin/wine64" \
   "$(find "$WINE_PREFIX/drive_c" -name toeexpand.exe -print -quit)" \
   "z:/path/to/file.toe"
 ```

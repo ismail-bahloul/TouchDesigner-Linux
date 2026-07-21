@@ -7,7 +7,7 @@ import subprocess
 
 from .touchdesigner import discover_installed_versions
 from .utils import (
-    TD_BASE_DIR,
+    TACT_BASE_DIR,
     download_file,
     ensure_dir,
     info,
@@ -31,7 +31,7 @@ DESKTOP_DIR = os.path.expanduser(
 )
 
 APPLICATIONS_DIR = os.path.expanduser("~/.local/share/applications")
-LAUNCHER_PATH = os.path.expanduser("~/.local/bin/launch-touchdesigner.sh")
+LAUNCHER_PATH = os.path.expanduser("~/.local/bin/tact")
 MIME_DIR = os.path.expanduser("~/.local/share/mime/packages")
 MIME_ICON_DIR = os.path.expanduser("~/.local/share/icons/hicolor/scalable/mimetypes")
 
@@ -48,12 +48,12 @@ def install_icons() -> str:
     """Install SVG icons for TouchDesigner, .toe, .tox files.
     Returns the path to the main TouchDesigner icon."""
     icon_path = "touchdesigner"  # fallback icon name
-    ensure_dir(TD_BASE_DIR)
+    ensure_dir(TACT_BASE_DIR)
 
     # Main TouchDesigner app icon
     app_icon_dir = os.path.expanduser("~/.local/share/icons/hicolor/scalable/apps")
     local_svg = os.path.join(SCRIPT_DIR, "Assets", "Icons", "TouchDesigner.svg")
-    dest_svg = os.path.join(TD_BASE_DIR, "TouchDesigner.svg")
+    dest_svg = os.path.join(TACT_BASE_DIR, "TouchDesigner.svg")
 
     if os.path.isfile(local_svg):
         shutil.copy2(local_svg, dest_svg)
@@ -99,8 +99,8 @@ def install_icons() -> str:
                 show_progress=False,
             )
 
-        # Copy to TD_BASE_DIR too
-        shutil.copy2(dest_icon, os.path.join(TD_BASE_DIR, f"{short_name}.svg"))
+        # Copy to TACT_BASE_DIR too
+        shutil.copy2(dest_icon, os.path.join(TACT_BASE_DIR, f"{short_name}.svg"))
 
     return icon_path
 
@@ -324,10 +324,10 @@ def associate_files() -> None:
 
 
 def install_font_fix() -> str | None:
-    """Install wine_ui_fixes.tox to TD_BASE_DIR.
+    """Install wine_ui_fixes.tox to TACT_BASE_DIR.
     Returns the path to the .tox file, or None if not found."""
-    dest = os.path.join(TD_BASE_DIR, "wine_ui_fixes.tox")
-    ensure_dir(TD_BASE_DIR)
+    dest = os.path.join(TACT_BASE_DIR, "wine_ui_fixes.tox")
+    ensure_dir(TACT_BASE_DIR)
 
     # Try local copies first
     for src in [
@@ -356,7 +356,7 @@ def install_font_fix() -> str | None:
 def distribute_font_fix() -> list[str]:
     """Copy wine_ui_fixes.tox to Wine-visible locations.
     Returns a list of installed locations."""
-    src = os.path.join(TD_BASE_DIR, "wine_ui_fixes.tox")
+    src = os.path.join(TACT_BASE_DIR, "wine_ui_fixes.tox")
     if not os.path.isfile(src):
         return []
 

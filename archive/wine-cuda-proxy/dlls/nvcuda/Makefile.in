@@ -1,0 +1,7 @@
+MODULE    = nvcuda.dll
+UNIXLIB   = nvcuda.so
+UNIX_LIBS = -ldl
+
+SOURCES = \
+	nvcuda_main.c \
+	nvcuda_unix.c

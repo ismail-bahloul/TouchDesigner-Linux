@@ -12,7 +12,7 @@ This page explains the patches and workarounds applied by the installer and laun
 
 **Technical detail:** The PE header offset is found at `e_lfanew` (offset `0x3C` in the file). The `AddressOfEntryPoint` is at `e_lfanew + 40`. Zeroing those 4 bytes is the entire patch.
 
-**File:** `td_lib/patcher.py`
+**File:** `tact_lib/patcher.py`
 
 ---
 
@@ -22,7 +22,7 @@ This page explains the patches and workarounds applied by the installer and laun
 
 **Why Soda Wine:** Soda is a Wine distribution maintained by the Bottles project, focused on running Windows **applications** (not games). It's more conservative, more stable, and doesn't have the gaming-oriented patches that can cause regressions with TD.
 
-**Why not Proton 10:** Proton 10 ships a new `DWrite.dll` (DirectWrite) that's incompatible with TD's bundled `mimalloc.dll`. This causes a hang during font enumeration at project load. The workaround (`MIMALLOC_DISABLE_REDIRECT=1`) exists but Soda avoids the issue entirely.
+**Why not Proton 10:** Proton 10 ships a new `DWrite.dll` (DirectWrite) that's incompatible with TD's bundled `mimalloc.dll`. This causes a hang during font enumeration at project load. The workaround (`MIMALLOC_DISABLE_REDIRECT=1`) exists. Soda 9 avoids the mimalloc hang but has its own font issue: DirectWrite produces **no output** for timeline fonts — they're completely absent without `wine_ui_fixes.tox`.
 
 **Why not Wine-GE:** Wine-GE is not yet supported as an optional runner, but it's on the roadmap. It may offer better GPU performance once properly integrated.
 
@@ -87,7 +87,7 @@ Wine recreates the remaining symlinks (`d:`, `com*`, etc.) on first `wineboot`.
 
 ## Diagnostics
 
-`td-install --diagnose` checks system health in one command:
+`tact diagnose` checks system health in one command:
 - OS and kernel version
 - GPU(s) and Vulkan support
 - Disk space

@@ -39,9 +39,9 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-L
 
 **Install Python packages into TD:**
 ```bash
-td-install --pip install numpy
-td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
-td-install --pip list
+tact pip install numpy
+tact pip install torch --index-url https://download.pytorch.org/whl/cpu
+tact pip list
 ```
 
 ![Screenshot](Screenshots/Script_Preview.png)
@@ -93,10 +93,10 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 
 | Path | Description |
 | --- | --- |
-| `~/.local/bin/launch-touchdesigner.sh` | Launcher script |
-| `~/.local/share/touchdesigner-linux/` | Base directory (runner, prefix, assets) |
-| `~/.local/share/touchdesigner-linux/prefix/` | Wine prefix |
-| `~/.local/share/touchdesigner-linux/backups/` | Auto-backups of patched `.toe` files |
+| `~/.local/bin/tact` | Launcher script |
+| `~/.local/share/tact/` | Base directory (runner, prefix, assets) |
+| `~/.local/share/tact/prefix/` | Wine prefix |
+| `~/.local/share/tact/backups/` | Auto-backups of patched `.toe` files |
 
 File icons installed by the project:
 

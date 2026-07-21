@@ -6,10 +6,10 @@ TD's Python environment without manually juggling Wine paths.
 
 Usage::
 
-    td-install --pip install numpy
-    td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
-    td-install --pip list
-    td-install --pip uninstall <package>
+    tact pip install numpy
+    tact pip install torch --index-url https://download.pytorch.org/whl/cpu
+    tact pip list
+    tact pip uninstall <package>
 """
 
 import os
@@ -92,7 +92,7 @@ def _wine_env() -> dict:
     """Build the Wine environment dict for running TD's Python."""
     wine64 = _find_wine64()
     if not wine64:
-        error("wine64 not found. Install TouchDesigner first (run 'td-install').")
+        error("wine64 not found. Install TouchDesigner first (run 'tact install').")
         raise SystemExit(1)
 
     runner_bin = os.path.dirname(wine64)
@@ -125,7 +125,7 @@ def run_pip(pip_args: list[str]) -> int:
     if not python_exe:
         error(
             "TouchDesigner Python not found. "
-            "Make sure TouchDesigner is installed first (run 'td-install')."
+            "Make sure TouchDesigner is installed first (run 'tact install')."
         )
         return 1
 

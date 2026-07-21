@@ -31,7 +31,7 @@ jobs:
         run: |
           # Real install: downloads Soda Wine + winetricks + DXVK + TouchDesigner
           # Headless skips desktop integration (shortcuts, MIME)
-          ./td-install --install --headless 2>&1
+          ./tact --install --headless 2>&1
           echo "--- Install done ---"
       - name: Verify no vcrun conflict in logs
         run: |
@@ -53,7 +53,7 @@ jobs:
             fi
           fi
       - name: Diagnose
-        run: td-install --diagnose 2>&1 | head -40
+        run: ./tact --diagnose 2>&1 | head -40
 
   distro-detect:
     name: Distro detect — ${{ matrix.distro.name }}
@@ -103,7 +103,7 @@ jobs:
         run: |
           cd /tmp && git clone --depth 1 https://github.com/iswad-lab/TouchDesigner-Linux.git td-repo && cp -a td-repo/. /__w/TouchDesigner-Linux/TouchDesigner-Linux
       - name: Verify distro detection
-        run: python3 -c "exec('from td_lib.distro import detect_distro; d = detect_distro(); print(d.distro_name + \" (\" + d.package_manager + \")\")')"
+        run: python3 -c "exec('from tact_lib.distro import detect_distro; d = detect_distro(); print(d.distro_name + \" (\" + d.package_manager + \")\")')"
       - name: Validate package lists
         run: PYTHONPATH=. python3 tests/check_packages.py
       - name: Run static tests

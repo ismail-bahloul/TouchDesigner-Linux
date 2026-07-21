@@ -9,7 +9,7 @@ import threading
 import time
 
 from .utils import (
-    TD_BASE_DIR,
+    TACT_BASE_DIR,
     download_file,
     ensure_dir,
     error,
@@ -24,16 +24,22 @@ from .utils import (
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 
-RUNNER_DIR = os.path.join(TD_BASE_DIR, "runner")
-WINE_PREFIX = os.path.join(TD_BASE_DIR, "prefix")
-WINETRICKS_BIN = os.path.join(TD_BASE_DIR, "winetricks")
-WINETRICKS_TMP = os.path.join(TD_BASE_DIR, "tmp")
-LOG_DIR = os.path.join(TD_BASE_DIR, "logs")
+RUNNER_DIR = os.path.join(TACT_BASE_DIR, "runner")
+WINE_PREFIX = os.path.join(TACT_BASE_DIR, "prefix")
+WINETRICKS_BIN = os.path.join(TACT_BASE_DIR, "winetricks")
+WINETRICKS_TMP = os.path.join(TACT_BASE_DIR, "tmp")
+LOG_DIR = os.path.join(TACT_BASE_DIR, "logs")
 
 WINE_DLL_OVERRIDES = "mscoree="
 
 SODA_URL = "https://github.com/bottlesdevs/wine/releases/download/soda-9.0-1/soda-9.0-1-x86_64.tar.xz"
 SODA_SHA256 = os.environ.get("SODA_SHA256", "")
+
+TACT_RUNNER_URL = os.environ.get(
+    "TACT_RUNNER_URL",
+    "https://github.com/iswad-lab/TouchDesigner-Linux/releases/download/runner-v0.1/tact-runner-v0.1-x86_64.tar.xz",
+)
+TACT_RUNNER_SHA256 = os.environ.get("TACT_RUNNER_SHA256", "")
 
 DXVK_VERSION = "2.4"
 DXVK_URL = f"https://github.com/doitsujin/dxvk/releases/download/v{DXVK_VERSION}/dxvk-{DXVK_VERSION}.tar.gz"
@@ -56,8 +62,8 @@ def download_soda_runner() -> None:
         return
 
     info("Downloading Soda Wine runtime (~300 MB)...")
-    tarball = os.path.join(TD_BASE_DIR, "soda-runner.tar.xz")
-    ensure_dir(TD_BASE_DIR)
+    tarball = os.path.join(TACT_BASE_DIR, "soda-runner.tar.xz")
+    ensure_dir(TACT_BASE_DIR)
 
     if not download_file(SODA_URL, tarball, "Soda Wine runtime"):
         error("Failed to download compatibility runtime")
@@ -96,6 +102,76 @@ def download_soda_runner() -> None:
             os.chmod(path, 0o755)
 
     success("Soda Wine runner installed")
+
+
+def download_tact_runner() -> None:
+    """Download and extract the Tact Wine runner.
+
+    Tact is a custom Wine 11 build (wine-tkg, Valve Proton experimental)
+    optimized for TouchDesigner. Falls back to Soda on error.
+    """
+    wine64 = os.path.join(RUNNER_DIR, "bin", "wine64")
+    if os.path.isfile(wine64):
+        # Check it's actually Tact, not Soda
+        result = subprocess.run(
+            [wine64, "--version"], capture_output=True, text=True, timeout=5
+        )
+        if "TkG" in result.stdout or "tact" in result.stdout.lower():
+            success("Tact runner already installed")
+            return
+
+    if not TACT_RUNNER_URL:
+        warning("TACT_RUNNER_URL not set, falling back to Soda")
+        return download_soda_runner()
+
+    info("Downloading Tact Wine runtime (~60 MB)...")
+    tarball = os.path.join(TACT_BASE_DIR, "tact-runner.tar.xz")
+    ensure_dir(TACT_BASE_DIR)
+
+    if not download_file(TACT_RUNNER_URL, tarball, "Tact Wine runner"):
+        warning("Failed to download Tact runner, falling back to Soda")
+        safe_rm(tarball)
+        return download_soda_runner()
+
+    if not verify_checksum(tarball, TACT_RUNNER_SHA256):
+        warning("Tact runner checksum mismatch, falling back to Soda")
+        safe_rm(tarball)
+        return download_soda_runner()
+
+    info("Extracting Tact runtime...")
+    ensure_dir(RUNNER_DIR)
+    try:
+        # Remove existing runner first
+        safe_rm(RUNNER_DIR)
+        ensure_dir(RUNNER_DIR)
+        subprocess.run(
+            ["tar", "-xJf", tarball, "-C", RUNNER_DIR, "--strip-components=1"],
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as e:
+        error(f"Failed to extract Tact runner: {e.stderr or e}")
+        safe_rm(tarball)
+        raise SystemExit(1)
+
+    safe_rm(tarball)
+
+    if not os.path.isfile(wine64):
+        error(f"Tact runner extraction failed: {wine64} not found")
+        raise SystemExit(1)
+
+    # Make wine binaries executable
+    for binary in ["wine", "wine64"]:
+        path = os.path.join(RUNNER_DIR, "bin", binary)
+        if os.path.isfile(path):
+            os.chmod(path, 0o755)
+
+    # Show version
+    result = subprocess.run(
+        [wine64, "--version"], capture_output=True, text=True, timeout=5
+    )
+    version = result.stdout.strip()
+    success(f"Tact runner installed: {version}")
 
 
 # ── Wine prefix ──────────────────────────────────────────────────────────────
@@ -185,7 +261,7 @@ def _handle_wineboot_error(log: str) -> None:
     if "noexec" in log_lower or "failed to set 60000020 protection" in log_lower:
         warning("Wine prefix path is on a noexec filesystem")
         info(f"  Current path: {WINE_PREFIX}")
-        info("  Try: TD_BASE_DIR=/var/tmp/$USER/touchdesigner-linux td-install")
+        info("  Try: TACT_BASE_DIR=/var/tmp/$USER/tact tact install")
 
     if "libunwind" in log_lower or "could not load ntdll" in log_lower:
         warning("Wine runtime dependency issue detected (missing libunwind/ntdll)")
@@ -221,7 +297,7 @@ def download_winetricks() -> None:
         return
 
     info("Downloading winetricks...")
-    ensure_dir(TD_BASE_DIR)
+    ensure_dir(TACT_BASE_DIR)
 
     if not download_file(
         WINETRICKS_URL, WINETRICKS_BIN, "winetricks", show_progress=False
@@ -386,7 +462,7 @@ def install_dxvk(enable: bool = True) -> None:
             return
 
     info(f"Downloading DXVK {DXVK_VERSION}...")
-    tarball = os.path.join(TD_BASE_DIR, "dxvk.tar.gz")
+    tarball = os.path.join(TACT_BASE_DIR, "dxvk.tar.gz")
 
     if not download_file(DXVK_URL, tarball, "DXVK archive"):
         warning("Failed to download DXVK, skipping (optional)")

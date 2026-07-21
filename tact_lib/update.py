@@ -9,7 +9,8 @@ def run_update(args) -> None:
     """Update launcher, winetricks, DXVK, UI fixes, and icons."""
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")
-    print_banner("1.4")
+    from . import __version__
+    print_banner(__version__)
     info("Starting TouchDesigner update...\n")
 
     # 1. Regenerate launcher

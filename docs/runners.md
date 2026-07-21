@@ -17,15 +17,17 @@ Based on extensive testing and source code analysis, this is the optimal configu
 | **KMP_AFFINITY** | `disabled` | Fixes torch import (Intel OpenMP + Wine) |
 | **PYTHONPATH** | Set automatically | Makes pip packages visible to TD |
 
-This is exactly what `td-install` sets up, and what `launch-touchdesigner.sh` configures at runtime.
+This is exactly what `tact` sets up, and what `tact` configures at runtime.
 
 ## Why Wine 9 works and Wine 10+ doesn't (short version)
 
 | Version | Works? | Why |
 |---------|--------|-----|
-| **Wine 9.x** (Soda, TkG, vanilla) | ✅ | No Mutter workaround, stable DWrite |
+| **Wine 9.x** (Soda, TkG, vanilla) | ⚠️ | Window OK but **fonts entirely missing** on timeline → `wine_ui_fixes.tox` required |
 | **Wine 10.x** (GE-Proton10, Proton) | ⚠️ | Window OK but fonts deformed → `wine_ui_fixes.tox` helps |
 | **Wine 11.x** (vanilla, GE-P11, Proton) | ❌ | Mutter workaround added in Valve fork → window invisible on KWin |
+
+**Important:** Wine 9 and Wine 10 have *different* font problems. On Wine 9 (Soda), DirectWrite produces no output for timeline fonts — they're completely absent. On Wine 10 (GE-Proton), DirectWrite renders but the glyph shapes are deformed. Both are fixed by `wine_ui_fixes.tox`, but the root cause is different.
 
 The key: Soda 9.0 is built with `_use_staging="false"` (no Wine Staging patches). Staging introduced the DWrite rewrite in Wine 10, and Valve added the Mutter workaround in Wine 11. Both are incompatible with TouchDesigner on KDE/Wayland.
 
@@ -49,7 +51,7 @@ _use_plasma_systray_fix="true"  # KDE fix
 - **GE/Proton patches:** Active but compatible (`_use_GE_patches="true"`)
 - **Result:** A Wine 9.0 build without the problematic Staging patches that break TD on Wine 10+
 
-This is why Soda works perfectly while GE-Proton (which enables Staging) has issues on Wine 10/11.
+This is why Soda avoids the Wine 10/11 Staging regressions that affect GE-Proton. That said, Soda still has its own font rendering issue (fonts absent on timeline without `wine_ui_fixes.tox`).
 
 ## Wine 9.x: Soda / Staging / TkG
 ## GE-Proton10-34 (works with fixes)
@@ -171,7 +173,7 @@ Changes in Wine 10's `dlls/win32u/` or `dlls/winex11.drv/` — the X11 driver th
 
 **Wine 10 vs Wine 11 are two different issues:**
 
-**Wine 10+ (GE-Proton10, Proton-CachyOS):** The main window appears but fonts are deformed. This is the same font rendering issue that Soda 9 solves with `wine_ui_fixes.tox`. No Mutter workaround exists in Wine 10.
+**Wine 10+ (GE-Proton10, Proton-CachyOS):** The main window appears but fonts are deformed. This is a *different* font rendering issue from Soda 9 — GE-Proton renders glyphs but with shape deformations, while Soda 9 produces no output at all. Both are fixed by `wine_ui_fixes.tox`. No Mutter workaround exists in Wine 10.
 
 **Wine 11.0 (vanilla):** The main window never appears. Wine 11.0 added a workaround for **Mutter (GNOME)** in `dlls/winex11.drv/window.c`:
 ```c
@@ -192,7 +194,7 @@ curl -L https://github.com/Kron4ek/Wine-Builds/releases/download/11.0/wine-11.0-
 ## Soda Wine 9.0-1 (default)
 
 ### Status
-Stable, fully supported. This is what the `td-install` script installs and the launcher uses.
+Stable, fully supported. This is what the `tact` script installs and the launcher uses.
 
 ### Advantages
 - Bundled with installer
@@ -221,7 +223,7 @@ Soda's font fix is auto-injected by the launcher. GE-Proton has better base font
 ### IDs Peak SDK DLLs
 All TD 2025+ builds ship `ids_peak_ipl.dll`, `ids_peak_afl.dll`, `ids_peak_ifl.dll`, `ids_peak_comfort_c.dll` which crash under Wine. Fix: zero the `AddressOfEntryPoint` in each DLL's PE header.
 
-See `td_lib/patcher.py` for implementation.
+See `tact_lib/patcher.py` for implementation.
 
 ### mimalloc + DWrite hang (Proton 10+)
 TD ships `mimalloc.dll` and `mimalloc-redirect.dll`. On Wine 10+, DWrite's font enumeration triggers a crash in mimalloc's redirected allocations, causing TD to hang on the splash screen.

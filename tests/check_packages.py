@@ -141,7 +141,7 @@ def _is_trusted(pkg: str) -> bool:
 
 
 def main():
-    from td_lib.distro import (
+    from tact_lib.distro import (
         APT_PACKAGES,
         DNF_PACKAGES,
         PACMAN_PACKAGES,

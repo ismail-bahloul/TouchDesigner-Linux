@@ -11,7 +11,8 @@ def run_install(args):
     """Run full TouchDesigner installation."""
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")
-    print_banner("1.4")
+    from . import __version__
+    print_banner(__version__)
     info("Starting TouchDesigner installation...\n")
 
     # Check prerequisites
@@ -32,11 +33,15 @@ def run_install(args):
     print()
 
     # Step 2: Wine runner
-    from .wine import download_soda_runner
-
-    info("Step 2/6: Setting up compatibility runtime...")
+    runner_name = "Tact (Wine 11)" if args.runner == "tact" else "Soda (Wine 9.0-1)"
+    info(f"Step 2/6: Setting up compatibility runtime [{runner_name}]...")
     if not args.dry_run:
-        download_soda_runner()
+        if args.runner == "tact":
+            from .wine import download_tact_runner
+            download_tact_runner()
+        else:
+            from .wine import download_soda_runner
+            download_soda_runner()
     print()
 
     # Step 3: Wine prefix
@@ -175,7 +180,7 @@ def run_install(args):
     success(f"TouchDesigner{ver_str} installation complete")
     print()
     info("Launch TouchDesigner from your desktop shortcut or application menu.")
-    info("Or run: ~/.local/bin/launch-touchdesigner.sh")
+    info("Or run: ~/.local/bin/tact run")
 
 
 def _pick_installer_file() -> str | None:

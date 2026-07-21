@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import tempfile
 
-from .utils import TD_BASE_DIR, info, safe_rm
+from .utils import TACT_BASE_DIR, info, safe_rm
 from .wine import RUNNER_DIR, WINE_PREFIX
 
 
@@ -29,7 +29,7 @@ def patch_toe_projects_in_drive() -> None:
         return
 
     # Find fix file
-    fix_file = os.path.join(TD_BASE_DIR, "wine_ui_fixes.tox")
+    fix_file = os.path.join(TACT_BASE_DIR, "wine_ui_fixes.tox")
     if not os.path.isfile(fix_file):
         return
 
@@ -112,7 +112,7 @@ def patch_toe_projects_in_drive() -> None:
                 info(f"  Patching: {toe_name}")
 
                 # Backup
-                backup_dir = os.path.join(TD_BASE_DIR, "backups")
+                backup_dir = os.path.join(TACT_BASE_DIR, "backups")
                 os.makedirs(backup_dir, exist_ok=True)
                 unique_name = toe_path.replace("/", "_") + ".bak"
                 shutil.copy2(toe_path, os.path.join(backup_dir, unique_name))

@@ -25,7 +25,7 @@ manual use on the Linux side, respecting TD_EDITOR or EDITOR env vars.
 import os
 import shutil
 
-from .utils import TD_BASE_DIR, ensure_dir, info, success, warning
+from .utils import TACT_BASE_DIR, ensure_dir, info, success, warning
 from .wine import WINE_PREFIX
 
 # TD pref.txt uses tab-separated key\tvalue format
@@ -33,7 +33,7 @@ PREF_KEY = "dats.texteditor"
 PREF_VALUE = r"C:\windows\system32\winebrowser.exe"
 
 # Fallback for AUR installs
-AUR_PREFIX = os.path.expanduser("~/.local/share/touchdesigner-linux/prefix")
+AUR_PREFIX = os.path.expanduser("~/.local/share/tact/prefix")
 
 
 def _find_prefix() -> str:

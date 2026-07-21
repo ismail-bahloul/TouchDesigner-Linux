@@ -23,7 +23,7 @@ Currently locked to **Soda Wine 9.0-1**. See [`docs/runners.md`](docs/runners.md
 
 ### 2. Diagnostic / Health check (`--diagnose`)
 
-✅ **Done!** Run `td-install --diagnose` to check OS, GPU, Vulkan, disk space, Wine, installed TD versions, and IDS patch status in one go.
+✅ **Done!** Run `tact diagnose` to check OS, GPU, Vulkan, disk space, Wine, installed TD versions, and IDS patch status in one go.
 
 ### 3. Containerized mode (Distrobox / Docker)
 
@@ -31,14 +31,14 @@ Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An o
 
 ### 4. Pip wrapper / Python package manager
 
-✅ **Done!** (v1.5) `td-install --pip install <package>` wraps `wine64 python.exe -m pip install` with proper Wine environment setup.
+✅ **Done!** (v1.5) `tact pip install <package>` wraps `wine64 python.exe -m pip install` with proper Wine environment setup.
 
 Usage:
 ```bash
-td-install --pip install numpy
-td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
-td-install --pip list
-td-install --pip uninstall <package>
+tact pip install numpy
+tact pip install torch --index-url https://download.pytorch.org/whl/cpu
+tact pip list
+tact pip uninstall <package>
 ```
 
 **Known issue:** OpenMP crash (`GetNumaNodeProcessorMaskEx` not implemented) when importing torch. **Fixed** with `KMP_AFFINITY=disabled` (auto-set in launcher). CPU-only torch 2.13.0 confirmed working on Wine TkG. See [issue #20](https://github.com/iswad-lab/TouchDesigner-Linux/issues/20).
@@ -75,21 +75,21 @@ Currently the IDS Peak SDK DLLs are patched automatically. If someone ever needs
 
 ### 10. Auto-cleanup of old versions
 
-Mostly done — the uninstall menu (`td-install --uninstall`) already lets you select and remove specific versions, and backups are auto-cleaned after 30 days.
+Mostly done — the uninstall menu (`tact --uninstall`) already lets you select and remove specific versions, and backups are auto-cleaned after 30 days.
 
 Still missing: show estimated freed space per version before removal.
 
 ### 11. Config file
 
-Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: default runner, patch toggles, NVIDIA mode, default TD version. Reduces need for CLI flags on every command.
+Centralise user preferences in `~/.config/tact/config.toml`: default runner, patch toggles, NVIDIA mode, default TD version. Reduces need for CLI flags on every command.
 
 ### 12. Headless / kiosk mode
 
-`td-install --headless project.toe` — launch TD without GUI. Useful for automated rendering, server deployment, and export pipelines. Combined with the watchdog and container mode, unlocks serious production use.
+`tact --headless project.toe` — launch TD without GUI. Useful for automated rendering, server deployment, and export pipelines. Combined with the watchdog and container mode, unlocks serious production use.
 
 ### 13. CI/CD pipeline tools
 
-`td-install --expand`, `--collapse`, `--patch-toe` as stable CLI commands for version-controlling and manipulating `.toe` files outside TD. Enables Git-based workflows and automated testing.
+`tact --expand`, `--collapse`, `--patch-toe` as stable CLI commands for version-controlling and manipulating `.toe` files outside TD. Enables Git-based workflows and automated testing.
 
 ### 14. Dedicated fix documentation page
 
@@ -111,7 +111,7 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ### 18. Code review bug fixes
 
-✅ **Done!** (v1.5) Systematic code review of all `td_lib/` modules found and fixed:
+✅ **Done!** (v1.5) Systematic code review of all `tact_lib/` modules found and fixed:
 - Missing `import re` causing `NameError` on uninstall (`cleanup.py`)
 - Winetricks log read after file deletion — "already installed" message was dead code (`wine.py`)
 - Unreachable `raise SystemExit(1)` after `_handle_wineboot_error` (`wine.py`)
@@ -119,7 +119,7 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ## Long-term
 
-- ~~Python rewrite~~ ✅ **Done!** The installer now uses modular Python (`td-install`, `td_lib/`).
+- ~~Python rewrite~~ ✅ **Done!** The installer now uses modular Python (`tact`, `tact_lib/`).
 
 ---
 

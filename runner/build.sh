@@ -78,9 +78,11 @@ case "${1:-help}" in
         echo "=== Packaging Tact runner ==="
         mkdir -p "$OUTPUT_DIR"
         
-        # Chercher le binaire wine buildé
+        # Chercher le binaire wine buildé (standalone /usr)
         WINE_BUILD=""
-        if [ -d "$WINE_TKG_DIR/wine-tkg-git/wine-build" ]; then
+        if [ -d "$WINE_TKG_DIR/wine-tkg-git/pkg/wine-tkg-valve-exp-bleeding/usr" ]; then
+            WINE_BUILD="$WINE_TKG_DIR/wine-tkg-git/pkg/wine-tkg-valve-exp-bleeding/usr"
+        elif [ -d "$WINE_TKG_DIR/wine-tkg-git/wine-build" ]; then
             WINE_BUILD="$WINE_TKG_DIR/wine-tkg-git/wine-build"
         elif [ -d "/opt/wine-tkg" ]; then
             WINE_BUILD=$(ls -d /opt/wine-tkg-* 2>/dev/null | head -n1)
@@ -98,7 +100,7 @@ case "${1:-help}" in
         TMP_PKG="$(mktemp -d)"
         cp -r "$WINE_BUILD"/* "$TMP_PKG/"
         
-        # Créer le tarball
+        # Créer le tarball standalone
         cd "$TMP_PKG"
         tar -cJf "$OUTPUT_DIR/$PACKAGE_NAME" .
         cd /
@@ -107,8 +109,20 @@ case "${1:-help}" in
         # SHA256
         sha256sum "$OUTPUT_DIR/$PACKAGE_NAME" > "$OUTPUT_DIR/$PACKAGE_NAME.sha256"
         
+        # Copier aussi le package Arch (.pkg.tar.zst) s'il existe
+        arch_pkg=$(ls "$WINE_TKG_DIR/wine-tkg-git/"*.pkg.tar.zst 2>/dev/null | head -1)
+        if [ -n "$arch_pkg" ]; then
+            cp "$arch_pkg" "$OUTPUT_DIR/"
+            sha256sum "$arch_pkg" > "$OUTPUT_DIR/$(basename "$arch_pkg").sha256"
+            echo "   + Package Arch: $(basename "$arch_pkg")"
+        fi
+        
         echo "✅ Package créé : $OUTPUT_DIR/$PACKAGE_NAME"
         echo "   SHA256 : $(cat "$OUTPUT_DIR/$PACKAGE_NAME.sha256")"
+        echo ""
+        echo "  Pour utiliser ce runner avec tact :"
+        echo "    export TACT_RUNNER_URL=file://$OUTPUT_DIR/$PACKAGE_NAME"
+        echo "    export TACT_RUNNER_SHA256=$(cat "$OUTPUT_DIR/$PACKAGE_NAME.sha256" | cut -d' ' -f1)"
         ;;
     
     ci)

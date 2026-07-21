@@ -8,7 +8,7 @@ import subprocess
 from .launcher import LAUNCHER_PATH
 from .touchdesigner import detect_version_from_exe, discover_installed_versions
 from .utils import (
-    TD_BASE_DIR,
+    TACT_BASE_DIR,
     Colors,
     error,
     info,
@@ -97,7 +97,7 @@ def uninstall_everything() -> None:
         success("Wine prefix and runner removed")
 
     info("Removing launcher script...")
-    for path in [LAUNCHER_PATH, os.path.expanduser("~/launch-touchdesigner.sh")]:
+    for path in [LAUNCHER_PATH, os.path.expanduser("~/.local/bin/launch-touchdesigner.sh")]:
         if os.path.isfile(path):
             safe_rm(path)
             success(f"Launcher removed: {path}")
@@ -210,7 +210,8 @@ def show_uninstall_menu() -> bool:
     versions = discover_installed_versions()
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")
-    print_banner("1.4")
+    from . import __version__
+    print_banner(__version__)
     print(f"\n{Colors.bold}{Colors.white}Uninstall TouchDesigner{Colors.nc}\n")
 
     if not versions:

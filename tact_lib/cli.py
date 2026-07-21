@@ -1,4 +1,4 @@
-"""CLI argument parsing for td-install."""
+"""CLI argument parsing for tact."""
 
 import argparse
 import os
@@ -7,8 +7,8 @@ import sys
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="td-install",
-        description="Install TouchDesigner on Linux.",
+        prog="tact",
+        description="TouchDesigner on Linux — install, run, manage.",
         epilog="Report issues: https://github.com/iswad-lab/TouchDesigner-Linux/issues",
     )
 
@@ -65,6 +65,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Fast mode — skip pauses between steps",
     )
+    mode.add_argument(
+        "run",
+        nargs="?",
+        metavar="FILE",
+        help=".toe file to open (runs TouchDesigner)",
+    )
 
     # Version selection
     version = parser.add_argument_group("version")
@@ -84,6 +90,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     # Options
     opts = parser.add_argument_group("options")
+    opts.add_argument(
+        "--runner",
+        dest="runner",
+        default="tact",
+        choices=["tact", "soda"],
+        help="Wine runner to use: tact (Wine 11 custom, default) or soda (Soda Wine 9.0-1)",
+    )
     opts.add_argument(
         "--nvidia",
         dest="nvidia_offload",

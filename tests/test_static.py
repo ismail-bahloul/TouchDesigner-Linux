@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-TouchDesigner-Linux v1.4 — Static test suite.
+Tact — Static test suite.
 
-Runs unit-level validation for all td_lib modules.
+Runs unit-level validation for all tact_lib modules.
 Safe to run anywhere: no sudo, no Wine, no system modifications.
 """
 
@@ -53,15 +53,15 @@ def safe_rm(path):
 
 def test_imports():
     print("\n\u2500\u2500 Imports \u2500\u2500")
-    from td_lib import __version__
+    from tact_lib import __version__
 
-    check(f"td_lib version = {__version__}", bool(__version__))
+    check(f"tact_lib version = {__version__}", bool(__version__))
 
-    from td_lib.cli import parse_args
+    from tact_lib.cli import parse_args
 
     check("cli.parse_args", True)
 
-    from td_lib.utils import (
+    from tact_lib.utils import (
         Colors,
         download_file,
         ensure_dir,
@@ -79,12 +79,12 @@ def test_imports():
 
     check("utils", True)
 
-    from td_lib.distro import DistroInfo, detect_distro
+    from tact_lib.distro import DistroInfo, detect_distro
 
     d = detect_distro()
     check(f"distro.detect_distro() = {d.distro_name} ({d.package_manager})", True)
 
-    from td_lib.wine import (
+    from tact_lib.wine import (
         RUNNER_DIR,
         WINE_PREFIX,
         WINETRICKS_BIN,
@@ -94,7 +94,7 @@ def test_imports():
 
     check(f"wine paths: {RUNNER_DIR}", True)
 
-    from td_lib.touchdesigner import (
+    from tact_lib.touchdesigner import (
         DOWNLOAD_DIR,
         FALLBACK_VERSIONS,
         TD_INSTALL_DIR,
@@ -109,15 +109,15 @@ def test_imports():
         len(FALLBACK_VERSIONS) >= 5,
     )
 
-    from td_lib.patcher import IDS_DLLS, check_ids_patch_status, patch_ids_dlls
+    from tact_lib.patcher import IDS_DLLS, check_ids_patch_status, patch_ids_dlls
 
     check("patcher has 4 IDS DLLs", len(IDS_DLLS) == 4)
 
-    from td_lib.launcher import create_launcher_script
+    from tact_lib.launcher import create_launcher_script
 
     check("launcher", True)
 
-    from td_lib.desktop import (
+    from tact_lib.desktop import (
         associate_files,
         create_shortcuts,
         create_versioned_shortcuts,
@@ -130,19 +130,19 @@ def test_imports():
 
     check("desktop", True)
 
-    from td_lib.diagnose import run_diagnose
+    from tact_lib.diagnose import run_diagnose
 
     check("diagnose", True)
 
-    from td_lib.install import run_install
+    from tact_lib.install import run_install
 
     check("install", True)
 
-    from td_lib.update import run_update
+    from tact_lib.update import run_update
 
     check("update", True)
 
-    from td_lib.cleanup import (
+    from tact_lib.cleanup import (
         run_uninstall,
         show_uninstall_menu,
         uninstall_everything,
@@ -151,7 +151,7 @@ def test_imports():
 
     check("cleanup", True)
 
-    from td_lib.patches import patch_toe_projects_in_drive
+    from tact_lib.patches import patch_toe_projects_in_drive
 
     check("patches", True)
 
@@ -163,7 +163,7 @@ def test_imports():
 
 def test_cli_args():
     print("\n\u2500\u2500 CLI args \u2500\u2500")
-    from td_lib.cli import parse_args
+    from tact_lib.cli import parse_args
 
     args = parse_args(["--install", "--dry-run"])
     check("--install --dry-run", args.action == "install" and args.dry_run)
@@ -218,8 +218,8 @@ def test_cli_args():
 
 def test_dry_run():
     print("\n\u2500\u2500 Dry-run \u2500\u2500")
-    from td_lib.cli import parse_args
-    from td_lib.install import run_install
+    from tact_lib.cli import parse_args
+    from tact_lib.install import run_install
 
     args = parse_args(["--install", "--dry-run", "--headless"])
     try:
@@ -236,7 +236,7 @@ def test_dry_run():
 
 def test_safe_rm():
     print("\n\u2500\u2500 safe_rm safety \u2500\u2500")
-    from td_lib.utils import safe_rm
+    from tact_lib.utils import safe_rm
 
     # Refuse dangerous paths (should not crash)
     for dangerous in ["/", "/home", "/etc", "/usr"]:
@@ -276,7 +276,7 @@ def test_safe_rm():
 
 def test_ensure_dir():
     print("\n\u2500\u2500 ensure_dir \u2500\u2500")
-    from td_lib.utils import ensure_dir
+    from tact_lib.utils import ensure_dir
 
     tmpdir = os.path.join(tempfile.mkdtemp(), "nested", "sub", "dirs")
     ensure_dir(tmpdir)
@@ -294,7 +294,7 @@ def test_require_commands():
     print("\n── require_command / require_any_command ──")
     import os
 
-    from td_lib.utils import require_any_command, require_command
+    from tact_lib.utils import require_any_command, require_command
 
     # shutil.which may not work reliably in all containers (GitHub Actions Docker).
     # Instead, test using os.path.exists with known absolute paths.
@@ -326,7 +326,7 @@ def test_require_commands():
 
 def test_verify_checksum():
     print("\n\u2500\u2500 verify_checksum \u2500\u2500")
-    from td_lib.utils import verify_checksum
+    from tact_lib.utils import verify_checksum
 
     content = b"hello world"
     expected_hash = hashlib.sha256(content).hexdigest()
@@ -347,7 +347,7 @@ def test_log_format():
     print("\n\u2500\u2500 Log format \u2500\u2500")
     import io
 
-    from td_lib.utils import Colors, error, info, success, warning
+    from tact_lib.utils import Colors, error, info, success, warning
 
     old_stderr = sys.stderr
     try:
@@ -369,7 +369,7 @@ def test_print_banner():
     print("\n\u2500\u2500 print_banner / print_hr \u2500\u2500")
     import io
 
-    from td_lib.utils import print_banner, print_hr
+    from tact_lib.utils import print_banner, print_hr
 
     old_stdout = sys.stdout
     try:
@@ -395,7 +395,7 @@ def test_print_banner():
 
 def test_distro_detection():
     print("\n\u2500\u2500 Distro detection \u2500\u2500")
-    from td_lib.distro import DistroInfo, detect_distro
+    from tact_lib.distro import DistroInfo, detect_distro
 
     d = detect_distro()
     check("detect_distro returns DistroInfo", isinstance(d, DistroInfo))
@@ -412,7 +412,7 @@ def test_distro_detection():
 
 def test_desktop_file_content():
     print("\n\u2500\u2500 Desktop file content \u2500\u2500")
-    from td_lib.desktop import _write_desktop_file
+    from tact_lib.desktop import _write_desktop_file
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".desktop", delete=False) as f:
         tmppath = f.name
@@ -452,7 +452,7 @@ def test_desktop_file_content():
 
 def test_mime_xml_content():
     print("\n\u2500\u2500 MIME XML content \u2500\u2500")
-    from td_lib import desktop as _dsk
+    from tact_lib import desktop as _dsk
 
     orig_mime_dir = _dsk.MIME_DIR
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -501,7 +501,7 @@ def test_font_fix_paths():
 
 def test_wine_error_parser():
     print("\n\u2500\u2500 Wine error parser \u2500\u2500")
-    from td_lib.wine import _handle_wineboot_error
+    from tact_lib.wine import _handle_wineboot_error
 
     test_cases = [
         "noexec",
@@ -597,7 +597,7 @@ def _create_mock_dll(path: str, entry_point: int) -> None:
 
 def test_ids_patch_parsing():
     print("\n\u2500\u2500 IDS Patch PE parsing \u2500\u2500")
-    from td_lib.patcher import IDS_DLLS
+    from tact_lib.patcher import IDS_DLLS
 
     with tempfile.TemporaryDirectory() as tmpdir:
         td_dir = os.path.join(
@@ -623,8 +623,8 @@ def test_ids_patch_parsing():
             check(f"  PE parse {dll_name} EP=0x{actual_ep:x}", actual_ep == expected_ep)
 
         # Test check_ids_patch_status with mock prefix
-        from td_lib import patcher as _ptch
-        from td_lib.wine import WINE_PREFIX
+        from tact_lib import patcher as _ptch
+        from tact_lib.wine import WINE_PREFIX
 
         orig_prefix = _ptch.WINE_PREFIX
         try:
@@ -660,7 +660,7 @@ def test_ids_patch_parsing():
 
 def test_version_select():
     print("\n\u2500\u2500 Version selection \u2500\u2500")
-    from td_lib.touchdesigner import FALLBACK_VERSIONS, fetch_available_versions
+    from tact_lib.touchdesigner import FALLBACK_VERSIONS, fetch_available_versions
 
     versions = fetch_available_versions()
     check(f"fetched {len(versions)} versions", len(versions) > 0)
@@ -694,7 +694,7 @@ def test_version_detection():
 
 def test_version_sorting():
     print("\n\u2500\u2500 Version sorting \u2500\u2500")
-    from td_lib.touchdesigner import FALLBACK_VERSIONS
+    from tact_lib.touchdesigner import FALLBACK_VERSIONS
 
     sorted_desc = sorted(FALLBACK_VERSIONS, reverse=True)
     check("FALLBACK_VERSIONS sorted descending", FALLBACK_VERSIONS == sorted_desc)
@@ -707,8 +707,8 @@ def test_version_sorting():
 
 def test_discover_installed_versions():
     print("\n\u2500\u2500 discover_installed_versions (mock) \u2500\u2500")
-    from td_lib.touchdesigner import discover_installed_versions
-    from td_lib.wine import WINE_PREFIX
+    from tact_lib.touchdesigner import discover_installed_versions
+    from tact_lib.wine import WINE_PREFIX
 
     drive_c = os.path.join(WINE_PREFIX, "drive_c")
     if not os.path.isdir(drive_c):
@@ -743,8 +743,8 @@ def test_desktop_assets():
     install_sh = os.path.join(script_dir, "install.sh")
     check("install.sh exists", os.path.isfile(install_sh))
 
-    td_install = os.path.join(script_dir, "td-install")
-    check("td-install exists", os.path.isfile(td_install))
+    tact_cli = os.path.join(script_dir, "tact")
+    check("tact exists", os.path.isfile(tact_cli))
 
 
 # =============================================================================
@@ -775,7 +775,7 @@ def test_headless_auto_detect():
 
 def test_launcher_script():
     print("\n\u2500\u2500 Launcher script generation \u2500\u2500")
-    from td_lib.launcher import LAUNCHER_PATH, create_launcher_script
+    from tact_lib.launcher import LAUNCHER_PATH, create_launcher_script
 
     backup = None
     if os.path.isfile(LAUNCHER_PATH):
@@ -840,7 +840,7 @@ def test_launcher_script():
 def test_pip_module():
     print("\n── Pip module ──")
     # Test that the module can be imported
-    from td_lib import pip
+    from tact_lib import pip
     check("pip module importable", True)
 
     # find_td_python should return None when TD not installed
@@ -865,7 +865,7 @@ def test_diagnose_output():
     # Verify the module has a __main__ block
     import inspect
 
-    from td_lib import diagnose
+    from tact_lib import diagnose
 
     has_main = any(
         hasattr(m, "__name__") and m.__name__ == "__main__" for m in [diagnose]
@@ -910,7 +910,7 @@ def test_diagnose_output():
     )
     check(
         "diagnose outputs 'TouchDesigner base' or (unreachable) fallback",
-        "TD_BASE_DIR" in output or "Size" in output or "TD_BASE_DIR" in err,
+        "Base dir" in output or "Size" in output or "Base dir" in err,
     )
 
 
@@ -921,7 +921,7 @@ def test_diagnose_output():
 
 def test_uninstall_text_selection():
     print("\n\u2500\u2500 Uninstall text selection parsing \u2500\u2500")
-    from td_lib.cleanup import uninstall_selected_versions
+    from tact_lib.cleanup import uninstall_selected_versions
 
     # With empty/wrong paths, should return 0 removed
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -947,7 +947,7 @@ def test_uninstall_text_selection():
 
 def test_distro_package_lists():
     print("\n\u2500\u2500 Distro package lists \u2500\u2500")
-    from td_lib.distro import (
+    from tact_lib.distro import (
         APT_PACKAGES,
         DNF_PACKAGES,
         PACMAN_PACKAGES,
@@ -971,7 +971,7 @@ def test_distro_package_lists():
 
 def test_version_picker_installed_marking():
     print("\n\u2500\u2500 Version picker installed marking \u2500\u2500")
-    from td_lib.touchdesigner import FALLBACK_VERSIONS
+    from tact_lib.touchdesigner import FALLBACK_VERSIONS
 
     years = set(v.split(".")[0] for v in FALLBACK_VERSIONS)
     check("fallback has 2025", "2025" in years)
