@@ -23,7 +23,7 @@ A technical reference for the Wine runners tested with TouchDesigner under Linux
 | **Soda 9.0-1** | Wine 9.0 TkG | Basic (449 KB d2d1) | ✅ | ❌ Missing | ❌ Abandoned |
 | **GE-Proton10** | Wine 10 Proton | Full (~1.3 MB d2d1) | ✅ | ⚠️ Deformed | ✅ Active |
 | **GE-Proton11** | Wine 11 Proton | Full (~1.3 MB d2d1) | ✅ | ⚠️ Deformed | ✅ Active |
-| **Tact (Wine 11 + GE DLLs)** | Wine 11 TkG | Full (GE DLLs) | ✅ | ⚠️ Deformed | ✅ You |
+| **Tact (Wine 11 + DLLs GE)** | Wine 11 TkG | Full (GE DLLs) | ✅ | ⚠️ Deformed | ✅ Iswad |
 | **Vanilla Wine 11** | Wine 11 Staging | Basic (552 KB d2d1) | ❌ Splash hang | — | ✅ |
 
 ## D2D: the real reason Wine 11 blocks
@@ -191,8 +191,8 @@ Wine's native Wayland support can cause window creation issues. Always set `WAYL
 | TD launches | ✅ | ✅ | ✅ |
 | D2D implementation | ❌ Basic (449 KB) | ✅ Full (1.3 MB) | ✅ Full (GE DLLs) |
 | Font rendering | ❌ Missing without fix | ⚠️ Deformed | ⚠️ Deformed |
-| Maintained ? | ❌ Abandoned | ✅ GloriousEggroll | ✅ You |
-| Custom patches | ❌ Impossible | ❌ Impossible | ✅ KWin, etc. |
+| Maintained ? | ❌ Abandoned | ✅ GloriousEggroll | ✅ Iswad |
+| Custom patches | ❌ Impossible | ❌ Impossible | ✅ KWin + more planned |
 | D3D11/Vulkan | ✅ | ✅ | ✅ |
 | NDI | ✅ | ❓ | ❓ |
 | NVENC | ❌ | ❌ | ❌ |
