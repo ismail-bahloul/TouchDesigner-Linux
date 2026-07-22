@@ -18,43 +18,43 @@ This page explains the patches and workarounds applied by the installer and laun
 
 ## Wine runner choice: Soda → GE-Proton → Tact
 
-**Problem:** Soda 9.0-1 (runner historique) est abandonné. GE-Proton marche mais on ne peut pas le patcher. Tact est notre runner custom.
+**Problem:** Soda 9.0-1 (the historical runner) is unmaintained. GE-Proton works but cannot be patched. Tact is our custom runner.
 
-**Pourquoi Soda 9.0 a marché (v1.x) :**
-- Buildé sans Staging → pas de crash mimalloc/DWrite
-- D2D basique mais suffisant pour les versions TD de l'époque
-- Plus maintenu depuis avril 2024
+**Why Soda 9.0 worked (v1.x):**
+- Built without Staging → no mimalloc/DWrite crash
+- Basic D2D but sufficient for TD versions at the time
+- No longer maintained since April 2024
 
-**Pourquoi GE-Proton marche :**
-- Implémentation D2D complète (1.3 MB d2d1.dll vs 552 KB pour wine-tkg)
-- Patches Valve/Proton pour le rendu graphique
-- `MIMALLOC_DISABLE_REDIRECT=1` requis pour éviter le hang mimalloc
+**Why GE-Proton works:**
+- Complete D2D implementation (1.3 MB d2d1.dll vs 552 KB for wine-tkg)
+- Valve/Proton patches for graphics rendering
+- `MIMALLOC_DISABLE_REDIRECT=1` required to prevent mimalloc hang
 
-**Pourquoi Tact (notre runner) :**
-- Binaires Wine 11 buildés sur mesure (wine-tkg, config minimaliste)
-- DLLs PE (d2d1, dwrite, etc.) provenant de GE-Proton pour un D2D complet
-- Patch KWin pour compatibilité KDE
-- Liberté d'ajouter des patches spécifiques TD à l'avenir
+**Why Tact (our runner):**
+- Custom-built Wine 11 binaries (wine-tkg, minimal config)
+- PE DLLs (d2d1, dwrite, etc.) sourced from GE-Proton for complete D2D
+- KWin patch for KDE compatibility
+- Freedom to add TD-specific patches in the future
 
-### Direct2D — la découverte clé
+### Direct2D — the key discovery
 
-En juillet 2026, une analyse comparative a révélé que la différence entre Wine vanilla et GE-Proton réside dans l'implémentation de **Direct2D** :
+In July 2026, a comparative analysis revealed that the difference between vanilla Wine and GE-Proton lies in the **Direct2D** implementation:
 
-| Runner | Taille d2d1.dll | Fonctions D2D |
-|--------|----------------|---------------|
+| Runner | d2d1.dll size | D2D functions |
+|--------|---------------|---------------|
 | Soda 9.0 | 449 KB | ~700 |
 | Tact (wine-tkg) | 552 KB | ~837 |
 | **GE-Proton11** | **1.3 MB** | **~4715** |
 
-GE-Proton a **2.4× plus de code D2D** que wine-tkg. C'est ce qui permet à TD de passer le splash screen. Les patches exacts n'ont pas encore été isolés, mais l'approche pratique est d'utiliser les DLLs PE de GE-Proton avec les binaires Unix de notre build.
+GE-Proton has **2.4× more D2D code** than wine-tkg. This is what allows TD to get past the splash screen. The exact patches haven't been isolated yet, but the practical approach is to use GE-Proton's PE DLLs with our custom Unix binaries.
 
 ### mimalloc + DWrite hang
 
-Sur Wine 10+, DWrite utilise mimalloc pour ses allocations, ce qui peut causer un hang. Le fix est `MIMALLOC_DISABLE_REDIRECT=1`.
+On Wine 10+, DWrite uses mimalloc for its allocations, which can cause a hang. The fix is `MIMALLOC_DISABLE_REDIRECT=1`.
 
 ### KWin / Mutter workaround
 
-Wine 11 a ajouté un workaround pour Mutter (GNOME) qui peut bloquer la création de fenêtres sur KDE. Un patch conditionne ce workaround à l'environnement GNOME uniquement. Voir `runner/patches/0001-winex11.drv-Skip-Mutter-workaround-on-KWin.patch`.
+Wine 11 added a Mutter (GNOME) workaround that can block window creation on KDE. A patch conditions this workaround to GNOME environments only. See `runner/patches/0001-winex11.drv-Skip-Mutter-workaround-on-KWin.patch`.
 
 ---
 

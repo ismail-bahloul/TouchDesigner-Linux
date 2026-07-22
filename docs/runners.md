@@ -18,47 +18,47 @@ A technical reference for the Wine runners tested with TouchDesigner under Linux
 
 ## Runner comparison
 
-| Runner | Wine version | D2D impl. | TD launches ? | Fonts | Maintenu ? |
-|--------|-------------|-----------|---------------|-------|-----------|
-| **Soda 9.0-1** | Wine 9.0 TkG | Basique (449 KB d2d1) | ✅ | ❌ Absentes | ❌ Abandonné |
-| **GE-Proton10** | Wine 10 Proton | Complète (~1.3 MB d2d1) | ✅ | ⚠️ Déformées | ✅ Actif |
-| **GE-Proton11** | Wine 11 Proton | Complète (~1.3 MB d2d1) | ✅ | ⚠️ Déformées | ✅ Actif |
-| **Tact (Wine 11 + DLLs GE)** | Wine 11 TkG | Complète (DLLs de GE) | ✅ | ⚠️ Déformées | ✅ Toi |
-| **Vanilla Wine 11** | Wine 11 Staging | Basique (552 KB d2d1) | ❌ Splash | — | ✅ |
+| Runner | Wine version | D2D impl. | TD launches ? | Fonts | Maintained ? |
+|--------|-------------|-----------|---------------|-------|-------------|
+| **Soda 9.0-1** | Wine 9.0 TkG | Basic (449 KB d2d1) | ✅ | ❌ Missing | ❌ Abandoned |
+| **GE-Proton10** | Wine 10 Proton | Full (~1.3 MB d2d1) | ✅ | ⚠️ Deformed | ✅ Active |
+| **GE-Proton11** | Wine 11 Proton | Full (~1.3 MB d2d1) | ✅ | ⚠️ Deformed | ✅ Active |
+| **Tact (Wine 11 + GE DLLs)** | Wine 11 TkG | Full (GE DLLs) | ✅ | ⚠️ Deformed | ✅ You |
+| **Vanilla Wine 11** | Wine 11 Staging | Basic (552 KB d2d1) | ❌ Splash hang | — | ✅ |
 
-## D2D : la vraie raison pour laquelle Wine 11 bloque
+## D2D: the real reason Wine 11 blocks
 
-**Découverte importante (juillet 2026) :** Le problème de Wine 11 avec TouchDesigner n'est pas (seulement) le workaround Mutter — c'est l'implémentation **Direct2D** incomplète.
+**Key finding (July 2026):** Wine 11's problem with TouchDesigner is not (just) the Mutter workaround — it's the incomplete **Direct2D** implementation.
 
-### Analyse comparative de d2d1.dll
+### d2d1.dll comparison
 
-| Runner | Taille d2d1.dll | Fonctions d2d_* |
-|--------|----------------|-----------------|
+| Runner | d2d1.dll size | d2d_* functions |
+|--------|---------------|-----------------|
 | Soda 9.0-1 | 449 KB | ~700 |
 | Tact (wine-tkg) | 552 KB | ~837 |
 | **GE-Proton11** | **1.3 MB** | **~4715** |
-| Windows 10 natif | ~1.5 MB | — |
+| Windows 10 native | ~1.5 MB | — |
 
-GE-Proton a une `d2d1.dll` **2.4× plus grosse** et **5.6× plus de fonctions** que wine-tkg. C'est cette différence qui permet à TD de passer le splash screen et d'afficher la fenêtre principale.
+GE-Proton's `d2d1.dll` is **2.4× larger** and has **5.6× more functions** than wine-tkg. This is the difference that allows TD to get past the splash screen and show the main window.
 
-### D'où vient cette différence ?
+### Where does this difference come from?
 
-GE-Proton est buildé à partir du **source Valve/Proton** avec des patches D2D supplémentaires qui ne sont pas dans :
-- WineHQ upstream
-- wine-tkg (même avec `valve-exp-bleeding` + Staging)
+GE-Proton is built from the **Valve/Proton source tree** with additional D2D patches not found in:
+- Upstream WineHQ
+- wine-tkg (even with `valve-exp-bleeding` + Staging)
 - Soda 9.0-1
 
-Les patches exacts n'ont pas encore été isolés, mais le résultat est clair : les DLLs PE de GE-Proton (`d2d1.dll`, `dwrite.dll`, etc.) ont des implémentations bien plus complètes que celles de wine-tkg.
+The exact patches haven't been isolated yet, but the result is clear: GE-Proton's PE DLLs (`d2d1.dll`, `dwrite.dll`, etc.) have much more complete implementations than wine-tkg's.
 
-### Solution pratique
+### Practical solution
 
-Le **binaire Unix (.so)** de wine-tkg est bon. Il suffit de remplacer les **DLLs PE (.dll)** par celles de GE-Proton. C'est l'approche du runner **Tact**.
+The **Unix binary (.so)** from wine-tkg is functional. The **PE DLLs (.dll)** just need to be replaced with GE-Proton's. This is the **Tact** runner approach.
 
-## Le patch KWin/Mutter (Wine 11)
+## KWin/Mutter patch (Wine 11)
 
-### Contexte
+### Context
 
-Wine 11.0 a ajouté un workaround pour Mutter (GNOME) dans `dlls/winex11.drv/window.c` :
+Wine 11.0 added a Mutter (GNOME) workaround in `dlls/winex11.drv/window.c`:
 
 ```c
 /* When transitioning a window from IconicState to NormalState and the window is managed,
@@ -73,9 +73,9 @@ if (data->managed && MAKELONG(old_state, new_state) == MAKELONG(IconicState, Nor
 }
 ```
 
-### Problème
+### Problem
 
-Ce workaround est appliqué pour **tous les window managers**, pas seulement Mutter. Sur **KDE/KWin**, la transition `Iconic → Withdrawn → Normal` peut laisser la fenêtre bloquée en `WithdrawnState` — invisible à l'écran.
+This workaround is applied to **all window managers**, not just Mutter. On **KDE/KWin**, the `Iconic → Withdrawn → Normal` transition can leave the window stuck in `WithdrawnState` — invisible on screen.
 
 ### Patch
 
@@ -90,42 +90,42 @@ static BOOL is_mutter_desktop(void)
 }
 ```
 
-Le workaround n'est appliqué que sur GNOME/Mutter. Sur KDE et autres WM, la transition directe `Iconic → Normal` est utilisée.
+The workaround is only applied on GNOME/Mutter. On KDE and other WMs, the direct `Iconic → Normal` transition is used.
 
-### Note importante
+### Important note
 
-Ce patch a été écrit mais **n'a pas pu être testé isolément** car le problème D2D (voir section ci-dessus) bloquait TD avant même que la création de fenêtre n'ait lieu. Il est probablement correct, mais son effet réel n'a pas été confirmé. Il reste dans la base de code pour référence et pour les utilisateurs qui voudraient utiliser Wine 11 vanilla avec des DLLs natives Windows.
+This patch was written but **could not be tested in isolation** because the D2D issue (see above) blocked TD before window creation even occurred. It is likely correct, but its actual effect has not been confirmed. It remains in the codebase for reference and for users who want to use vanilla Wine 11 with native Windows DLLs.
 
 ## Soda 9.0-1
 
-### Statut
-Runner par défaut de `tact` v1.x. Stable mais abandonné par Bottles.
+### Status
+Default runner for `tact` v1.x. Stable but abandoned by Bottles.
 
-### Avantages
-- Fonctionne avec TD (sauf fonts timeline)
-- Bien testé
-- Pas de dépendance Steam
+### Advantages
+- Works with TD (except timeline fonts)
+- Well-tested
+- No Steam dependency
 
 ### Limitations
-- **Wine 9.0** — trop vieux, plus de mises à jour de sécurité
-- **D2D basique** (449 KB d2d1.dll)
-- **Fonts absentes** sans `wine_ui_fixes.tox`
-- Projet Bottles ne publie plus de mises à jour Soda
+- **Wine 9.0** — too old, no more security updates
+- **Basic D2D** (449 KB d2d1.dll)
+- **Missing fonts** without `wine_ui_fixes.tox`
+- Bottles project no longer publishes Soda updates
 
 ## GE-Proton10-34
 
-### Statut
-Fonctionne avec fixes. Fenêtre visible, fonts présentes mais déformées.
+### Status
+Works with fixes. Window visible, fonts present but deformed.
 
-### Configuration requise
+### Required configuration
 ```bash
 export WINEPREFIX="/path/to/prefix"
-export MIMALLOC_DISABLE_REDIRECT=1  # ← OBLIGATOIRE sur Wine 10+
+export MIMALLOC_DISABLE_REDIRECT=1  # ← REQUIRED on Wine 10+
 export WAYLAND_DISPLAY=""
 export KMP_AFFINITY="disabled"
 ```
 
-### vkd3d setup (GE-Proton11 uniquement)
+### vkd3d setup (GE-Proton11 only)
 ```bash
 VKD3D_SRC="/path/to/GE-Proton11-1/files/lib/vkd3d/x86_64-windows"
 SYS32="/path/to/prefix/drive_c/windows/system32"
@@ -134,27 +134,27 @@ cp "$VKD3D_SRC/libvkd3d-shader-1.dll" "$SYS32/"
 cp "$VKD3D_SRC/libvkd3d-utils-1.dll" "$SYS32/"
 ```
 
-## Tact (Wine 11 + DLLs GE-Proton)
+## Tact (Wine 11 + GE-Proton DLLs)
 
 ### Concept
-Runner custom qui combine :
-- **Binaires Unix (.so)** de Wine 11 buildé avec wine-tkg (config minimaliste, sans bloat)
-- **DLLs PE (.dll)** de GE-Proton (D2D/DWrite complet)
-- **Patch KWin** pour compatibilité KDE
+Custom runner combining:
+- **Unix binaries (.so)** from wine-tkg Wine 11 build (minimal config, no bloat)
+- **PE DLLs (.dll)** from GE-Proton (complete D2D/DWrite)
+- **KWin patch** for KDE compatibility
 
-### Pourquoi cette approche ?
+### Why this approach?
 
-Le binaire Wine (.so) de wine-tkg est fonctionnel et permet d'appliquer des patches customs (KWin, etc.). Ce qui manque c'est l'implémentation D2D côté PE (.dll). En copiant les DLLs de GE-Proton, on obtient le meilleur des deux mondes.
+The Wine `.so` binary from wine-tkg is functional and allows custom patches (KWin, etc.). What's missing is the D2D implementation on the PE (`.dll`) side. By copying GE-Proton's DLLs, we get the best of both worlds.
 
 ### Build
 ```bash
-# 1. Builder wine-tkg avec la config Tact
+# 1. Build wine-tkg with Tact config
 cd runner && bash build.sh all
 
-# 2. Télécharger GE-Proton
+# 2. Download GE-Proton
 curl -L https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton11-1/GE-Proton11-1.tar.gz
 
-# 3. Extraire les DLLs
+# 3. Extract DLLs
 cp GE-Proton11-1/files/lib/wine/x86_64-windows/*.dll <tact-runner>/lib/wine/x86_64-windows/
 cp GE-Proton11-1/files/lib/wine/i386-windows/*.dll <tact-runner>/lib/wine/i386-windows/
 ```
@@ -189,25 +189,25 @@ Wine's native Wayland support can cause window creation issues. Always set `WAYL
 | Feature | Soda 9.0 | GE-P10/11 | Tact |
 |---------|----------|-----------|------|
 | TD launches | ✅ | ✅ | ✅ |
-| D2D implementation | ❌ Basique (449 KB) | ✅ Complète (1.3 MB) | ✅ Complète (DLLs GE) |
-| Font rendering | ❌ Absentes sans fix | ⚠️ Déformées | ⚠️ Déformées |
-| Maintenu ? | ❌ Abandonné | ✅ GloriousEggroll | ✅ Toi |
-| Patches customs | ❌ Impossible | ❌ Impossible | ✅ KWin, etc. |
+| D2D implementation | ❌ Basic (449 KB) | ✅ Full (1.3 MB) | ✅ Full (GE DLLs) |
+| Font rendering | ❌ Missing without fix | ⚠️ Deformed | ⚠️ Deformed |
+| Maintained ? | ❌ Abandoned | ✅ GloriousEggroll | ✅ You |
+| Custom patches | ❌ Impossible | ❌ Impossible | ✅ KWin, etc. |
 | D3D11/Vulkan | ✅ | ✅ | ✅ |
 | NDI | ✅ | ❓ | ❓ |
 | NVENC | ❌ | ❌ | ❌ |
 | CUDA TOPs | ❌ | ❌ | ❌ |
-| Setup complexity | Low | Medium | Low (automatisé) |
+| Setup complexity | Low | Medium | Low (automated) |
 
-## Recherches en cours
+## Ongoing research
 
-Les domaines suivants sont en investigation active :
+The following areas are under active investigation:
 
-### 1. Patches D2D exacts de GE-Proton
-Identifier précisément quels patches dans GE-Proton permettent d'obtenir une `d2d1.dll` complète (1.3 MB vs 552 KB). Objectif : intégrer ces patches dans le build wine-tkg pour ne plus dépendre des DLLs de GE.
+### 1. GE-Proton's exact D2D patches
+Identify precisely which patches in GE-Proton produce a complete `d2d1.dll` (1.3 MB vs 552 KB). Goal: integrate these patches into the wine-tkg build to remove the GE DLL dependency.
 
 ### 2. Engine COMP (IPC bridge)
-Le sous-processus Engine COMP ne parvient pas à initialiser le pont IPC. Cause probable : création de pipe/named pipe sous Wine.
+The Engine COMP sub-process fails to initialize the IPC bridge. Likely cause: named pipe creation under Wine.
 
 ### 3. CUDA TOPs
-Bridge CUDA Driver API (`nvcuda.dll`) vers `libcuda.so` Linux. Projet de long terme, complexité très élevée. Voir `archive/nvcuda_proxy/` pour les expériences en cours.
+Bridge CUDA Driver API (`nvcuda.dll`) to Linux `libcuda.so`. Long-term project, very high complexity. See `archive/nvcuda_proxy/` for ongoing experiments.
