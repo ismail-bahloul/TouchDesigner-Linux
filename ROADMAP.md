@@ -123,10 +123,9 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ✅ **Done!** The old fix hardcoded ~23 specific `/ui` paths in a lookup table (`op(i)` + silent skip if the path no longer exists in a newer TD version). Rewritten to scan dynamically instead:
 
-- Scans `/ui` (TD's own interface — not reachable via `findChildren()` from `/`, has to be scanned separately with `includeUtility=True`) and `/` (the regular project tree, catches third-party palette components like kantanMapper) for Text TOPs in a broken display method.
-- `/ui`: only converts `automatic`/`polygon`/`stroke` → `scalable` — `bitmap` is left alone since it already renders correctly for ~80% of TD's own interface elements.
-- `/` (project tree): also converts `bitmap` → `scalable`, since third-party fonts can fail in Bitmap mode even when TD's own bundled fonts don't (confirmed against a real kantanMapper bug report — missing-descender glyphs, `j`/`y`/`p`/`g`).
+- Scans `/ui` (TD's own interface — not reachable via `findChildren()` from `/`, has to be scanned separately with `includeUtility=True`) and `/` (the regular project tree, catches third-party palette components like kantanMapper) for Text TOPs not already in `scalable` mode, and converts them.
 - Fixed on genuine project start (`onStart()`) and via a working **Fix Now** button (a proper Parameter Execute DAT — the previous version's pulse-parameter-via-expression wiring didn't work).
+- **Verified against Soda specifically** (not just GE-Proton/Tact, which is where earlier testing happened): an intermediate version left `bitmap` untouched in `/ui`, assuming it already rendered correctly there (true under GE-Proton, where ~80% of `/ui` elements are `bitmap` and fine). Under Soda, several `/ui` elements (the timeline attribute fields — FPS, Start, End, Tempo) default to `bitmap` and are *broken* there, unlike under GE-Proton. The original hardcoded table forced these unconditionally regardless of starting state, which is why it worked where the conditional rewrite didn't. Fixed by converting anything not already `scalable` (`automatic`/`polygon`/`stroke`/`bitmap`) everywhere, matching the original's unconditional behavior instead of trying to guess which starting state is "safe" per-runner.
 
 ### 20. TD-as-Code — programmatic .toe manipulation
 
