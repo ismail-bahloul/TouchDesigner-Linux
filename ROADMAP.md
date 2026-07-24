@@ -9,7 +9,7 @@ This is a living document — priorities may shift based on feedback and contrib
 
 ### 1. Multiple Wine runners (Wine-GE / Proton)
 
-Currently locked to **Soda Wine 9.0-1**. See [`docs/runners.md`](docs/runners.md) for the full comparison (8 runners tested).
+Currently locked to **Soda Wine 9.0-1** — still the recommended default. See [`docs/runners.md`](docs/runners.md) for the full comparison (8 runners tested).
 
 **Key findings:**
 - **Wine 9.x** (Soda, TkG, vanilla) → fully compatible
@@ -18,6 +18,8 @@ Currently locked to **Soda Wine 9.0-1**. See [`docs/runners.md`](docs/runners.md
 - **Reason:** Soda disables Wine Staging patches (`_use_staging="false"`). Staging introduced the DWrite/mimalloc bug in Wine 10, and Valve added a Mutter workaround in Wine 11.
 
 **Known Proton 10 issue:** TD hangs due to mimalloc + DWrite incompatibility. Fix: set `MIMALLOC_DISABLE_REDIRECT=1`. Must be auto-applied when using Proton runners.
+
+**Custom wine-tkg runner explored and abandoned (for now):** A custom Wine 11 TkG build with GE-Proton's `d2d1.dll`/`dwrite.dll` swapped in (to get GE-Proton's more complete D2D — ~4715 functions vs wine-tkg's own ~700-837) was built and tested. It has a reproducible hang: `d2d_device_context_draw_glyph_run_bitmap` fails with `E_OUTOFMEMORY` rendering Bitmap-mode text, looping forever. Root cause: mixing Unix-side binaries and PE-side DLLs from two different Wine builds crosses Wine's internal PE↔Unix ABI boundary, and the halves don't agree on protocol/versions — a DLL swap alone can't fix this; it would need building both halves from the same source tree. A pure GE-Proton11 build (no mixing) rendered fonts correctly with no D2D hang, but hit a separate, not-yet-root-caused crash once tested with the full GPU-hybrid launcher path (possibly the known Wine Staging `c0000005` in `d3d11_swapchain_Present`). Not pursued further; Soda remains the default until this is isolated with more time.
 
 **Spout2PW:** Bridges Spout2 video from Windows apps under Proton to PipeWire on Linux. Useful for OBS capture. AUR package: `spout2pw-bin`. Worth documenting or integrating when Spout output is needed.
 
@@ -116,6 +118,29 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 - Winetricks log read after file deletion — "already installed" message was dead code (`wine.py`)
 - Unreachable `raise SystemExit(1)` after `_handle_wineboot_error` (`wine.py`)
 - Guard against empty version list before `versions[0]` access (`install.py`)
+
+### 19. Dynamic font-fix detection (`wine_ui_fixes.tox` v2)
+
+✅ **Done!** The old fix hardcoded ~23 specific `/ui` paths in a lookup table (`op(i)` + silent skip if the path no longer exists in a newer TD version). Rewritten to scan dynamically instead:
+
+- Scans `/ui` (TD's own interface — not reachable via `findChildren()` from `/`, has to be scanned separately with `includeUtility=True`) and `/` (the regular project tree, catches third-party palette components like kantanMapper) for Text TOPs in a broken display method.
+- `/ui`: only converts `automatic`/`polygon`/`stroke` → `scalable` — `bitmap` is left alone since it already renders correctly for ~80% of TD's own interface elements.
+- `/` (project tree): also converts `bitmap` → `scalable`, since third-party fonts can fail in Bitmap mode even when TD's own bundled fonts don't (confirmed against a real kantanMapper bug report — missing-descender glyphs, `j`/`y`/`p`/`g`).
+- Fixed on genuine project start (`onStart()`) and via a working **Fix Now** button (a proper Parameter Execute DAT — the previous version's pulse-parameter-via-expression wiring didn't work).
+
+### 20. TD-as-Code — programmatic .toe manipulation
+
+✅ **MVP done!** Module `tdascode/` provides:
+- `expand()` / `collapse()` — wrap `toeexpand`/`toecollapse`
+- `TDProject` + `TDNode` classes — manipulate expanded .toe files
+- `discover_types()` — auto-detect all ~486 node types from installed TD
+- CLI: `td-install --expand`, `--collapse`, `--info`, `--list-types`, `--type-info`
+
+Used to build and verify the v2 font fix above — every edit round-tripped through the real `toeexpand`/`toecollapse` binaries to confirm TD itself accepts the result.
+
+**Next steps:**
+- Pure Python .toe parser (no Wine dependency) → cross-platform
+- `td-install --diff`, `--merge` — Git-friendly .toe workflows
 
 ## Long-term
 

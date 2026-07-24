@@ -73,6 +73,15 @@ def main():
     if args.pip_args is not None:
         sys.exit(run_pip(args.pip_args))
 
+    # Handle TD-as-Code subcommands (imported from tdascode/ package)
+    if hasattr(args, 'code_action') and args.code_action:
+        from tdascode.cli import dispatch_code_action
+        sys.exit(dispatch_code_action(args))
+
+    if hasattr(args, 'type_info') and args.type_info:
+        from tdascode.cli import dispatch_type_info
+        sys.exit(dispatch_type_info(args))
+
     # Main menu loop
     while True:
         # Show interactive menu if no action specified
