@@ -86,14 +86,20 @@ def main():
             case "install":
                 run_install(args)
                 args.action = None
+                if args.non_interactive:
+                    break
             case "update":
                 run_update(args)
                 args.action = None
+                if args.non_interactive:
+                    break
             case "uninstall":
                 did_uninstall = run_uninstall(args)
                 args.action = None
                 if not did_uninstall:
                     continue  # Back pressed, skip pause
+                if args.non_interactive:
+                    break
             case _:
                 break
 
