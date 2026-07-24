@@ -129,15 +129,16 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ### 20. TD-as-Code — programmatic .toe manipulation
 
-✅ **MVP done!** Module `tdascode/` provides:
-- `expand()` / `collapse()` — wrap `toeexpand`/`toecollapse`
-- `TDProject` + `TDNode` classes — manipulate expanded .toe files
-- `discover_types()` — auto-detect all ~486 node types from installed TD
-- CLI: `td-install --expand`, `--collapse`, `--info`, `--list-types`, `--type-info`
+**Status: held back from this release, targeting v1.7.** MVP built and used all day to build and verify the font fix above (every edit round-tripped through the real `toeexpand`/`toecollapse` binaries) — but it has two confirmed correctness bugs in the write path, found by hitting them repeatedly and working around them by hand instead of fixing the source:
 
-Used to build and verify the v2 font fix above — every edit round-tripped through the real `toeexpand`/`toecollapse` binaries to confirm TD itself accepts the result.
+- `_TEXT_HEADER_SIZE = 32` (`tdascode/types.py`) is wrong. The real `.text` file header is variable-length: a 3-byte magic + six big-endian 4-byte integers, the last one being the actual content length — not a fixed 32-byte block. `_parse_text_file()` silently truncates the first few characters of any DAT script it reads this way; `_write_text_file()`/`_build_text_header()` produce a corrupted file when writing. Every edit to a DAT's script content today bypassed this and hand-built the header with `struct.pack` instead.
+- `TDProject.write()` regenerates `.toc` incorrectly — drops the `# N 0 0 0 1` header line and excludes `.build` from the entries list. Hit directly when using `add_node()` to add a Parameter Execute DAT: `toecollapse` rejected the result as corrupt until the `.toc` was patched by hand.
 
-**Next steps:**
+Read-only use (inspecting node structure, params, connections, `expand()`/`collapse()` round-tripping) is solid. Writing DAT script content, or the `add_node()` → `write()` → `collapse()` path, is not safe to ship without fixing the above — silent data corruption on `.toe`/`.tox` files is a bad failure mode for a "safe editing" tool. Code is preserved on the `dev` branch; bring back once both bugs are fixed and re-verified.
+
+**Next steps (for v1.7):**
+- Fix `_TEXT_HEADER_SIZE` to parse the real variable-length header instead of assuming 32 bytes
+- Fix `TDProject.write()`'s `.toc` regeneration to match the original format exactly
 - Pure Python .toe parser (no Wine dependency) → cross-platform
 - `td-install --diff`, `--merge` — Git-friendly .toe workflows
 

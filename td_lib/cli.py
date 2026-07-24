@@ -131,48 +131,5 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Run pip inside TouchDesigner's embedded Python (e.g. --pip install numpy)",
     )
 
-    # ── TD-as-Code subcommands (dispatched to tdascode/ package) ────────────
-    code = parser.add_argument_group("td-as-code (experimental)")
-    code.add_argument(
-        "--expand",
-        dest="code_action",
-        action="store_const",
-        const="expand",
-        help="Expand a .toe file into a .dir text folder for inspection/editing",
-    )
-    code.add_argument(
-        "--collapse",
-        dest="code_action",
-        action="store_const",
-        const="collapse",
-        help="Collapse a .dir folder back into a .toe file",
-    )
-    code.add_argument(
-        "--info",
-        dest="code_action",
-        action="store_const",
-        const="info",
-        help="Show project structure info (nodes, types, connections)",
-    )
-    code.add_argument(
-        "--list-types",
-        dest="code_action",
-        action="store_const",
-        const="list_types",
-        help="List all available node types from the installed TouchDesigner",
-    )
-    code.add_argument(
-        "--type-info",
-        dest="type_info",
-        metavar="TYPE",
-        help="Show detailed info about a specific node type (e.g. 'POP:null' or 'glsl')",
-    )
-    code.add_argument(
-        "run",
-        nargs="?",
-        metavar="FILE",
-        help="Target .toe/.tox file for --expand/--collapse/--info",
-    )
-
     args = parser.parse_args(argv)
     return args
