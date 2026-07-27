@@ -293,9 +293,12 @@ def ensure_dir(path: str):
     os.makedirs(path, exist_ok=True)
 
 
+_SAFE_RM_BLOCKLIST = frozenset({"/", "/home", "/etc", "/usr", "/opt", "/var", "/bin", "/sbin", "/lib", "/lib64", "/usr/local"})
+
+
 def safe_rm(path: str):
     """Remove a file or directory safely (no rm -rf /)."""
-    if not path or path == "/":
+    if not path or path in _SAFE_RM_BLOCKLIST:
         error(f"Refusing to delete: {path}")
         return
     if os.path.isfile(path) or os.path.islink(path):
