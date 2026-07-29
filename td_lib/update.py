@@ -16,7 +16,7 @@ def run_update(args) -> None:
     from .launcher import create_launcher_script
 
     info("Regenerating launcher script...")
-    create_launcher_script(nvidia_offload=args.nvidia_offload)
+    create_launcher_script()
     success("Launcher updated")
 
     # 2. Icons

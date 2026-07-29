@@ -1,7 +1,6 @@
 """Launcher script generation with auto-patching of .toe files."""
 
 import os
-import re
 
 from .utils import TD_BASE_DIR, ensure_dir, info, success
 from .wine import RUNNER_DIR, WINE_PREFIX
@@ -10,34 +9,14 @@ LAUNCHER_PATH = os.path.expanduser("~/.local/bin/launch-touchdesigner.sh")
 BACKUP_DIR = os.path.join(TD_BASE_DIR, "backups")
 
 
-def _get_existing_nvidia() -> str:
-    """Read USE_NVIDIA_DGPU from existing launcher, return 'Y' or 'N'."""
-    if os.path.isfile(LAUNCHER_PATH):
-        try:
-            with open(LAUNCHER_PATH) as f:
-                for line in f:
-                    m = re.match(r'^USE_NVIDIA_DGPU="?([YN])"?', line)
-                    if m:
-                        return m.group(1)
-        except OSError:
-            pass
-    return ""
-
-
-def create_launcher_script(nvidia_offload: bool = False) -> str:
+def create_launcher_script() -> str:
     """Generate the launcher shell script and return its path.
 
-    The launcher includes auto-patching of .toe files with wine_ui_fixes.tox,
-    backup creation, and NVIDIA offload support.
+    The launcher includes auto-patching of .toe files with wine_ui_fixes.tox
+    and backup creation. No GPU offloading is forced — the system default
+    usage. On hybrid laptops, NVIDIA is auto-detected and used if available.
     """
     ensure_dir(os.path.dirname(LAUNCHER_PATH))
-
-    # Preserve existing NVIDIA setting if not explicitly changed
-    nvidia_mode = ""
-    if nvidia_offload:
-        nvidia_mode = "Y"
-    else:
-        nvidia_mode = _get_existing_nvidia() or "N"
 
     # ── Template: note that {{ and }} escape literal braces in the f-string ──
     launcher_content = f'''#!/bin/bash
@@ -47,7 +26,6 @@ RUNNER_DIR="${{TD_BASE_DIR%/}}/runner"
 WINE_PREFIX="${{TD_BASE_DIR%/}}/prefix"
 SOURCE_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
 BACKUP_DIR="${{TD_BASE_DIR%/}}/backups"
-USE_NVIDIA_DGPU="{nvidia_mode}"
 
 # --- Find wine64 (support both Soda runner and AUR paths) ---
 find_wine64() {{
@@ -110,13 +88,11 @@ if [ -z "$TOUCHDESIGNER_EXE" ]; then
     exit 1
 fi
 
+# Auto-detect NVIDIA dGPU on hybrid laptops (safe: vars are ignored if NVIDIA is absent)
 if command -v nvidia-smi >/dev/null 2>&1; then
-    if [ "$USE_NVIDIA_DGPU" = "Y" ] || [ "$USE_NVIDIA_DGPU" = "y" ]; then
-        export __NV_PRIME_RENDER_OFFLOAD=1
-        export __GLX_VENDOR_LIBRARY_NAME=nvidia
-        export __VK_LAYER_NV_optimus=NVIDIA_only
-        export DRI_PRIME=1
-    fi
+    export __NV_PRIME_RENDER_OFFLOAD=1
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+    export DRI_PRIME=1
 fi
 
 # Handle optional .toe file argument

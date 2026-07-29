@@ -144,7 +144,7 @@ def run_install(args):
 
     if not args.dry_run:
         info("Creating launcher script...")
-        create_launcher_script(nvidia_offload=args.nvidia_offload)
+        create_launcher_script()
         from .desktop import run_desktop_integration
 
         run_desktop_integration(
