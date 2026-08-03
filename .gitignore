@@ -53,3 +53,7 @@ install.sh
 
 # Claude Code session state
 .claude/
+
+# TD-as-Code (moved to its own repo: TDAsCode)
+tdascode/
+tests/debug_repro.py

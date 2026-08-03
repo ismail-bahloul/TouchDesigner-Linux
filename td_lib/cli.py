@@ -126,48 +126,5 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Run pip inside TouchDesigner's embedded Python (e.g. --pip install numpy)",
     )
 
-    # TD-as-Code (tdascode)
-    code = parser.add_argument_group("td-as-code")
-    code.add_argument(
-        "--expand",
-        dest="expand_file",
-        metavar="FILE",
-        help="Expand a .toe/.tox into a readable .dir folder",
-    )
-    code.add_argument(
-        "--collapse",
-        dest="collapse_file",
-        metavar="FILE",
-        help="Collapse a .dir folder back into its .toe/.tox",
-    )
-    code.add_argument(
-        "--info",
-        dest="info_file",
-        metavar="FILE",
-        help="Show the node structure of a .toe/.tox project",
-    )
-    code.add_argument(
-        "--diff",
-        dest="diff_files",
-        nargs=2,
-        metavar=("FILE_A", "FILE_B"),
-        help="Show a semantic diff between two .toe/.tox projects",
-    )
-    code.add_argument(
-        "--list-types",
-        dest="list_types",
-        nargs="?",
-        const="",
-        default=None,
-        metavar="FAMILY",
-        help="List available TouchDesigner node types (optionally filtered by family)",
-    )
-    code.add_argument(
-        "--type-info",
-        dest="type_info",
-        metavar="TYPE",
-        help="Show details about a node type (e.g. 'POP:null')",
-    )
-
     args = parser.parse_args(argv)
     return args
