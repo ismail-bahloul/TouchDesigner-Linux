@@ -174,7 +174,7 @@ def _show_menu(args):
         ("Update", "Update launcher, Wine components, UI fixes and icons"),
         (
             "Uninstall",
-            "Remove selected versions or everything (prefix, runner, launcher)",
+            "Remove selected versions or everything (prefix, runner, launcher, TD license)",
         ),
         ("Exit", "Quit this script without making changes"),
     ]
@@ -193,7 +193,9 @@ def _show_menu(args):
         )
         print()
         print(f"  3. Uninstall")
-        print(f"{Colors.accent}     Remove selected versions or everything{Colors.nc}")
+        print(
+            f"{Colors.accent}     Remove selected versions or everything (prefix, runner, launcher, TD license){Colors.nc}"
+        )
         print()
         print(f"  0. Exit")
         print(

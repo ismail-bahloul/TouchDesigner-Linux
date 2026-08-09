@@ -56,6 +56,8 @@ td-install --pip list
 
 Regenerates launcher, winetricks, DXVK, and UI fixes. No need to reinstall TD or recreate the Wine prefix.
 
+**Note:** a full uninstall removes everything, including your TouchDesigner license activation (`ins*.dat`) — you will need to re-enter your license key after reinstalling. The uninstaller warns you before deleting it.
+
 ### Arch Linux (AUR)
 
 **Update**

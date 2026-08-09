@@ -82,6 +82,20 @@ def uninstall_selected_versions(selected_roots: list[str]) -> int:
 
 # ── Full uninstall ───────────────────────────────────────────────────────────
 
+# License activation lives in the shared prefix, so only a full uninstall deletes it.
+LICENSE_DIR = os.path.join(WINE_PREFIX, "drive_c", "ProgramData", "Derivative")
+
+
+def _warn_license_loss() -> None:
+    """Warn when a full uninstall will delete the TouchDesigner license activation."""
+    if not os.path.isdir(LICENSE_DIR):
+        return
+    warning(
+        "This will delete your TouchDesigner license activation "
+        "(drive_c/ProgramData/Derivative/ins*.dat)"
+    )
+    info("You will need to re-enter your license key after reinstalling.")
+
 
 def uninstall_everything() -> None:
     """Completely remove TouchDesigner, runner, prefix, launcher, desktop entries."""
@@ -161,6 +175,7 @@ def _process_uninstall_text_selection(selection: str, versions: list) -> None:
         return
 
     if selection == str(len(versions) + 1):
+        _warn_license_loss()
         uninstall_everything()
         return
 
@@ -224,6 +239,7 @@ def show_uninstall_menu() -> bool:
             choice = "0"
 
         if choice == "1":
+            _warn_license_loss()
             uninstall_everything()
             return True
         else:
@@ -242,7 +258,7 @@ def show_uninstall_menu() -> bool:
         (
             "everything",
             "Uninstall EVERYTHING",
-            "prefix, runner, launcher, desktop entries",
+            "prefix, runner, launcher, desktop entries, TD license",
             None,
         )
     )
@@ -324,6 +340,7 @@ def show_uninstall_menu() -> bool:
                     termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
                     sys.stdout.write("\033[?25h")
                     print()
+                    _warn_license_loss()
                     confirm = (
                         input(f"Remove everything? [Y/n]: ").strip().lower() or "y"
                     )

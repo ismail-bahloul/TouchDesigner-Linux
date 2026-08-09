@@ -83,6 +83,8 @@ Wine recreates the remaining symlinks (`d:`, `com*`, etc.) on first `wineboot`.
 
 **File:** `backup_license()` / `restore_license()` in the launcher script.
 
+A full uninstall (`td-install --uninstall` → *Uninstall EVERYTHING*) removes the whole prefix — including `ins*.dat` — so the license activation is lost by design. The uninstaller prints a warning before deleting it (`_warn_license_loss()` in `td_lib/cleanup.py`), and removing a single version does **not** touch the license.
+
 ---
 
 ## Diagnostics
