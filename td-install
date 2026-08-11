@@ -393,14 +393,23 @@ def run_patch_toe(file_path: str) -> None:
             fix_dir = f"{fix_copy}.dir"
             if os.path.isdir(fix_dir):
                 for item in os.listdir(fix_dir):
-                    shutil.copytree(
-                        os.path.join(fix_dir, item),
-                        os.path.join(toe_dir, item),
-                        dirs_exist_ok=True,
-                    )
+                    src = os.path.join(fix_dir, item)
+                    dst = os.path.join(toe_dir, item)
+                    # Replace (not merge) so re-patching fully refreshes the fix
+                    if os.path.lexists(dst):
+                        if os.path.isdir(dst) and not os.path.islink(dst):
+                            shutil.rmtree(dst, ignore_errors=True)
+                        else:
+                            os.remove(dst)
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
 
-            # Add fix entries to .toc
+            # Add fix entries to .toc (drop stale ones from a previous
+            # injection first, else duplicate entries corrupt the collapse)
             toe_toc = f"{file_path}.toc"
+            with open(toe_toc) as f:
+                toc_lines = [ln for ln in f if "wine_ui_fixes" not in ln]
+            with open(toe_toc, "w") as f:
+                f.writelines(toc_lines)
             with open(toe_toc, "a") as f:
                 for entry in fix_entries:
                     f.write(f"{entry}\n")

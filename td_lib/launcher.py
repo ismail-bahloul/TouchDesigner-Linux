@@ -88,8 +88,11 @@ if [ -z "$TOUCHDESIGNER_EXE" ]; then
     exit 1
 fi
 
-# Auto-detect NVIDIA dGPU on hybrid laptops (safe: vars are ignored if NVIDIA is absent)
-if command -v nvidia-smi >/dev/null 2>&1; then
+# Auto-detect NVIDIA dGPU on hybrid laptops — only when the driver actually
+# works. nvidia-smi can exist while the driver fails (e.g. GPU passthrough or a
+# missing kernel module); forcing the offload vars then breaks GLX and
+# TouchDesigner refuses to start.
+if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
     export __NV_PRIME_RENDER_OFFLOAD=1
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
     export DRI_PRIME=1
@@ -110,8 +113,19 @@ fi
 
 # --- Auto-patching .toe files with wine_ui_fixes.tox ---
 TOE_EXPAND="$(find "$WINE_PREFIX/drive_c" -type f -iname 'toeexpand.exe' 2>/dev/null | head -n1 || true)"
+[ -n "$TOE_EXPAND" ] || TOE_EXPAND="/opt/touchdesigner/td/bin/toeexpand.exe"
 TOE_COLLAPSE="$(find "$WINE_PREFIX/drive_c" -type f -iname 'toecollapse.exe' 2>/dev/null | head -n1 || true)"
+[ -n "$TOE_COLLAPSE" ] || TOE_COLLAPSE="/opt/touchdesigner/td/bin/toecollapse.exe"
 FIX_FILE="$TD_BASE_DIR/wine_ui_fixes.tox"
+
+# Content fingerprint of an expanded TD folder's logic (DAT scripts only:
+# .text/.table files, which survive the round-trip unchanged; node metadata
+# .n/.parm can legitimately differ after a project save).
+fp_tree() {{
+    local ROOT="$1"
+    [ -d "$ROOT" ] || {{ echo "MISSING"; return; }}
+    ( cd "$ROOT" 2>/dev/null && find . -type f \\( -name '*.text' -o -name '*.table' \\) -print0 2>/dev/null | sort -z | xargs -0 md5sum 2>/dev/null | md5sum 2>/dev/null ) || echo "MISSING"
+}}
 
 check_and_patch_toe() {{
     local TOE_PATH="$1"
@@ -126,7 +140,12 @@ check_and_patch_toe() {{
     rm -rf "$DIR_PATH" "$TOC_PATH" 2>/dev/null || true
     WINEPREFIX="$WINE_PREFIX" "$WINE64_BIN" "$TOE_EXPAND" "$WINE_TOE" >/dev/null 2>&1 || true
     local NEEDS_PATCH=false
-    if [ ! -d "$DIR_PATH/wine_ui_fixes" ]; then
+    if [ -n "$FIX_FP" ]; then
+        # Version-aware: repatch if the injected fix differs from the current one
+        local INJECTED_FP="MISSING"
+        [ -d "$DIR_PATH/wine_ui_fixes" ] && INJECTED_FP="$(fp_tree "$DIR_PATH/wine_ui_fixes")"
+        [ "$INJECTED_FP" != "$FIX_FP" ] && NEEDS_PATCH=true
+    elif [ ! -d "$DIR_PATH/wine_ui_fixes" ]; then
         NEEDS_PATCH=true
     fi
     rm -rf "$DIR_PATH" "$TOC_PATH" 2>/dev/null || true
@@ -144,10 +163,14 @@ check_and_patch_toe() {{
                 local WINE_MFIX="z:${{MERGE_FIX//\\/\\\\\\\\}}"
                 WINEPREFIX="$WINE_PREFIX" "$WINE64_BIN" "$TOE_EXPAND" "$WINE_MFIX" >/dev/null 2>&1 || true
                 if [ -d "$MERGE_FIX.dir" ]; then
+                    rm -rf "$DIR_PATH/wine_ui_fixes" 2>/dev/null || true
                     cp -rf "$MERGE_FIX.dir/"* "$DIR_PATH/" 2>/dev/null || true
                 fi
                 rm -rf "$MERGE_TMP" 2>/dev/null || true
             fi
+            # Replace stale fix entries from a previous injection, then add the
+            # current ones — otherwise duplicates corrupt the collapsed .toe
+            sed -i '/wine_ui_fixes/d' "$TOC_PATH" 2>/dev/null || true
             for entry in "${{FIX_ENTRIES[@]}}"; do
                 echo "$entry" >> "$TOC_PATH"
             done
@@ -157,7 +180,7 @@ check_and_patch_toe() {{
     fi
 }}
 
-if [ -n "$TOE_EXPAND" ] && [ -n "$TOE_COLLAPSE" ] && [ -f "$FIX_FILE" ]; then
+if [ -f "$TOE_EXPAND" ] && [ -f "$TOE_COLLAPSE" ] && [ -f "$FIX_FILE" ]; then
     FIX_TMPDIR="$(mktemp -d "/tmp/td_fix_launcher.XXXXXX" 2>/dev/null || true)"
     if [ -n "$FIX_TMPDIR" ]; then
         FIX_COPY="$FIX_TMPDIR/fix.tox"
@@ -173,6 +196,11 @@ if [ -n "$TOE_EXPAND" ] && [ -n "$TOE_COLLAPSE" ] && [ -f "$FIX_FILE" ]; then
                 [ "$entry" = ".build" ] && continue
                 FIX_ENTRIES+=("$entry")
             done < "$FIX_COPY.toc"
+
+            FIX_FP=""
+            if [ -d "$FIX_COPY.dir/wine_ui_fixes" ]; then
+                FIX_FP="$(fp_tree "$FIX_COPY.dir/wine_ui_fixes")"
+            fi
 
             while IFS= read -r -d '' NP_TOE; do
                 check_and_patch_toe "$NP_TOE"

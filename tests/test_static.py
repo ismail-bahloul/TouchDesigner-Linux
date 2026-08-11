@@ -795,8 +795,20 @@ def test_launcher_script():
         )
         check("launcher has auto-patching", "check_and_patch_toe" in content)
         check("launcher has backup cleanup", "BACKUP_DIR" in content)
+        check(
+            "launcher has version-aware fix detection",
+            "fp_tree" in content and "FIX_FP" in content,
+        )
         check("NVIDIA block present (no NVIDIA_only)", "NV_PRIME_RENDER_OFFLOAD" in content
               and "VK_LAYER_NV_optimus" not in content)
+        check(
+            "NVIDIA guard tests the driver (nvidia-smi -L)",
+            "nvidia-smi -L" in content,
+        )
+        check(
+            "toeexpand has AUR fallback path",
+            "/opt/touchdesigner/td/bin/toeexpand.exe" in content,
+        )
         check("launcher is executable", os.access(path, os.X_OK))
 
         check("WAYLAND_DISPLAY cleared", 'export WAYLAND_DISPLAY=""' in content)

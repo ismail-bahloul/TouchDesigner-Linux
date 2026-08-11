@@ -34,6 +34,8 @@ This page explains the patches and workarounds applied by the installer and laun
 
 **Fix:** A `.tox` component (`wine_ui_fixes.tox`) is injected into `.toe` files at launch time using TD's own `toeexpand` and `toecollapse` utilities. The fix overrides font rendering for the affected UI elements.
 
+**Version-aware re-patching:** The launcher compares a content fingerprint of the fix injected in a `.toe` with the currently shipped `wine_ui_fixes.tox`. If they differ (e.g. after a new fix release), the old fix is replaced — so upgrading the fix actually reaches projects that were already patched with an older version.
+
 **Caveat:** The license activation screen appears before any `.toe` file is loaded, so the fix is not applied on the very first launch. After entering your license and restarting TD, the fix works normally.
 
 **Backups:** Original `.toe` files are backed up before patching, auto-cleaned after 30 days.
