@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 
+from . import __version__
 from .launcher import LAUNCHER_PATH
 from .touchdesigner import detect_version_from_exe, discover_installed_versions
 from .utils import (
@@ -225,7 +226,7 @@ def show_uninstall_menu() -> bool:
     versions = discover_installed_versions()
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")
-    print_banner("1.4")
+    print_banner(__version__)
     print(f"\n{Colors.bold}{Colors.white}Uninstall TouchDesigner{Colors.nc}\n")
 
     if not versions:

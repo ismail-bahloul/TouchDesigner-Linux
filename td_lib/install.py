@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 
+from . import __version__
 from .utils import error, info, print_banner, print_hr, success
 
 
@@ -11,7 +12,7 @@ def run_install(args):
     """Run full TouchDesigner installation."""
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")
-    print_banner("1.4")
+    print_banner(__version__)
     info("Starting TouchDesigner installation...\n")
 
     # Check prerequisites

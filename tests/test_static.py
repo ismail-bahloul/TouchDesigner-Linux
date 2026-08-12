@@ -366,16 +366,17 @@ def test_print_banner():
     print("\n\u2500\u2500 print_banner / print_hr \u2500\u2500")
     import io
 
+    from td_lib import __version__
     from td_lib.utils import print_banner, print_hr
 
     old_stdout = sys.stdout
     try:
         sys.stdout = io.StringIO()
-        print_banner("1.4")
+        print_banner(__version__)
         output = sys.stdout.getvalue()
         check("banner contains 'TouchDesigner'", "TouchDesigner" in output)
         check("banner contains 'Iswad'", "Iswad" in output)
-        check("banner contains version", "1.4" in output)
+        check("banner contains version", __version__ in output)
 
         sys.stdout = io.StringIO()
         print_hr()
