@@ -184,6 +184,9 @@ This workaround adds an extra state transition (Iconic → Withdrawn → Normal)
 
 **Conclusion:** GE-Proton10-34 + `wine_ui_fixes.tox` is the best path for a working Proton runner. Wine 11's issue is a Wine bug to report upstream.
 
+### Soda 11 (Bottles, Wine 11)
+**Tested 2026-08 (soda-11.0-5):** TD freezes at the end of the splash screen (during project load). `MIMALLOC_DISABLE_REDIRECT=1` does **not** help. Same verdict as the other Wine 11 builds — Wine 11 remains unusable for TD until the upstream issues are fixed. Stick with Soda 9.0-1.
+
 ### Download
 ```bash
 curl -L https://github.com/Kron4ek/Wine-Builds/releases/download/11.0/wine-11.0-staging-amd64.tar.xz
