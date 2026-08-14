@@ -175,6 +175,12 @@ check_and_patch_toe() {{
                 echo "$entry" >> "$TOC_PATH"
             done
             WINEPREFIX="$WINE_PREFIX" "$WINE64_BIN" "$TOE_COLLAPSE" "$WINE_TOE" >/dev/null 2>&1 || true
+        else
+            # Surface patch failures instead of staying silent (broken fonts
+            # with no trace); log so it can be diagnosed later
+            echo "  !! font fix: failed to expand $TOE_PATH (text may not render)" >&2
+            mkdir -p "$TD_BASE_DIR/logs" 2>/dev/null || true
+            echo "[$(date '+%F %T')] font-fix FAIL expand $TOE_PATH" >> "$TD_BASE_DIR/logs/patch.log" 2>/dev/null || true
         fi
         rm -rf "$DIR_PATH" "$TOC_PATH" 2>/dev/null || true
     fi

@@ -1014,6 +1014,63 @@ def test_progress_bar_format():
 
 
 # =============================================================================
+#  AUR launcher parity — the AUR python launcher must not drift from the bash
+#  launcher's font-fix behaviors (this class of drift caused real user bugs)
+# =============================================================================
+
+
+def test_aur_launcher_parity():
+    print("\n\u2500\u2500 AUR launcher font-fix parity \u2500\u2500")
+    repo = os.path.join(os.path.dirname(__file__), "..")
+    path = os.path.join(repo, "dist", "arch", "touchdesigner-launcher.py")
+    with open(path) as f:
+        src = f.read()
+
+    check("AUR launcher uses /opt/touchdesigner paths", 'PREFIX = "/opt/touchdesigner"' in src)
+    check(
+        "AUR launcher has version-aware detection",
+        "_tree_fingerprint" in src and "fix_fp" in src and "injected_fp" in src,
+    )
+    check(
+        "AUR launcher fingerprints .text/.table only",
+        'name.endswith(".text")' in src and 'name.endswith(".table")' in src,
+    )
+    check(
+        "AUR launcher replaces stale fix (not merge)",
+        "rmtree(dst, ignore_errors=True)" in src,
+    )
+    check(
+        "AUR launcher filters stale .toc entries",
+        '"wine_ui_fixes" not in ln' in src,
+    )
+    check(
+        "AUR launcher auto-patches NewProject + startup",
+        "auto_patch_toe_files" in src
+        and "newproject.toe" in src.lower()
+        and "startupfilename" in src,
+    )
+
+
+def test_release_version_consistency():
+    print("\n\u2500\u2500 Release version consistency \u2500\u2500")
+    import re
+
+    from td_lib import __version__
+
+    repo = os.path.join(os.path.dirname(__file__), "..")
+    pkgbuild = open(os.path.join(repo, "dist", "arch", "PKGBUILD")).read()
+    srcinfo = open(os.path.join(repo, "dist", "arch", ".SRCINFO")).read()
+
+    m = re.search(r"^pkgver=([\w.]+)", pkgbuild, re.M)
+    m2 = re.search(r"^\tpkgver = ([\w.]+)", srcinfo, re.M)
+    check("PKGBUILD pkgver parsed", bool(m))
+    check(".SRCINFO pkgver parsed", bool(m2))
+    if m and m2:
+        check("PKGBUILD pkgver == .SRCINFO pkgver", m.group(1) == m2.group(1))
+        check("pkgver == td_lib.__version__", m.group(1) == __version__)
+
+
+# =============================================================================
 #  Run
 # =============================================================================
 
@@ -1051,6 +1108,8 @@ def main():
     test_distro_package_lists()
     test_version_picker_installed_marking()
     test_progress_bar_format()
+    test_aur_launcher_parity()
+    test_release_version_consistency()
 
     total = PASS + FAIL
     print(f"\n{'=' * 60}")
