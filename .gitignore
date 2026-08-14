@@ -49,7 +49,6 @@ commonappdata/
 
 # Safety (Wine / local env)
 .local/
-install.sh
 
 # Claude Code session state
 .claude/
