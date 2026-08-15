@@ -378,6 +378,20 @@ def _install_pacman() -> None:
             info("Run it manually, then re-run the installer: sudo steamos-readonly disable")
             raise SystemExit(1)
 
+        # SteamOS ships a frozen Arch snapshot: sync + upgrade it so the
+        # package database matches reality (the official Valve flow is
+        # steamos-readonly disable && pacman -Syu)
+        info("SteamOS: syncing system packages (pacman -Syu)...")
+        try:
+            subprocess.run(
+                ["sudo", "pacman", "-Syu", "--noconfirm", "--quiet"],
+                check=True,
+            )
+        except subprocess.CalledProcessError:
+            error("SteamOS system update failed (pacman -Syu)")
+            info("Run it manually, then re-run the installer: sudo pacman -Syu")
+            raise SystemExit(1)
+
     info("Enabling multilib repository if needed...")
     _enable_pacman_multilib()
 
@@ -586,6 +600,17 @@ def _enable_rpm_fusion() -> None:
 
 
 def _install_zypper() -> None:
+    info("Refreshing zypper repositories...")
+    try:
+        subprocess.run(
+            ["sudo", "zypper", "refresh"],
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        error("Failed to refresh zypper repositories")
+        info("Try: sudo zypper refresh")
+        raise SystemExit(1)
+
     info("Installing required packages...")
     packages = list(ZYPPER_BASE_PACKAGES)
 

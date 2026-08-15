@@ -417,6 +417,14 @@ def test_steamos_support():
         "installer handles steamos-readonly",
         'shutil.which("steamos-readonly")' in src and '"steamos-readonly"' in src,
     )
+    check(
+        "installer syncs SteamOS after disable (pacman -Syu)",
+        '"pacman", "-Syu"' in src,
+    )
+    check(
+        "zypper refreshes repositories before install",
+        '"zypper", "refresh"' in src,
+    )
 
 
 # =============================================================================
