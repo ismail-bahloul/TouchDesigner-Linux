@@ -22,6 +22,39 @@ class DistroInfo:
     distro_name: str  # Human-readable distro name
 
 
+# Known distro IDs mapped to package manager + display name
+KNOWN_DISTROS: dict[str, tuple[str, str]] = {
+    "arch": ("pacman", "Arch Linux"),
+    "manjaro": ("pacman", "Manjaro"),
+    "endeavouros": ("pacman", "EndeavourOS"),
+    "garuda": ("pacman", "Garuda Linux"),
+    "garudalinux": ("pacman", "Garuda Linux"),
+    "artix": ("pacman", "Artix Linux"),
+    "rebornos": ("pacman", "RebornOS"),
+    "archcraft": ("pacman", "Archcraft"),
+    "cachyos": ("pacman", "CachyOS"),
+    "steamos": ("pacman", "SteamOS"),
+    "ubuntu": ("apt", "Ubuntu"),
+    "linuxmint": ("apt", "Linux Mint"),
+    "pop": ("apt", "Pop!_OS"),
+    "pop_os": ("apt", "Pop!_OS"),
+    "debian": ("apt", "Debian"),
+    "zorin": ("apt", "Zorin OS"),
+    "elementary": ("apt", "elementary OS"),
+    "neon": ("apt", "KDE Neon"),
+    "kali": ("apt", "Kali Linux"),
+    "parrot": ("apt", "Parrot OS"),
+    "mx": ("apt", "MX Linux"),
+    "lmde": ("apt", "Linux Mint Debian Edition"),
+    "fedora": ("dnf", "Fedora"),
+    "rocky": ("dnf", "Rocky Linux"),
+    "rocky-linux": ("dnf", "Rocky Linux"),
+    "almalinux": ("dnf", "AlmaLinux"),
+    "alma": ("dnf", "AlmaLinux"),
+    "centos": ("dnf", "CentOS"),
+}
+
+
 def detect_distro() -> DistroInfo:
     """Detect the Linux distribution and package manager."""
 
@@ -39,40 +72,9 @@ def detect_distro() -> DistroInfo:
                 elif line.startswith("PRETTY_NAME="):
                     os_name = line.split("=", 1)[1].strip().strip('"')
 
-    # Known distro IDs mapped to package manager + display name
-    known_distros: dict[str, tuple[str, str]] = {
-        "arch": ("pacman", "Arch Linux"),
-        "manjaro": ("pacman", "Manjaro"),
-        "endeavouros": ("pacman", "EndeavourOS"),
-        "garuda": ("pacman", "Garuda Linux"),
-        "garudalinux": ("pacman", "Garuda Linux"),
-        "artix": ("pacman", "Artix Linux"),
-        "rebornos": ("pacman", "RebornOS"),
-        "archcraft": ("pacman", "Archcraft"),
-        "cachyos": ("pacman", "CachyOS"),
-        "ubuntu": ("apt", "Ubuntu"),
-        "linuxmint": ("apt", "Linux Mint"),
-        "pop": ("apt", "Pop!_OS"),
-        "pop_os": ("apt", "Pop!_OS"),
-        "debian": ("apt", "Debian"),
-        "zorin": ("apt", "Zorin OS"),
-        "elementary": ("apt", "elementary OS"),
-        "neon": ("apt", "KDE Neon"),
-        "kali": ("apt", "Kali Linux"),
-        "parrot": ("apt", "Parrot OS"),
-        "mx": ("apt", "MX Linux"),
-        "lmde": ("apt", "Linux Mint Debian Edition"),
-        "fedora": ("dnf", "Fedora"),
-        "rocky": ("dnf", "Rocky Linux"),
-        "rocky-linux": ("dnf", "Rocky Linux"),
-        "almalinux": ("dnf", "AlmaLinux"),
-        "alma": ("dnf", "AlmaLinux"),
-        "centos": ("dnf", "CentOS"),
-    }
-
     # Direct match
-    if os_id in known_distros:
-        pm, display = known_distros[os_id]
+    if os_id in KNOWN_DISTROS:
+        pm, display = KNOWN_DISTROS[os_id]
         return DistroInfo(os_id, os_name, pm, display)
 
     # openSUSE (supports version suffixes like opensuse-leap, opensuse-tumbleweed)
@@ -360,6 +362,22 @@ def install_packages(distro: DistroInfo) -> None:
 
 
 def _install_pacman() -> None:
+    # SteamOS (and forks like HoloISO) ship a read-only root filesystem:
+    # pacman cannot write until it is disabled. The signal is the
+    # distro-specific tool itself, not the ID — keying on it covers every
+    # SteamOS-like system. Must run before touching /etc/pacman.conf.
+    if shutil.which("steamos-readonly"):
+        info("Read-only root detected (SteamOS): disabling it to install packages...")
+        try:
+            subprocess.run(
+                ["sudo", "steamos-readonly", "disable"],
+                check=True,
+            )
+        except subprocess.CalledProcessError:
+            error("Could not disable the read-only filesystem (steamos-readonly disable)")
+            info("Run it manually, then re-run the installer: sudo steamos-readonly disable")
+            raise SystemExit(1)
+
     info("Enabling multilib repository if needed...")
     _enable_pacman_multilib()
 

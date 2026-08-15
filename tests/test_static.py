@@ -403,6 +403,22 @@ def test_distro_detection():
     check("distro has package_manager", bool(d.package_manager))
 
 
+def test_steamos_support():
+    print("\n\u2500\u2500 SteamOS support (read-only root) \u2500\u2500")
+    from td_lib.distro import KNOWN_DISTROS
+
+    check("steamos in KNOWN_DISTROS", "steamos" in KNOWN_DISTROS)
+    check("steamos uses pacman", KNOWN_DISTROS.get("steamos", ("", ""))[0] == "pacman")
+
+    # The installer must disable SteamOS's read-only root before pacman
+    repo = os.path.join(os.path.dirname(__file__), "..")
+    src = open(os.path.join(repo, "td_lib", "distro.py")).read()
+    check(
+        "installer handles steamos-readonly",
+        'shutil.which("steamos-readonly")' in src and '"steamos-readonly"' in src,
+    )
+
+
 # =============================================================================
 #  Desktop file generation (pure logic, no system writes)
 # =============================================================================
@@ -1090,6 +1106,7 @@ def main():
     test_log_format()
     test_print_banner()
     test_distro_detection()
+    test_steamos_support()
     test_desktop_file_content()
     test_mime_xml_content()
     test_font_fix_paths()

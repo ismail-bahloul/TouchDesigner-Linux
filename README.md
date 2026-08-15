@@ -31,6 +31,7 @@ The installer auto-detects your distro and environment:
 - **Graphical session** -> full install with desktop shortcuts
 - **SSH / headless** -> auto-detected, skips GUI-only steps
 - **NVIDIA users** -> install GPU driver first, then reboot
+- **SteamOS** -> the read-only root filesystem is disabled automatically (`steamos-readonly disable`, needs your sudo password)
 
 **Debug mode:**
 ```bash
