@@ -33,6 +33,14 @@ jobs:
           # Headless skips desktop integration (shortcuts, MIME)
           ./td-install --install --headless 2>&1
           echo "--- Install done ---"
+      - name: Verify TouchDesigner installed
+        run: |
+          TD_EXE=$(find "$HOME/.local/share/touchdesigner-linux/prefix" -iname 'TouchDesigner.exe' 2>/dev/null | head -1)
+          if [ -z "$TD_EXE" ]; then
+            echo "❌ TouchDesigner.exe not found after install"
+            exit 1
+          fi
+          echo "✅ TD installed: $TD_EXE"
       - name: Verify no vcrun conflict in logs
         run: |
           LOG_DIR="$HOME/.local/share/touchdesigner-linux/logs"
