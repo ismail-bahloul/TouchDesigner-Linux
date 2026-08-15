@@ -194,6 +194,8 @@ This workaround adds an extra state transition (Iconic → Withdrawn → Normal)
 
 **Verdict:** Wine 11 remains unusable for TD until the DWrite font-enumeration loop is fixed upstream. Stick with Soda 9.0-1.
 
+**GE-Proton11-5 (Wine 11 Staging) was also tested (2026-08):** identical busy loop at the splash screen. The Valve fork does not change the Wine 11 DWrite behavior — every Wine 11 build loops. The only "newer-than-9" runner that works is GE-Proton10-34 (Wine 10).
+
 ### Download
 ```bash
 curl -L https://github.com/Kron4ek/Wine-Builds/releases/download/11.0/wine-11.0-staging-amd64.tar.xz
