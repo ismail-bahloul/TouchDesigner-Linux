@@ -185,7 +185,14 @@ This workaround adds an extra state transition (Iconic → Withdrawn → Normal)
 **Conclusion:** GE-Proton10-34 + `wine_ui_fixes.tox` is the best path for a working Proton runner. Wine 11's issue is a Wine bug to report upstream.
 
 ### Soda 11 (Bottles, Wine 11)
-**Tested 2026-08 (soda-11.0-5):** TD freezes at the end of the splash screen (during project load). `MIMALLOC_DISABLE_REDIRECT=1` does **not** help. Same verdict as the other Wine 11 builds — Wine 11 remains unusable for TD until the upstream issues are fixed. Stick with Soda 9.0-1.
+**Tested 2026-08 (soda-11.0-5), full investigation:**
+
+- **Symptom:** TD freezes at the end of the splash screen (during project load) — a busy loop, not a crash (CPU stays at 60-120%).
+- **Root cause:** a DWrite font-enumeration infinite loop. A `+dwrite` trace shows ~1.9M `localizedstrings_` and ~1.1M `dwritefontfile_` calls in 25 seconds. It is an upstream Wine 11 bug, not a TD or mimalloc issue.
+- **What was ruled out:** the `wine_ui_fixes.tox` COMP (happens on pristine projects too), `MIMALLOC_DISABLE_REDIRECT=1` (does not help), the prefix's font files (loop happens with 0 fonts in `windows/Fonts`), and host fontconfig (loop also happens with `FONTCONFIG_FILE=/dev/null`).
+- **Partial workaround:** `MIMALLOC_DISABLE_REDIRECT=1` + `FONTCONFIG_FILE=/dev/null FONTCONFIG_PATH=/nonexistent` + empty `windows/Fonts` lets TD launch and load projects — but with **no fonts available**, so UI text is broken. Not usable as a daily setup.
+
+**Verdict:** Wine 11 remains unusable for TD until the DWrite font-enumeration loop is fixed upstream. Stick with Soda 9.0-1.
 
 ### Download
 ```bash
