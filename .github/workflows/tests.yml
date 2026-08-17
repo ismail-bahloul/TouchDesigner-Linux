@@ -25,14 +25,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends \
             python3 curl wget xz-utils cabextract unzip p7zip-full innoextract \
-            wine64 wine32 libunwind8 libunwind8:i386 file coreutils ca-certificates 2>&1 | tail -5
+            wine64 wine32 libunwind8 libunwind8:i386 xvfb file coreutils ca-certificates 2>&1 | tail -5
       - name: Run static tests first
         run: python3 tests/test_static.py
-      - name: Run full install (headless, no display)
+      - name: Run full install (virtual display)
         run: |
-          # Real install: downloads Soda Wine + winetricks + DXVK + TouchDesigner
-          # Headless skips desktop integration (shortcuts, MIME)
-          ./td-install --install --headless 2>&1
+          # xvfb gives Wine a display so MS installers (vcrun2022) can run;
+          # this exercises the real graphical install path
+          xvfb-run -a ./td-install --install 2>&1
           echo "--- Install done ---"
       - name: Verify TouchDesigner installed
         run: |
