@@ -122,7 +122,28 @@ def setup_wine_prefix(headless: bool = False) -> None:
         safe_rm(WINE_PREFIX)
 
     if headless:
-        warning("Skipping Wine prefix initialization (requires graphical session)")
+        # Headless wineboot often works (SSH/CI) and winetricks needs a
+        # functional prefix (vcrun etc. fail on an uninitialized one).
+        # Try it; fall back to skipping if the environment can't.
+        try:
+            env = _wine_env()
+            result = subprocess.run(
+                [env["wine64"], "wineboot", "--init"],
+                env=env["env"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            result = None
+        if result is None or result.returncode != 0:
+            warning("Skipping Wine prefix initialization (headless wineboot failed)")
+            return
+        import time
+
+        time.sleep(2)
+        _kill_wineserver()
+        success("Wine prefix initialized (headless)")
         return
 
     info("Initializing Wine prefix (win64)...")
