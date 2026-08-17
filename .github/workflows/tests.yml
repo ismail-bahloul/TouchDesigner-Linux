@@ -31,8 +31,8 @@ jobs:
       - name: Run full install (virtual display)
         run: |
           # xvfb gives Wine a display so MS installers (vcrun2022) can run;
-          # this exercises the real graphical install path
-          xvfb-run -a ./td-install --install 2>&1
+          # --non-interactive since stdin is not a TTY here
+          xvfb-run -a ./td-install --install --non-interactive 2>&1
           echo "--- Install done ---"
       - name: Verify TouchDesigner installed
         run: |
