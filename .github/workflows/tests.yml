@@ -7,12 +7,13 @@ on:
     branches: [main]
   schedule:
     - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
+  workflow_dispatch:  # Allow manual runs to verify the smoke test
 
 jobs:
   # ── End-to-end smoke test with real Wine + winetricks ──
   weekly-smoke:
     name: Weekly smoke — real deps install
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -24,7 +25,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends \
             python3 curl wget xz-utils cabextract unzip p7zip-full innoextract \
-            wine64 wine32 file coreutils ca-certificates 2>&1 | tail -5
+            wine64 wine32 libunwind8 libunwind8:i386 file coreutils ca-certificates 2>&1 | tail -5
       - name: Run static tests first
         run: python3 tests/test_static.py
       - name: Run full install (headless, no display)
