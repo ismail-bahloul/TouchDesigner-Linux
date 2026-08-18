@@ -26,6 +26,20 @@ RUNNER_DIR="${{TD_BASE_DIR%/}}/runner"
 WINE_PREFIX="${{TD_BASE_DIR%/}}/prefix"
 SOURCE_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
 BACKUP_DIR="${{TD_BASE_DIR%/}}/backups"
+LOG_FILE="${{TD_BASE_DIR%/}}/logs/launcher.log"
+
+# --- Logging: most users launch via desktop icon (Terminal=false), so a
+# bare `echo` on failure is invisible. Log to a file and, best-effort,
+# raise a desktop notification so a silent icon click isn't a dead end. ---
+log() {{
+    mkdir -p "${{TD_BASE_DIR%/}}/logs" 2>/dev/null || true
+    echo "[$(date '+%F %T')] $*" >> "$LOG_FILE" 2>/dev/null || true
+}}
+notify_fail() {{
+    log "ERROR: $*"
+    echo "Error: $*" >&2
+    command -v notify-send >/dev/null 2>&1 && notify-send -u critical "TouchDesigner" "$*" 2>/dev/null || true
+}}
 
 # --- Find wine64 (support both Soda runner and AUR paths) ---
 find_wine64() {{
@@ -42,7 +56,7 @@ find_wine64() {{
 WINE64_BIN="$(find_wine64)"
 
 if [ -z "$WINE64_BIN" ]; then
-    echo "Error: wine64 not found. Is TouchDesigner installed?"
+    notify_fail "wine64 not found. Is TouchDesigner installed?"
     exit 1
 fi
 WINE_BIN="$(dirname "$WINE64_BIN")"
@@ -84,7 +98,7 @@ else
 fi
 
 if [ -z "$TOUCHDESIGNER_EXE" ]; then
-    echo "Error: TouchDesigner.exe not found in Wine prefix."
+    notify_fail "TouchDesigner.exe not found in Wine prefix."
     exit 1
 fi
 
@@ -289,6 +303,7 @@ if [ -d "$BACKUP_DIR" ]; then
 fi
 
 # Launch
+log "Launching $TOUCHDESIGNER_EXE ${{EXTRA_ARGS[*]}}"
 PATH="$WINE_BIN:$PATH"
 export WINEPREFIX="$WINE_PREFIX"
 exec "$WINE64_BIN" "$TOUCHDESIGNER_EXE" "${{EXTRA_ARGS[@]}}"
