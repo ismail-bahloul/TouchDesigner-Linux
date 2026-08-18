@@ -1,0 +1,54 @@
+name: Bug report
+description: Something doesn't work — install, launch, or a TD feature broken under Wine
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run install.sh / td-install ...
+        2. Launch TD, open project X
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnose
+    attributes:
+      label: "`td-install --diagnose` output"
+      description: Run `td-install --diagnose` and paste the full output here. This covers distro, GPU, Wine runner, and TD version in one go — please include it even if some parts seem unrelated.
+      render: shell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: runner
+    attributes:
+      label: Wine runner
+      description: If you changed it from the default, or aren't sure, say so — it's also in the diagnose output above.
+      options:
+        - Soda 9 (default)
+        - GE-Proton
+        - Wine-TkG
+        - Other / custom
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Anything from `~/.local/share/touchdesigner-linux/logs/` or the terminal that looks relevant.
+      render: shell
+    validations:
+      required: false
