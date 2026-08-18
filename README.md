@@ -91,6 +91,7 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 - [Wine runners comparison](docs/runners.md) — tested runners, source analysis, compatibility
 - [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
 - [Advanced tools](docs/advanced-tools.md) — toeexpand / toecollapse
+- [CI notes](docs/ci.md) — maintainer notes on the GitHub Actions setup, headless Wine gotchas
 
 ### Useful paths
 
