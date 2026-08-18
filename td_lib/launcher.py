@@ -38,7 +38,7 @@ log() {{
 notify_fail() {{
     log "ERROR: $*"
     echo "Error: $*" >&2
-    command -v notify-send >/dev/null 2>&1 && notify-send -u critical "TouchDesigner" "$*" 2>/dev/null || true
+    command -v notify-send >/dev/null 2>&1 && notify-send -a "TouchDesigner" -u critical "TouchDesigner" "$*" 2>/dev/null || true
 }}
 
 # --- Find wine64 (support both Soda runner and AUR paths) ---
