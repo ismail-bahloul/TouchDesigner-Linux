@@ -40,6 +40,11 @@ notify_fail() {{
     echo "Error: $*" >&2
     command -v notify-send >/dev/null 2>&1 && notify-send -a "TouchDesigner" -u critical -i "TouchDesigner" "TouchDesigner failed to start" "$*" 2>/dev/null || true
 }}
+notify_warn() {{
+    log "WARN: $*"
+    echo "  !! $*" >&2
+    command -v notify-send >/dev/null 2>&1 && notify-send -a "TouchDesigner" -u normal -i "TouchDesigner" "TouchDesigner" "$*" 2>/dev/null || true
+}}
 
 # --- Find wine64 (support both Soda runner and AUR paths) ---
 find_wine64() {{
@@ -191,10 +196,8 @@ check_and_patch_toe() {{
             WINEPREFIX="$WINE_PREFIX" "$WINE64_BIN" "$TOE_COLLAPSE" "$WINE_TOE" >/dev/null 2>&1 || true
         else
             # Surface patch failures instead of staying silent (broken fonts
-            # with no trace); log so it can be diagnosed later
-            echo "  !! font fix: failed to expand $TOE_PATH (text may not render)" >&2
-            mkdir -p "$TD_BASE_DIR/logs" 2>/dev/null || true
-            echo "[$(date '+%F %T')] font-fix FAIL expand $TOE_PATH" >> "$TD_BASE_DIR/logs/patch.log" 2>/dev/null || true
+            # with no trace)
+            notify_warn "font fix: failed to expand $TOE_PATH (text may not render)"
         fi
         rm -rf "$DIR_PATH" "$TOC_PATH" 2>/dev/null || true
     fi
