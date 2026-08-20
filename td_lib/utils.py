@@ -80,6 +80,8 @@ def print_banner(version: str | None = None):
         from . import __version__
 
         version = __version__
+    # Releases are named major.minor (v1.7, v1.6, ...); drop the patch part
+    version = ".".join(str(version).split(".")[:2])
     term_width = shutil.get_terminal_size().columns
     hr = "─" * min(term_width, 80)
     print(f"{Colors.dim}{hr}{Colors.nc}")

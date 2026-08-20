@@ -363,11 +363,13 @@ def test_log_format():
 
 
 def test_print_banner():
-    print("\n\u2500\u2500 print_banner / print_hr \u2500\u2500")
+    print("\n── print_banner / print_hr ──")
     import io
 
     from td_lib import __version__
     from td_lib.utils import print_banner, print_hr
+
+    short_version = ".".join(__version__.split(".")[:2])
 
     old_stdout = sys.stdout
     try:
@@ -376,7 +378,8 @@ def test_print_banner():
         output = sys.stdout.getvalue()
         check("banner contains 'TouchDesigner'", "TouchDesigner" in output)
         check("banner contains 'Iswad'", "Iswad" in output)
-        check("banner contains version", __version__ in output)
+        check("banner shows major.minor version", short_version in output)
+        check("banner drops the patch part", __version__ not in output)
 
         sys.stdout = io.StringIO()
         print_hr()
@@ -1295,7 +1298,9 @@ def test_release_version_consistency():
 
 def main():
     print("=" * 60)
-    print("  TouchDesigner-Linux v1.4 — Test Suite")
+    from td_lib import __version__
+
+    print(f"  TouchDesigner-Linux {__version__} - Test Suite")
     print("=" * 60)
 
     test_imports()
