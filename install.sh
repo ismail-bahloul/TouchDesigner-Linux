@@ -42,9 +42,15 @@ else
         mkdir -p "$(dirname "$REPO_DIR")"
         git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$REPO_DIR"
     else
-        # Pull latest if already cloned
+        # Pull latest if already cloned. If the clone has diverged
+        # (local commit or force-pushed history), a fast-forward fails and
+        # the stale installer would silently run. The clone is only a
+        # cache (prefix, licenses, backups live elsewhere), so hard-reset.
         cd "$REPO_DIR"
-        git pull --ff-only origin "$REPO_BRANCH" 2>/dev/null || true
+        git fetch origin "$REPO_BRANCH" 2>/dev/null || true
+        if ! git merge --ff-only "origin/$REPO_BRANCH" 2>/dev/null; then
+            git reset --hard "origin/$REPO_BRANCH" 2>/dev/null || true
+        fi
     fi
     TD_CLI="$REPO_DIR/td-install"
     cd "$REPO_DIR"

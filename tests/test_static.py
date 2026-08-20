@@ -1249,6 +1249,26 @@ def test_aur_launcher_license_preservation():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_install_sh_sync():
+    print("\n── install.sh clone sync ──")
+    repo = os.path.join(os.path.dirname(__file__), "..")
+    with open(os.path.join(repo, "install.sh")) as f:
+        src = f.read()
+
+    check("install.sh fetches the branch", "git fetch origin" in src)
+    check("install.sh tries fast-forward merge", "git merge --ff-only" in src)
+    check(
+        "install.sh hard-resets a diverged clone",
+        "git reset --hard" in src and "merge --ff-only" in src,
+    )
+    check(
+        "install.sh never silently serves a stale clone",
+        src.index("git fetch origin")
+        < src.index("git merge --ff-only")
+        < src.index('TD_CLI="$REPO_DIR/td-install"'),
+    )
+
+
 def test_release_version_consistency():
     print("\n\u2500\u2500 Release version consistency \u2500\u2500")
     import re
@@ -1311,6 +1331,7 @@ def main():
     test_progress_bar_format()
     test_aur_launcher_parity()
     test_aur_launcher_license_preservation()
+    test_install_sh_sync()
     test_release_version_consistency()
 
     total = PASS + FAIL
