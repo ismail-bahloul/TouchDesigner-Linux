@@ -45,6 +45,15 @@ td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
 td-install --pip list
 ```
 
+**Use a license dongle / network-shared license (CodeMeter):**
+```bash
+td-install --codemeter status          # runtime installed & running?
+td-install --codemeter add-server 192.168.1.15   # add a license server to the search list
+```
+> ⚠️ The CodeMeter **server side** works (native Linux / Docker). The **client
+> under Wine is currently blocked** (the CodeMeter service won't start under
+> Wine 9.0). See [docs/codemeter.md](docs/codemeter.md) for status & test results.
+
 ![Screenshot](Screenshots/Script_Preview.png)
 
 ---
@@ -90,6 +99,7 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 - [Compatibility status](docs/compatibility.md) — what works and what doesn't
 - [Wine runners comparison](docs/runners.md) — tested runners, source analysis, compatibility
 - [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
+- [CodeMeter dongles & network licenses](docs/codemeter.md) — use a license dongle over the LAN
 - [Advanced tools](docs/advanced-tools.md) — toeexpand / toecollapse
 - [CI notes](docs/ci.md) — maintainer notes on the GitHub Actions setup, headless Wine gotchas
 

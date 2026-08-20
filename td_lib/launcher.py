@@ -305,6 +305,22 @@ if [ -d "$BACKUP_DIR" ]; then
     find "$BACKUP_DIR" -name '*.bak' -type f -mtime +30 -delete 2>/dev/null || true
 fi
 
+# --- CodeMeter runtime (dongles / network-shared licenses) ---
+# Windows services do not auto-start under Wine. If the CodeMeter runtime
+# was installed into the prefix (TD installer's "Install Runtime for Dongle
+# Licensing" option), start it so TouchDesigner can reach dongle and
+# network-shared licenses. Best-effort: TD still launches without it.
+CODEMETER_EXE="$WINE_PREFIX/drive_c/Program Files (x86)/CodeMeter/Runtime/bin/CodeMeter.exe"
+[ -f "$CODEMETER_EXE" ] || CODEMETER_EXE="$WINE_PREFIX/drive_c/Program Files/CodeMeter/Runtime/bin/CodeMeter.exe"
+if [ -f "$CODEMETER_EXE" ] && ! pgrep -x 'CodeMeter.exe' >/dev/null 2>&1; then
+    log "Starting CodeMeter runtime..."
+    WINEPREFIX="$WINE_PREFIX" "$WINE64_BIN" "$CODEMETER_EXE" >/dev/null 2>&1 &
+    for _ in 1 2 3 4 5 6 7 8; do
+        pgrep -x 'CodeMeter.exe' >/dev/null 2>&1 && break
+        sleep 0.5
+    done
+fi
+
 # Launch
 log "Launching $TOUCHDESIGNER_EXE ${{EXTRA_ARGS[*]}}"
 PATH="$WINE_BIN:$PATH"

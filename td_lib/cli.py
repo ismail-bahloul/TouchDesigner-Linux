@@ -125,6 +125,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="...",
         help="Run pip inside TouchDesigner's embedded Python (e.g. --pip install numpy)",
     )
+    opts.add_argument(
+        "--codemeter",
+        dest="codemeter_args",
+        nargs=argparse.REMAINDER,
+        metavar="...",
+        help=(
+            "Manage the CodeMeter licensing runtime (dongles / network "
+            "licenses). e.g. --codemeter setup, "
+            "--codemeter add-server 192.168.1.15"
+        ),
+    )
 
     args = parser.parse_args(argv)
     return args

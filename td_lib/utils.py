@@ -74,8 +74,12 @@ def debug(*args):
 # ── I/O utilities ────────────────────────────────────────────────────────────
 
 
-def print_banner(version: str = "1.4"):
+def print_banner(version: str | None = None):
     """Print the project banner."""
+    if version is None:
+        from . import __version__
+
+        version = __version__
     term_width = shutil.get_terminal_size().columns
     hr = "─" * min(term_width, 80)
     print(f"{Colors.dim}{hr}{Colors.nc}")

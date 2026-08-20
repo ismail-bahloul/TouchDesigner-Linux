@@ -18,6 +18,7 @@
 | External installs / integrations | ❓ | Third-party installs, Kinect, extra plugins, and advanced external production pipelines still need broader testing |
 | Python packages (pip) | ⚠️ | Works for pure-Python packages (numpy, opencv, requests). Native extensions (.pyd) may fail under Wine — see troubleshooting |
 | PyTorch (torch, CPU-only) | ⚠️ | Works with `KMP_AFFINITY=disabled` (auto-set in launcher). Tested 2.13.0+cpu on Wine TkG — see [issue #20](https://github.com/iswad-lab/TouchDesigner-Linux/issues/20) |
+| License dongles (CodeMeter) | ❌ | Client blocked: the CodeMeter service (`CodeMeter.exe`) won't start under Wine 9.0 (protected `cpsrt.dll` fails to load). Server side works (native Linux/Docker). Tooling in `--codemeter`; see [docs/codemeter.md](codemeter.md) |
 
 ## Notes
 

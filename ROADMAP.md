@@ -133,6 +133,14 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 This repo's `td_lib` and installer are unaffected — the historical code that lived in `tdascode/` here (last on the `feature/tdascode`/`dev` branches) is superseded by that repo and won't be revived here.
 
+### 21. CodeMeter dongle / network license support
+
+**Partial — tooling shipped (`td-install --codemeter`), client blocked.**
+
+**Done:** detection of the runtime in the prefix, Server Search List management (`cmu32 --add-server` / `cmu.exe` / registry), launcher auto-start, and a validated **server-side** setup (native Linux daemon or the official `docker-codemeter` image, port 22350).
+
+**Blocked (tested 2026-08):** the Windows CodeMeter service (`CodeMeter.exe`) does not start under the project's Wine runner (9.0 TkG/Soda) — Wibu's protected `cpsrt.dll` fails to load (`c000007b`, runtimes 8.41a and 9.10 tested), and the official MSI hangs under `msiexec`. Until a Wine-compatible runtime is found (older runtime version or newer Wine build), TouchDesigner under Wine cannot borrow network-shared licenses. Direct USB dongle passthrough remains out of scope. See the open feature request and [docs/codemeter.md](docs/codemeter.md).
+
 ## Long-term
 
 - ~~Python rewrite~~ ✅ **Done!** The installer now uses modular Python (`td-install`, `td_lib/`).

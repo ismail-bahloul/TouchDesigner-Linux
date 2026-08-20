@@ -8,6 +8,14 @@ Script falls back to a curated list automatically. No action needed.
 
 Non-blocking fallback. UI and projects still work. The launcher auto-patches `.toe` files with `wine_ui_fixes.tox` on launch.
 
+## License invalidated after an update (new System Code, re-activation needed)
+
+This happened with AUR updates (`paru -Syu` / `yay -Syu`) on older versions: the launcher copied the package's default license files over your activated ones (`ProgramData/Derivative/ins*.dat`) on launch, so TouchDesigner saw no valid activation and requested a new one (consuming another activation).
+
+**Fixed in v1.7.0:** the launcher no longer overwrites `Derivative` and backs up the license before wineboot/package ProgramData copies. Update to v1.7.0+ and the license survives updates.
+
+If you already lost an activation this way, contact `licensing@derivative.ca` with your license ID; they can recover stuck activations.
+
 ## Fonts still missing after patching
 
 If text is missing, tiny, or broken, apply `wine_ui_fixes.tox` manually once per project:

@@ -73,6 +73,12 @@ def main():
     if args.pip_args is not None:
         sys.exit(run_pip(args.pip_args))
 
+    # Handle --codemeter standalone mode
+    if args.codemeter_args is not None:
+        from td_lib.codemeter import run_codemeter
+
+        sys.exit(run_codemeter(args.codemeter_args))
+
     # Main menu loop
     while True:
         # Show interactive menu if no action specified
@@ -123,7 +129,9 @@ def _show_menu(args):
 
     if sys.stdout.isatty():
         print("\033[2J\033[H", end="")  # clear screen (like bash's `clear`)
-    print_banner("v1.4")
+    from td_lib import __version__
+
+    print_banner(__version__)
 
     OS_NAME = "Unknown"
     try:

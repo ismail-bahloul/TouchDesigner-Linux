@@ -839,6 +839,7 @@ def test_launcher_script():
         check("WAYLAND_DISPLAY cleared", 'export WAYLAND_DISPLAY=""' in content)
         check("GL YIELD = USLEEP", 'export __GL_YIELD="USLEEP"' in content)
         check("KMP_AFFINITY=disabled", 'KMP_AFFINITY="disabled"' in content)
+        check("CodeMeter auto-start present", "CodeMeter.exe" in content)
         check("PYTHONPATH set for user site", 'PYTHONPATH' in content and 'steamuser' in content)
         check("find_wine64 function", 'find_wine64()' in content)
         check("WINE64_BIN variable", 'WINE64_BIN=' in content)
@@ -881,6 +882,85 @@ def test_pip_module():
     wine64 = pip._find_wine64()
     check("_find_wine64 returns None or valid path",
           wine64 is None or (isinstance(wine64, str) and os.path.isfile(wine64)))
+
+
+# =============================================================================
+#  CodeMeter module
+# =============================================================================
+
+
+def test_codemeter_module():
+    print("\n── CodeMeter module ──")
+    from td_lib import codemeter
+
+    check("codemeter module importable", True)
+
+    # Path detection against a fake prefix
+    tmp = tempfile.mkdtemp(prefix="td_cm_test_")
+    try:
+        fake_drive = os.path.join(tmp, "drive_c", "Program Files (x86)", "CodeMeter")
+        fake_bin = os.path.join(fake_drive, "Runtime", "bin")
+        os.makedirs(fake_bin)
+        with open(os.path.join(fake_bin, "CodeMeter.exe"), "w") as f:
+            f.write("")
+        with open(os.path.join(fake_bin, "cmu32.exe"), "w") as f:
+            f.write("")
+
+        exe = codemeter.find_runtime_exe(prefix=tmp)
+        check("find_runtime_exe finds fake prefix install",
+              exe is not None and exe.endswith("CodeMeter.exe") and os.path.isfile(exe))
+
+        cmu32 = codemeter.find_cmu32(prefix=tmp)
+        check("find_cmu32 finds fake prefix install",
+              cmu32 is not None and cmu32.endswith("cmu32.exe"))
+
+        # 64-bit runtimes ship cmu.exe instead of cmu32.exe
+        os.remove(os.path.join(fake_bin, "cmu32.exe"))
+        with open(os.path.join(fake_bin, "cmu.exe"), "w") as f:
+            f.write("")
+        cmu = codemeter.find_cmu32(prefix=tmp)
+        check("find_cmu32 falls back to cmu.exe",
+              cmu is not None and cmu.endswith("cmu.exe"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # No install should yield None on the real environment
+    check("find_runtime_exe returns None when not installed",
+          codemeter.find_runtime_exe() is None or
+          (isinstance(codemeter.find_runtime_exe(), str) and os.path.isfile(codemeter.find_runtime_exe())))
+
+    # CLI dispatch: unknown command exits non-zero without touching Wine
+    import io
+    import contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        rc = codemeter.run_codemeter(["__definitely_not_a_command__"])
+    check("run_codemeter rejects unknown command", rc != 0)
+
+    rc = codemeter.run_codemeter(["help"])
+    check("run_codemeter help command exits non-zero", rc != 0)
+
+    # add-server / remove-server without argument should be rejected
+    rc = codemeter.run_codemeter(["add-server"])
+    check("add-server without ip rejected", rc != 0)
+
+
+def test_codemeter_cli_args():
+    print("\n── CodeMeter CLI args ──")
+    from td_lib.cli import parse_args
+
+    args = parse_args(["--codemeter"])
+    check("--codemeter (no args)", args.codemeter_args == [])
+
+    args = parse_args(["--codemeter", "setup"])
+    check("--codemeter setup", args.codemeter_args == ["setup"])
+
+    args = parse_args(["--codemeter", "add-server", "192.168.1.15"])
+    check("--codemeter add-server ip",
+          args.codemeter_args == ["add-server", "192.168.1.15"])
+
+    args = parse_args(["--codemeter", "status"])
+    check("--codemeter status", args.codemeter_args == ["status"])
 
 
 # =============================================================================
@@ -1074,6 +1154,27 @@ def test_aur_launcher_parity():
         and "startupfilename" in src,
     )
 
+    # License preservation: the package ProgramData copy must never overwrite
+    # the user's activated licenses, and the backup must happen before it.
+    # Scope the call-order checks to main() so function definitions don't match.
+    main_src = src[src.index("def main()"):]
+    check(
+        "AUR launcher skips Derivative in copy_programdata",
+        'if item.lower() == "derivative":' in src
+        and "continue  # user license data" in src,
+    )
+    check(
+        "AUR launcher backs up license before copy_programdata",
+        main_src.index("had_license = backup_license()")
+        < main_src.index("copy_programdata()"),
+    )
+    check(
+        "AUR launcher restores license after wineboot",
+        main_src.index("ensure_wine_ready()")
+        < main_src.index("if had_license:")
+        < main_src.index("restore_license()"),
+    )
+
 
 def test_release_version_consistency():
     print("\n\u2500\u2500 Release version consistency \u2500\u2500")
@@ -1128,6 +1229,8 @@ def main():
     test_headless_auto_detect()
     test_launcher_script()
     test_pip_module()
+    test_codemeter_module()
+    test_codemeter_cli_args()
     test_diagnose_output()
     test_uninstall_text_selection()
     test_distro_package_lists()

@@ -103,6 +103,18 @@ This is the first thing to ask when someone reports an issue.
 
 ---
 
+## CodeMeter runtime (dongles & network licenses)
+
+**Problem:** TouchDesigner's licensing runs on Wibu-Systems CodeMeter. The TD installer installs the CodeMeter Runtime into the prefix ("Install Runtime for Dongle Licensing"), but Wine does not auto-start Windows services, so `CodeMeter.exe` never runs, leaving dongle and network-shared licenses unreachable.
+
+**Fix:** A `td-install --codemeter` command detects the runtime, starts it, and manages the client's Server Search List (`cmu32 --add-server`/`cmu.exe`, with a registry fallback). The launcher auto-starts `CodeMeter.exe` if installed.
+
+**Current limitation (tested 2026-08):** the CodeMeter service itself does not start under the project's Wine runner: Wibu's AxProtector-protected `cpsrt.dll` fails to map (`c000007b`), so the network client path under Wine is blocked for now. The server side (native Linux / Docker / other hosts, UDP/TCP 22350) works and is validated; the tooling remains useful for detection and configuration. See [`docs/codemeter.md`](codemeter.md) for the full picture.
+
+**File:** `td_lib/codemeter.py`
+
+---
+
 ## Related
 
 - [Compatibility status](compatibility.md) — what works and what doesn't
