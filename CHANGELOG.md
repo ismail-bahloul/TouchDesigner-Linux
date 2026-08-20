@@ -28,13 +28,13 @@ All notable changes to this project are documented here.
   winetricks/vcrun when there is no display).
 - Interactive menu banner showed a hardcoded stale version (`v1.4`); it now
   shows the real package version.
-- **AUR: licenses preserved across updates.** The AUR launcher's
-  `copy_programdata()` overwrote the user's activated licenses
-  (`ProgramData/Derivative/ins*.dat`) with the package's defaults on every
-  launch, so a `paru -Syu` (v1.6 → v1.6.2) invalidated the license and forced
-  a re-activation (new System Code, second activation consumed). It now skips
-  `Derivative` entirely and backs up the license before wineboot/package
-  ProgramData copies.
+- **AUR: licenses preserved across updates.** The AUR launcher's ProgramData
+  refresh no longer touches `ProgramData/Derivative/` (the user's activated
+  `ins*.dat`), and the license is backed up before wineboot/package ProgramData
+  copies and restored after. This addresses a report that a `paru -Syu`
+  (v1.6 → v1.6.2) update changed the System Code and consumed a second
+  activation; the package ProgramData copy was the only code path that
+  touched the license files, so it is now excluded entirely.
 
 ### Docs
 

@@ -1176,6 +1176,79 @@ def test_aur_launcher_parity():
     )
 
 
+def test_aur_launcher_license_preservation():
+    print("\n── AUR launcher license preservation (behavioral) ──")
+    import importlib.util
+
+    repo = os.path.join(os.path.dirname(__file__), "..")
+    launcher_path = os.path.join(repo, "dist", "arch", "touchdesigner-launcher.py")
+    spec = importlib.util.spec_from_file_location("aur_launcher_test", launcher_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    tmp = tempfile.mkdtemp(prefix="td_aur_lic_test_")
+    try:
+        data_pd = os.path.join(tmp, "data", "ProgramData")
+        user_pd = os.path.join(
+            tmp, "home", ".local", "share", "touchdesigner-linux",
+            "prefix", "drive_c", "ProgramData",
+        )
+
+        # Package ships a default Derivative/ins2.dat + an unrelated file
+        pkg_der = os.path.join(data_pd, "Derivative")
+        os.makedirs(pkg_der)
+        with open(os.path.join(pkg_der, "ins2.dat"), "w") as f:
+            f.write("PACKAGE-DEFAULT")
+        with open(os.path.join(data_pd, "other.txt"), "w") as f:
+            f.write("other")
+
+        # User prefix has an activated license + other state
+        user_der = os.path.join(user_pd, "Derivative")
+        os.makedirs(user_der)
+        with open(os.path.join(user_der, "ins2.dat"), "w") as f:
+            f.write("USER-ACTIVATED")
+        with open(os.path.join(user_pd, "state.txt"), "w") as f:
+            f.write("state")
+
+        # Point the launcher's globals at the fake tree
+        mod.DATA_DIR = os.path.join(tmp, "data")
+        fake_prefix = os.path.join(
+            tmp, "home", ".local", "share", "touchdesigner-linux", "prefix"
+        )
+        mod.WINE_PREFIX = fake_prefix
+        # LICENSE_DIR is computed at import time; repoint it too
+        mod.LICENSE_DIR = os.path.join(
+            fake_prefix, "drive_c", "ProgramData", "Derivative"
+        )
+
+        # New behavior: copy_programdata must skip Derivative
+        mod.copy_programdata()
+        with open(os.path.join(user_der, "ins2.dat")) as f:
+            check("copy_programdata preserves user license (skips Derivative)",
+                  f.read() == "USER-ACTIVATED")
+        check("copy_programdata still copies other package files",
+              os.path.isfile(os.path.join(user_pd, "other.txt")))
+
+        # Sanity: the old behavior (plain copy2 into Derivative) would clobber
+        shutil.copy2(os.path.join(pkg_der, "ins2.dat"), os.path.join(user_der, "ins2.dat"))
+        with open(os.path.join(user_der, "ins2.dat")) as f:
+            check("old behavior would overwrite the license (sanity)",
+                  f.read() == "PACKAGE-DEFAULT")
+
+        # Backup/restore round-trip must survive a wineboot that clears
+        # Derivative (wineboot doesn't touch the sibling .bak)
+        with open(os.path.join(user_der, "ins2.dat"), "w") as f:
+            f.write("USER-ACTIVATED")
+        mod.backup_license()
+        shutil.rmtree(user_der)  # simulate wineboot clearing Derivative
+        mod.restore_license()
+        with open(os.path.join(user_der, "ins2.dat")) as f:
+            check("backup/restore survives Derivative wipe",
+                  f.read() == "USER-ACTIVATED")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_release_version_consistency():
     print("\n\u2500\u2500 Release version consistency \u2500\u2500")
     import re
@@ -1237,6 +1310,7 @@ def main():
     test_version_picker_installed_marking()
     test_progress_bar_format()
     test_aur_launcher_parity()
+    test_aur_launcher_license_preservation()
     test_release_version_consistency()
 
     total = PASS + FAIL

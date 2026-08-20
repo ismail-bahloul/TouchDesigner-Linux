@@ -10,9 +10,9 @@ Non-blocking fallback. UI and projects still work. The launcher auto-patches `.t
 
 ## License invalidated after an update (new System Code, re-activation needed)
 
-This happened with AUR updates (`paru -Syu` / `yay -Syu`) on older versions: the launcher copied the package's default license files over your activated ones (`ProgramData/Derivative/ins*.dat`) on launch, so TouchDesigner saw no valid activation and requested a new one (consuming another activation).
+Reported with AUR updates (`paru -Syu` / `yay -Syu`): after updating the package, TouchDesigner showed a new System Code and asked for re-activation (consuming another activation).
 
-**Fixed in v1.7.0:** the launcher no longer overwrites `Derivative` and backs up the license before wineboot/package ProgramData copies. Update to v1.7.0+ and the license survives updates.
+**v1.7.0 hardens the launcher against this:** the package ProgramData refresh no longer touches `ProgramData/Derivative/` (your activated `ins*.dat`), and the license is backed up before wineboot/updates and restored after. If you were affected, update to v1.7.0+ and the license files survive updates; if you still see a System Code change, please open an issue with `td-install --diagnose` output.
 
 If you already lost an activation this way, contact `licensing@derivative.ca` with your license ID; they can recover stuck activations.
 
