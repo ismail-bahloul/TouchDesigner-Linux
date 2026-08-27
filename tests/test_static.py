@@ -1851,6 +1851,12 @@ def test_release_version_consistency():
     if m and m2:
         check("PKGBUILD pkgver == .SRCINFO pkgver", m.group(1) == m2.group(1))
         check("pkgver == td_lib.__version__", m.group(1) == __version__)
+        # The repo tarball source must point at the matching tag. A stale
+        # URL here (e.g. v1.7.0 while pkgver is 1.8.0) silently breaks the
+        # AUR build while every pkgver check above still passes.
+        tag_url = re.search(r"archive/refs/tags/v([\w.]+)\.tar\.gz", srcinfo)
+        check(".SRCINFO tag URL matches pkgver",
+              bool(tag_url) and tag_url.group(1) == m2.group(1))
 
 
 # =============================================================================
