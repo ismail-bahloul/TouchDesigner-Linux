@@ -136,6 +136,16 @@ The runtime installers are downloaded from Wibu-Systems
 anything — `msiexec` is never invoked. The launcher also auto-starts
 `CodeMeter.exe` when a runtime is detected.
 
+**CodeMeter is never installed automatically.** The installer never runs
+TouchDesigner's "Install Runtime for Dongle Licensing" option (TD is
+extracted, not executed), and the AUR package does not ship the runtime
+either. It only ever appears in the prefix when you run
+`td-install --codemeter install <path>` explicitly, and
+`td-install --codemeter remove` removes it again. This keeps the default
+setup free of the runtime's startup cost (the "Checking CodeMeter
+licenses..." splash and its delay, which is long while the service cannot
+start under Wine 9.0).
+
 ---
 
 ## Unblocking the client (the open problem)
