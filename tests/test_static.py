@@ -361,6 +361,13 @@ def test_container_module():
     else:
         skip("distrobox present — skipping failure-path checks")
 
+    # The TD_CONTAINER_NO_NVIDIA escape hatch must be wired into the create
+    # command (slow distrobox --nvidia init on every container start).
+    import inspect
+    src = inspect.getsource(container.create_container)
+    check("NVIDIA passthrough can be skipped via env",
+          "NVIDIA_DISABLED" in src and "TD_CONTAINER_NO_NVIDIA" in src)
+
 
 # =============================================================================
 #  Dry-run

@@ -149,6 +149,15 @@ works as before.
   container with `--nvidia`, which mounts the host driver's userspace
   libraries into the container. The host kernel module version must match
   the host driver (as always with containers).
+  - **Slow startup note:** distrobox's `--nvidia` init scans the whole host
+    tree for NVIDIA files on **every** container start and bind-mounts each
+    one, which can take several minutes on big systems (no `--nvidia` step
+    in the logs = still scanning). The container is usable once it finishes.
+  - If you don't need GPU acceleration inside the container (or find the
+    init too slow), skip the passthrough:
+    ```bash
+    TD_CONTAINER_NO_NVIDIA=1 td-install --container install
+    ```
 - **Audio:** distrobox forwards the PipeWire/PulseAudio sockets.
 - **USB (MIDI controllers, cameras...):** distrobox shares host devices, but
   devices plugged in *after* the container is started may not appear until

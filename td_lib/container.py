@@ -35,6 +35,12 @@ REPO_URL = "https://github.com/ismail-bahloul/TouchDesigner-Linux.git"
 CONTAINER_NAME = os.environ.get("TD_CONTAINER_NAME", "touchdesigner-linux")
 CONTAINER_IMAGE = os.environ.get("TD_CONTAINER_IMAGE", "ubuntu:24.04")
 
+# distrobox's --nvidia init scans and bind-mounts the host's whole NVIDIA
+# tree on every container start, which is slow (minutes) on big systems.
+# TD_CONTAINER_NO_NVIDIA=1 skips the passthrough for users who don't need
+# GPU acceleration inside the container (or find the init too slow).
+NVIDIA_DISABLED = os.environ.get("TD_CONTAINER_NO_NVIDIA") == "1"
+
 # distrobox sets this inside the container — the canonical "we are inside"
 # signal (also used by distrobox's own init scripts).
 _INSIDE_VAR = "DISTROBOX_ENTER_PATH"
@@ -130,8 +136,13 @@ def create_container(name: str = CONTAINER_NAME, image: str = CONTAINER_IMAGE) -
     # Non-interactive: accept the image pull prompt so a first run works
     # when the image is not cached locally (also covers --non-interactive).
     cmd.append("--yes")
-    if _nvidia_available():
+    if _nvidia_available() and not NVIDIA_DISABLED:
         info("NVIDIA GPU detected: enabling host driver passthrough (--nvidia)")
+        warning(
+            "distrobox's NVIDIA init scans the whole host tree on every"
+            " container start — first launch can take several minutes."
+            " Set TD_CONTAINER_NO_NVIDIA=1 to skip it."
+        )
         cmd.append("--nvidia")
     if _selinux_enforcing():
         info("SELinux enforcing: adding label=disable security flag")
