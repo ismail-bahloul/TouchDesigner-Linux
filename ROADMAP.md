@@ -23,6 +23,8 @@ Currently locked to **Soda Wine 9.0-1** — still the recommended default. See [
 
 **Spout2PW:** Bridges Spout2 video from Windows apps under Proton to PipeWire on Linux. Useful for OBS capture. AUR package: `spout2pw-bin`. Worth documenting or integrating when Spout output is needed.
 
+**In progress: moving TD to a newer Wine build.** The project is pinned to Soda 9.0 because it is the only runner that is fully compatible today. A newer Wine build would also unlock **DXVK 3.x**, which currently crashes on the Syphon/Spout Out TOP under Wine 9.0 (DXVK stays on 2.7.1 for v1.8). This is also the leading candidate to unblock the CodeMeter client (see #21).
+
 ### 2. Diagnostic / Health check (`--diagnose`)
 
 ✅ **Done!** Run `td-install --diagnose` to check OS, GPU, Vulkan, disk space, Wine, installed TD versions, and IDS patch status in one go.
@@ -38,8 +40,10 @@ a self re-entering shim, and the Wine prefix stays in the shared `$HOME`.
 GPU passthrough is automatic (NVIDIA via `--nvidia`).
 
 Remaining known limits: a `noexec` `$HOME` needs a custom `TD_BASE_DIR`,
-`.toe` files outside `$HOME` aren't visible inside the container, and only
-Debian/Ubuntu images are battle-tested. See [docs/container.md](docs/container.md).
+`.toe` files outside `$HOME` aren't visible inside the container. Battle-
+tested with **Ubuntu 24.04 and Fedora 40** images (v1.8); first container
+run auto-accepts the image pull (`--yes`), and `TD_CONTAINER_NO_NVIDIA=1`
+skips the slow distrobox `--nvidia` init. See [docs/container.md](docs/container.md).
 
 ### 4. Pip wrapper / Python package manager
 
