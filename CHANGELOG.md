@@ -70,6 +70,15 @@ All notable changes to this project are documented here.
   now, so it answers without entering the container.
 - `tests/test_distrobox.sh` rewritten for the current flow (the old one
   referenced the long-gone `python-rewrite` branch).
+- **DXVK installs were silently skipped** on prefixes where Wine had already
+  copied its builtin wined3d DLLs into `system32`: the "already installed"
+  probe matched any PE32 DLL, so DXVK never activated and TouchDesigner ran
+  on wined3d. The probe now rejects Wine-built DLLs (`file` → "for WINE"),
+  and the DLL overrides are always (re)registered so Wine loads the DXVK
+  copies from `system32`. DXVK bumped to **2.7.1**.
+- **Syphon/Spout Out TOP works** with a real DXVK install (shared-texture
+  path); with wined3d it errors with "Unable to share DirectX Texture".
+  DXVK 3.x is not used: it crashes on the Spout node under Wine 9.0.
 
 ## [1.7.0] - 2026-08-20
 

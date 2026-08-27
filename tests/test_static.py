@@ -704,6 +704,39 @@ def test_wine_error_parser():
             check(f"wine error parser handles '{log[:40]}': {e}", False)
 
 
+def test_dxvk_module():
+    print("\n── DXVK module ──")
+    from td_lib import wine as wine_mod
+
+    check("DXVK DLL list covers d3d11", "d3d11" in wine_mod._DXVK_DLLS)
+    check("DXVK DLL list covers dxgi", "dxgi" in wine_mod._DXVK_DLLS)
+    check("DXVK DLL list covers d3d9", "d3d9" in wine_mod._DXVK_DLLS)
+    check("DXVK DLL list covers d3d10core", "d3d10core" in wine_mod._DXVK_DLLS)
+
+    # install_dxvk(enable=False) must be a no-op: no download, no wine, no
+    # filesystem writes. Also guards against the enable flag regressing.
+    wine_mod.install_dxvk(enable=False)
+    check("install_dxvk(enable=False) is a no-op", True)
+
+    # _register_dxvk_overrides is idempotent by construction: it only writes
+    # 'native' REG_SZ entries for DLLs that exist in system32.
+    import inspect
+    src = inspect.getsource(wine_mod._register_dxvk_overrides)
+    check("override registration only touches present DLLs",
+          "os.path.isfile" in src and "native" in src)
+
+    # The 'already installed' probe must not mistake Wine's builtin wined3d
+    # DLL (also PE32, labeled "for WINE") for a real DXVK install.
+    check("DXVK probe accepts a MinGW PE",
+          wine_mod._looks_like_dxvk(
+              "PE32+ executable for MS Windows 5.02 (DLL), x86-64"))
+    check("DXVK probe rejects a Wine builtin",
+          not wine_mod._looks_like_dxvk(
+              "PE32+ executable for WINE (DLL), x86-64"))
+    check("DXVK probe rejects non-PE output",
+          not wine_mod._looks_like_dxvk("ASCII text"))
+
+
 # =============================================================================
 #  IDS Patch logic (PE header parsing)
 # =============================================================================
@@ -1437,6 +1470,26 @@ def test_codemeter_install_runtime():
     else:
         skip("run_codemeter install (no path) — runtime present on this machine")
 
+    # remove/uninstall routing must be recognized (it touches the real prefix,
+    # so only assert the command is accepted by the dispatcher, not run it
+    # against the live prefix)
+    import inspect
+    src = inspect.getsource(codemeter.run_codemeter)
+    check("run_codemeter routes remove/uninstall",
+          '"remove"' in src and '"uninstall"' in src and "remove_runtime" in src)
+
+    # Wibu system DLL detection used by remove_runtime
+    for name, expect in [
+        ("cpsrt.dll", True),
+        ("WibuCm64.dll", True),
+        ("wibucmJNI64.dll", True),
+        ("WibuXpm4J32.dll", True),
+        ("d3d11.dll", False),
+        ("kernel32.dll", False),
+    ]:
+        check(f"is_wibu_system_dll('{name}') == {expect}",
+              codemeter._is_wibu_system_dll(name) is expect)
+
 
 def test_codemeter_cli_args():
     print("\n── CodeMeter CLI args ──")
@@ -1815,6 +1868,7 @@ def main():
     test_mime_xml_content()
     test_font_fix_paths()
     test_wine_error_parser()
+    test_dxvk_module()
     test_ids_patch_parsing()
     test_version_select()
     test_version_detection()

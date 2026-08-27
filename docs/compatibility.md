@@ -18,6 +18,7 @@
 | External installs / integrations | ❓ | Third-party installs, Kinect, extra plugins, and advanced external production pipelines still need broader testing |
 | Python packages (pip) | ⚠️ | Works for pure-Python packages (numpy, opencv, requests). Native extensions (.pyd) may fail under Wine — see troubleshooting |
 | PyTorch (torch, CPU-only) | ⚠️ | Works with `KMP_AFFINITY=disabled` (auto-set in launcher). Tested 2.13.0+cpu on Wine TkG — see [issue #20](https://github.com/ismail-bahloul/TouchDesigner-Linux/issues/20) |
+| Syphon / Spout Out TOP | ⚠️ | Works with a real DXVK install (DXVK 2.7.1, default since 1.8). On wined3d the node errors "Unable to share DirectX Texture" — re-run `td-install` if you see that. DXVK 3.x crashes on this node under Wine 9.0 |
 | License dongles (CodeMeter) | ❌ | Client blocked: the CodeMeter service (`CodeMeter.exe`) won't start under Wine 9.0 (protected `cpsrt.dll` fails to load). Server side works (native Linux/Docker). Tooling in `--codemeter`; see [docs/codemeter.md](codemeter.md) |
 
 ## Notes

@@ -320,6 +320,79 @@ def _copy_dir_contents(src: str, dst: str) -> None:
             shutil.copy2(s, os.path.join(dst, name))
 
 
+def _is_wibu_system_dll(name: str) -> bool:
+    """True for the Wibu system DLLs a runtime install copies into the
+    prefix's Windows directories (cpsrt.dll, WibuCm32/64*, wibucmJNI*,
+    WibuXpm4J32/64.dll)."""
+    low = name.lower()
+    return (
+        low == "cpsrt.dll"
+        or low.startswith("wibucm")
+        or low in ("wibuxpm4j32.dll", "wibuxpm4j64.dll")
+    )
+
+
+def remove_runtime() -> bool:
+    """Remove the CodeMeter runtime from the Wine prefix (undoes install).
+
+    Deletes the runtime install dir, the ProgramData config and the Wibu
+    system DLLs. Removing every trace matters: if only the API DLLs remain
+    (e.g. a partial install or a leftover), TouchDesigner detects CodeMeter
+    at startup and can hang waiting for the absent service.
+    """
+    from .wine import WINE_PREFIX
+
+    stop_runtime()
+
+    drive_c = os.path.join(WINE_PREFIX, "drive_c")
+    removed = False
+
+    for sub in ("Program Files (x86)", "Program Files"):
+        runtime_dir = os.path.join(drive_c, sub, "CodeMeter")
+        if os.path.isdir(runtime_dir):
+            safe_rm(runtime_dir)
+            removed = True
+
+    wibu_pd = os.path.join(drive_c, "ProgramData", "WIBU-SYSTEMS")
+    if os.path.isdir(wibu_pd):
+        safe_rm(wibu_pd)
+        removed = True
+
+    for sysdir in (
+        os.path.join(drive_c, "windows", "system32"),
+        os.path.join(drive_c, "windows", "syswow64"),
+    ):
+        if not os.path.isdir(sysdir):
+            continue
+        for name in os.listdir(sysdir):
+            if _is_wibu_system_dll(name):
+                try:
+                    os.remove(os.path.join(sysdir, name))
+                    removed = True
+                except OSError:
+                    pass
+
+    # Server Search List registry (client config written by add-server).
+    wine = _wine_env()
+    subprocess.run(
+        [
+            wine["wine64"],
+            "reg",
+            "delete",
+            "HKLM\\SOFTWARE\\WIBU-SYSTEMS",
+            "/f",
+        ],
+        env=wine["env"],
+        capture_output=True,
+    )
+
+    if removed:
+        success("CodeMeter runtime removed from the Wine prefix.")
+    else:
+        info("No CodeMeter runtime files found in the prefix.")
+    return True
+
+
 def is_running() -> bool:
     """Check whether a CodeMeter runtime process is already up.
 
@@ -673,6 +746,9 @@ def run_codemeter(args: list[str]) -> int:
         start_runtime()
         return status()
 
+    if command in ("remove", "uninstall"):
+        return 0 if remove_runtime() else 1
+
     if command in ("start", "run"):
         if not find_runtime_exe():
             error("CodeMeter runtime not found in the Wine prefix.")
@@ -703,5 +779,5 @@ def run_codemeter(args: list[str]) -> int:
 
     error(f"Unknown --codemeter command: {command}")
     info("Commands: status | setup | start | install <installer-path> |")
-    info("          add-server <ip> | remove-server <ip> | servers")
+    info("          remove | add-server <ip> | remove-server <ip> | servers")
     return 1

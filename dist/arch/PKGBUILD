@@ -33,7 +33,7 @@ _repo_url="https://github.com/ismail-bahloul/TouchDesigner-Linux/archive/refs/ta
 _soda_version="9.0-1"
 _soda_url="https://github.com/bottlesdevs/wine/releases/download/soda-${_soda_version}/soda-${_soda_version}-x86_64.tar.xz"
 _td_url="https://download.derivative.ca/TouchDesigner.${_td_ver}.exe"
-_dxvk_version="2.4"
+_dxvk_version="2.7.1"
 _dxvk_url="https://github.com/doitsujin/dxvk/releases/download/v${_dxvk_version}/dxvk-${_dxvk_version}.tar.gz"
 _winetricks_url="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
 

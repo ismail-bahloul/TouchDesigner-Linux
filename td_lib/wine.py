@@ -35,7 +35,7 @@ WINE_DLL_OVERRIDES = "mscoree="
 SODA_URL = "https://github.com/bottlesdevs/wine/releases/download/soda-9.0-1/soda-9.0-1-x86_64.tar.xz"
 SODA_SHA256 = os.environ.get("SODA_SHA256", "")
 
-DXVK_VERSION = "2.4"
+DXVK_VERSION = "2.7.1"
 DXVK_URL = f"https://github.com/doitsujin/dxvk/releases/download/v{DXVK_VERSION}/dxvk-{DXVK_VERSION}.tar.gz"
 DXVK_SHA256 = os.environ.get("DXVK_SHA256", "")
 
@@ -384,7 +384,21 @@ def install_windows_deps() -> None:
     success("Windows dependencies installed")
 
 
+def _looks_like_dxvk(file_output: str) -> bool:
+    """True if a ``file``(1) description of d3d11.dll is a real DXVK DLL.
+
+    Wine's builtin wined3d DLLs are PE32 too, but ``file`` labels them
+    "for WINE" (they are built by the Wine project), while MinGW-built
+    DXVK DLLs read "for MS Windows". Matching on that keeps a fresh prefix
+    from being mistaken for an existing DXVK install.
+    """
+    return "PE32" in file_output and "for WINE" not in file_output
+
+
 # ── DXVK ─────────────────────────────────────────────────────────────────────
+
+# DLLs DXVK ships (d3d8 only in newer DXVK releases).
+_DXVK_DLLS = ("d3d9", "d3d10core", "d3d11", "dxgi", "d3d8")
 
 
 def install_dxvk(enable: bool = True) -> None:
@@ -395,14 +409,24 @@ def install_dxvk(enable: bool = True) -> None:
     sys32 = os.path.join(WINE_PREFIX, "drive_c", "windows", "system32")
     d3d11 = os.path.join(sys32, "d3d11.dll")
 
-    # Check if already installed by looking for a PE32 d3d11.dll
+    # Check if already installed by looking for a real DXVK d3d11.dll. Wine
+    # also copies its builtin wined3d DLLs into system32 at prefix creation
+    # and they are PE32 too, so "file" must confirm it is a Windows PE and
+    # NOT a Wine builtin — otherwise a fresh prefix would skip the DXVK
+    # install and silently keep running wined3d.
     if os.path.isfile(d3d11):
         result = subprocess.run(
             ["file", d3d11],
             capture_output=True,
             text=True,
         )
-        if "PE32" in result.stdout:
+        if _looks_like_dxvk(result.stdout):
+            # The DLLs may be present while the "native" overrides are not
+            # (an earlier partial install, or a reset prefix). Without the
+            # overrides Wine silently uses its builtin wined3d and ignores
+            # the system32 DLLs — which breaks DXVK-dependent features such
+            # as Spout shared textures. Always repair the overrides.
+            _register_dxvk_overrides()
             success("DXVK already installed")
             return
 
@@ -481,11 +505,24 @@ def _install_dxvk_manual(dxvk_root: str, wine_env: dict) -> None:
             if dll.endswith(".dll"):
                 shutil.copy2(os.path.join(x32, dll), os.path.join(syswow64, dll))
 
-    # Register DLL overrides
-    for dll in ["d3d9", "d3d10core", "d3d11", "dxgi"]:
+    _register_dxvk_overrides(wine_env)
+
+
+def _register_dxvk_overrides(wine_env: dict | None = None) -> None:
+    """Register a "native" override for every DXVK DLL present in the prefix.
+
+    Wine's default load order for these builtins is builtin-first, so the
+    DXVK DLLs sitting in system32 are ignored unless an override forces the
+    native copy. Idempotent; safe to call on every install/update.
+    """
+    wine = wine_env or _wine_env()
+    sys32 = os.path.join(WINE_PREFIX, "drive_c", "windows", "system32")
+    for dll in _DXVK_DLLS:
+        if not os.path.isfile(os.path.join(sys32, f"{dll}.dll")):
+            continue
         subprocess.run(
             [
-                wine_env["wine64"],
+                wine["wine64"],
                 "reg",
                 "add",
                 "HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides",
@@ -497,6 +534,6 @@ def _install_dxvk_manual(dxvk_root: str, wine_env: dict) -> None:
                 "native",
                 "/f",
             ],
-            env=wine_env["env"],
+            env=wine["env"],
             capture_output=True,
         )
