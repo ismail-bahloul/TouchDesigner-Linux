@@ -133,7 +133,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Manage the CodeMeter licensing runtime (dongles / network "
             "licenses). e.g. --codemeter setup, "
-            "--codemeter add-server 192.168.1.15"
+            "--codemeter add-server 192.168.1.15, "
+            "--codemeter install /path/to/CodeMeterRuntime.exe"
         ),
     )
 

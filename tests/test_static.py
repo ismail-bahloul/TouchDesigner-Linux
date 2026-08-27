@@ -1363,6 +1363,81 @@ def test_codemeter_module():
     check("add-server without ip rejected", rc != 0)
 
 
+def test_codemeter_install_runtime():
+    print("\n── CodeMeter native runtime install ──")
+    from td_lib import codemeter
+
+    tmp = tempfile.mkdtemp(prefix="td_cm_install_test_")
+    try:
+        # Fake extracted installer: Inno-style Program Files layout + ProgramData
+        extract = os.path.join(tmp, "extracted")
+        fake_bin = os.path.join(
+            extract, "Program Files (x86)", "CodeMeter", "Runtime", "bin"
+        )
+        os.makedirs(fake_bin)
+        with open(os.path.join(fake_bin, "CodeMeter.exe"), "w") as f:
+            f.write("")
+        with open(os.path.join(fake_bin, "cmu32.exe"), "w") as f:
+            f.write("")
+        with open(os.path.join(fake_bin, "cpsrt.dll"), "w") as f:
+            f.write("")
+        fake_pd = os.path.join(extract, "ProgramData", "WIBU-SYSTEMS", "CodeMeter")
+        os.makedirs(fake_pd)
+        with open(os.path.join(fake_pd, "Server.ini"), "w") as f:
+            f.write("[Global]\n")
+
+        root = codemeter._find_codemeter_root(extract)
+        check("find_codemeter_root finds the CodeMeter payload dir",
+              root is not None and root.endswith(os.path.join("CodeMeter")))
+
+        wibu_pd = codemeter._find_wibu_programdata(extract)
+        check("find_wibu_programdata finds WIBU-SYSTEMS dir",
+              wibu_pd is not None and wibu_pd.endswith(os.path.join("WIBU-SYSTEMS")))
+
+        # Lift the payload into a fake prefix
+        fake_prefix = os.path.join(tmp, "prefix")
+        drive_c = os.path.join(fake_prefix, "drive_c")
+        os.makedirs(drive_c)
+        codemeter._copy_payload(root, wibu_pd, drive_c)
+
+        exe = codemeter.find_runtime_exe(prefix=fake_prefix)
+        check("copy_payload lands CodeMeter.exe at the standard location",
+              exe is not None and os.path.isfile(exe))
+        cmu = codemeter.find_cmu32(prefix=fake_prefix)
+        check("copy_payload preserves the Runtime/bin layout (cmu32 found)",
+              cmu is not None and os.path.isfile(cmu))
+        check("ProgramData config payload copied",
+              os.path.isfile(os.path.join(
+                  drive_c, "ProgramData", "WIBU-SYSTEMS", "CodeMeter", "Server.ini")))
+
+        # Missing installer file: clean failure, no Wine involved
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            ok = codemeter.install_runtime(os.path.join(tmp, "does-not-exist.exe"))
+        check("install_runtime rejects a missing installer", ok is False)
+
+        rc = codemeter.run_codemeter(["install", os.path.join(tmp, "does-not-exist.exe")])
+        check("run_codemeter install <missing> exits non-zero", rc != 0)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # install with no path behaves like setup: without a runtime installed it
+    # must fail cleanly (non-zero), not crash. Skip when a runtime is present
+    # on this machine (would try to start it via Wine).
+    import contextlib
+    import io
+    if codemeter.find_runtime_exe() is None:
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            rc = codemeter.run_codemeter(["install"])
+        check("run_codemeter install (no path) fails cleanly without a runtime",
+              rc != 0)
+    else:
+        skip("run_codemeter install (no path) — runtime present on this machine")
+
+
 def test_codemeter_cli_args():
     print("\n── CodeMeter CLI args ──")
     from td_lib.cli import parse_args
@@ -1376,6 +1451,10 @@ def test_codemeter_cli_args():
     args = parse_args(["--codemeter", "add-server", "192.168.1.15"])
     check("--codemeter add-server ip",
           args.codemeter_args == ["add-server", "192.168.1.15"])
+
+    args = parse_args(["--codemeter", "install", "/tmp/CodeMeterRuntime.exe"])
+    check("--codemeter install <path>",
+          args.codemeter_args == ["install", "/tmp/CodeMeterRuntime.exe"])
 
     args = parse_args(["--codemeter", "status"])
     check("--codemeter status", args.codemeter_args == ["status"])
@@ -1748,6 +1827,7 @@ def main():
     test_touchdesigner_command()
     test_pip_module()
     test_codemeter_module()
+    test_codemeter_install_runtime()
     test_codemeter_cli_args()
     test_diagnose_output()
     test_uninstall_text_selection()

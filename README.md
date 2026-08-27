@@ -49,10 +49,14 @@ td-install --pip list
 ```bash
 td-install --codemeter status          # runtime installed & running?
 td-install --codemeter add-server 192.168.1.15   # add a license server to the search list
+# No runtime yet? Install one without msiexec (any version, e.g. to test):
+td-install --codemeter install /path/to/CodeMeterRuntime.exe
 ```
 > ⚠️ The CodeMeter **server side** works (native Linux / Docker). The **client
-> under Wine is currently blocked** (the CodeMeter service won't start under
-> Wine 9.0). See [docs/codemeter.md](docs/codemeter.md) for status & test results.
+> under Wine is still blocked** while Wibu's protected `cpsrt.dll` won't load
+> under Wine 9.0 (tested with runtimes 8.41a and 9.10) — `--codemeter install`
+> makes it easy to try other runtime versions. See
+> [docs/codemeter.md](docs/codemeter.md) for status & test results.
 
 ---
 

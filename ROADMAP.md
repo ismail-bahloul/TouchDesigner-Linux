@@ -147,9 +147,11 @@ This repo's `td_lib` and installer are unaffected — the historical code that l
 
 **Partial — tooling shipped (`td-install --codemeter`), client blocked.**
 
-**Done:** detection of the runtime in the prefix, Server Search List management (`cmu32 --add-server` / `cmu.exe` / registry), launcher auto-start, and a validated **server-side** setup (native Linux daemon or the official `docker-codemeter` image, port 22350).
+**Done:** detection of the runtime in the prefix, Server Search List management (`cmu32 --add-server` / `cmu.exe` / registry), launcher auto-start, a validated **server-side** setup (native Linux daemon or the official `docker-codemeter` image, port 22350), and an **msiexec-free runtime install** (`td-install --codemeter install <path>`: native extraction via innoextract/7z, handles the WiX-bundled 7.60d download, copies the Wibu system DLLs).
 
-**Blocked (tested 2026-08):** the Windows CodeMeter service (`CodeMeter.exe`) does not start under the project's Wine runner (9.0 TkG/Soda) — Wibu's protected `cpsrt.dll` fails to load (`c000007b`, runtimes 8.41a and 9.10 tested), and the official MSI hangs under `msiexec`. Until a Wine-compatible runtime is found (older runtime version or newer Wine build), TouchDesigner under Wine cannot borrow network-shared licenses. Direct USB dongle passthrough remains out of scope. See the open feature request and [docs/codemeter.md](docs/codemeter.md).
+**Blocked (tested 2026-08, Wine 9.0 TkG/Soda):** the Windows CodeMeter service (`CodeMeter.exe`) still does not come up. Runtimes 8.41a/9.10 crash on load (protected `cpsrt.dll`, `c000007b`); runtime **7.60d** loads fine but the service **stalls during startup** (single thread, never opens port 22350). Until `CodeMeter.exe` runs, TouchDesigner under Wine cannot borrow network-shared licenses. Direct USB dongle passthrough remains out of scope. See the open feature request and [docs/codemeter.md](docs/codemeter.md).
+
+**Next test to try:** a newer Wine build (10/11 or GE-Proton) with runtime 7.60d — the stall looks Wine-version dependent. Also worth upstreaming both failures (7.60d stall + 9.10 `cpsrt.dll` loader error) to WineHQ.
 
 ## Long-term
 

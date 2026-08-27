@@ -40,6 +40,17 @@ All notable changes to this project are documented here.
     limitations.
 - `--diagnose` now reports container-mode status (distrobox installed,
   backend, container state, inside/outside).
+- **CodeMeter runtime installation without msiexec** —
+  `td-install --codemeter install <path>` extracts a CodeMeter Runtime
+  installer natively on the host and lays the files into the Wine prefix,
+  bypassing the Wibu MSI that hangs under Wine's `msiexec`. Handles both
+  Inno setups (innoextract) and WiX/MSI bundles (7z) — the official 7.60d
+  download is a WiX bundle. Also copies the Wibu system DLLs
+  (`WibuCm64.dll`/`cpsrt.dll`) into the prefix's system directories.
+  First real test (runtime 7.60d): `cpsrt.dll` loads fine under Wine 9.0
+  (the `c000007b` failure only affects 8.41a/9.10), but `CodeMeter.exe`
+  still stalls during startup — see [docs/codemeter.md](docs/codemeter.md)
+  for the updated status and next steps.
 
 ### Fixes
 

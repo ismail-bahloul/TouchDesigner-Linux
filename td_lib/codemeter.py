@@ -17,6 +17,9 @@ auto-start Windows services, so ``CodeMeter.exe`` must be launched manually.
 This module provides the ``td-install --codemeter`` command:
 
 - detect the runtime inside the Wine prefix
+- install the runtime without msiexec (``install <path>``: native
+  extraction with innoextract/7z, so any runtime version can be tried
+  quickly)
 - start ``CodeMeter.exe``
 - add / remove license servers in the Server Search List (Wibu's official
   ``cmu32 --add-server`` path, with a direct registry fallback)
@@ -28,9 +31,10 @@ For the full picture (server setup, port conflicts, firewall) see
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 
-from .utils import error, info, success, warning
+from .utils import ensure_dir, error, info, safe_rm, success, warning
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 
@@ -131,6 +135,189 @@ def find_cmu32(prefix: str | None = None) -> str | None:
         if os.path.isfile(exe):
             return exe
     return None
+
+
+# ── Native (msiexec-free) runtime installation ───────────────────────────────
+
+
+def install_runtime(installer_path: str) -> bool:
+    """Install the CodeMeter runtime into the Wine prefix without msiexec.
+
+    Wibu ships the runtime as an Inno Setup ``.exe`` (CodeMeterRuntime*.exe)
+    or an ``.msi``; both hang or fail under Wine's ``msiexec``. This command
+    extracts the installer natively on the host (``innoextract`` for Inno
+    setups, ``7z`` for MSI archives) and lifts the payload into the prefix,
+    at the exact locations a real Windows install would use:
+
+    - ``Program Files (x86)/CodeMeter`` (the runtime itself)
+    - ``ProgramData/WIBU-SYSTEMS`` (configuration, if shipped)
+
+    Bypassing msiexec makes it trivial to try multiple runtime versions —
+    the leading fix for the protected ``cpsrt.dll`` loader issue (the
+    runtimes 8.41a/9.10 don't map under Wine 9.0; see docs/codemeter.md).
+    """
+    if not os.path.isfile(installer_path):
+        error(f"Installer not found: {installer_path}")
+        return False
+
+    from .wine import WINE_PREFIX
+
+    drive_c = os.path.join(WINE_PREFIX, "drive_c")
+    if not os.path.isdir(drive_c):
+        error("No Wine prefix found — install TouchDesigner first (run 'td-install').")
+        return False
+
+    extract_root = tempfile.mkdtemp(prefix="td_cm_runtime_")
+    try:
+        info(f"Extracting {os.path.basename(installer_path)}...")
+        if not _extract_installer(installer_path, extract_root):
+            return False
+
+        codemeter_root = _find_codemeter_root(extract_root)
+        if not codemeter_root:
+            error("No CodeMeter runtime payload found in the installer.")
+            info("Expected Runtime/bin/CodeMeter.exe inside the extracted archive.")
+            return False
+
+        wibu_pd = _find_wibu_programdata(extract_root)
+        _copy_payload(codemeter_root, wibu_pd, drive_c)
+        _copy_system_dlls(extract_root, drive_c)
+        success("CodeMeter runtime installed into the Wine prefix.")
+    finally:
+        safe_rm(extract_root)
+
+    if not find_runtime_exe():
+        error("Runtime installed, but CodeMeter.exe was not found afterwards.")
+        return False
+
+    info("Starting the runtime...")
+    if start_runtime():
+        info("Next: td-install --codemeter add-server <license-server-ip>")
+    else:
+        warning(
+            "Runtime installed but did not stay up — under Wine 9.0 the"
+            " CodeMeter service stalls during startup (see docs/codemeter.md)."
+        )
+    return True
+
+
+def _extract_installer(installer_path: str, dest: str) -> bool:
+    """Extract a CodeMeter runtime installer natively.
+
+    Tries each available extractor in order — ``innoextract`` then ``7z``
+    for Inno ``.exe`` bundles, ``7z`` then ``msiextract`` for ``.msi`` — so
+    a fallback is used when the preferred tool doesn't recognize the format
+    (Wibu also ships WiX bundles that innoextract rejects but 7z unwraps).
+    """
+    ensure_dir(dest)
+    lower = installer_path.lower()
+
+    attempts: list[list[str]] = []
+    if lower.endswith(".msi"):
+        if shutil.which("7z"):
+            attempts.append(["7z", "x", installer_path, f"-o{dest}", "-y"])
+        if shutil.which("msiextract"):
+            attempts.append(["msiextract", "--directory", dest, installer_path])
+    else:
+        if shutil.which("innoextract"):
+            attempts.append(["innoextract", "-d", dest, "-e", installer_path])
+        if shutil.which("7z"):
+            attempts.append(["7z", "x", installer_path, f"-o{dest}", "-y"])
+
+    if not attempts:
+        error("Need innoextract or 7z to extract the installer.")
+        return False
+
+    last_error = "no extractor produced output"
+    for cmd in attempts:
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=600
+            )
+        except (subprocess.TimeoutExpired, OSError) as e:
+            last_error = str(e)
+            continue
+        if result.returncode == 0:
+            return True
+        last_error = (result.stderr or result.stdout or "").strip()[-300:]
+    error("Extraction failed: " + last_error)
+    return False
+
+
+def _find_codemeter_root(extract_dir: str) -> str | None:
+    """Locate the CodeMeter payload root inside an extracted installer.
+
+    Returns the topmost directory named ``CodeMeter`` whose tree contains
+    ``Runtime/bin/CodeMeter.exe``, or None. Tolerant of the layout variations
+    between Inno (``Program Files (x86)/CodeMeter``), MSI (``[0]/...``) and
+    64-bit (``Program Files/CodeMeter``) installers.
+    """
+    for dirpath, _, filenames in os.walk(extract_dir):
+        has_exe = any(f.lower() == "codemeter.exe" for f in filenames)
+        if not has_exe:
+            continue
+        node = dirpath
+        while os.path.dirname(node) != node:
+            if os.path.basename(node).lower() == "codemeter":
+                return node
+            node = os.path.dirname(node)
+    return None
+
+
+def _find_wibu_programdata(extract_dir: str) -> str | None:
+    """Locate the ``WIBU-SYSTEMS`` config payload (ProgramData), if any."""
+    for dirpath, dirnames, _ in os.walk(extract_dir):
+        for name in dirnames:
+            if name.lower() == "wibu-systems":
+                candidate = os.path.join(dirpath, name)
+                if os.path.isdir(os.path.join(candidate, "CodeMeter")):
+                    return candidate
+    return None
+
+
+def _copy_payload(codemeter_root: str, wibu_pd: str | None, drive_c: str) -> None:
+    """Copy the extracted payload into the Wine prefix at the standard
+    locations (Program Files (x86)/CodeMeter, ProgramData/WIBU-SYSTEMS)."""
+    dest_root = os.path.join(drive_c, "Program Files (x86)", "CodeMeter")
+    ensure_dir(os.path.dirname(dest_root))
+    shutil.copytree(codemeter_root, dest_root, dirs_exist_ok=True)
+
+    if wibu_pd:
+        pd_dest = os.path.join(drive_c, "ProgramData", "WIBU-SYSTEMS")
+        ensure_dir(os.path.dirname(pd_dest))
+        shutil.copytree(wibu_pd, pd_dest, dirs_exist_ok=True)
+
+
+def _copy_system_dlls(extract_dir: str, drive_c: str) -> None:
+    """Copy the Wibu system DLLs into the Wine system directories.
+
+    A real Windows install puts ``WibuCm64.dll`` / ``cpsrt.dll`` into
+    System32 and their 32-bit counterparts into System (syswow64 under
+    Wine). CodeMeter.exe loads ``cpsrt.dll`` from there, so this is
+    required for it to start.
+    """
+    system32 = os.path.join(drive_c, "windows", "system32")
+    syswow64 = os.path.join(drive_c, "windows", "syswow64")
+    for dirpath, _, filenames in os.walk(extract_dir):
+        base = os.path.basename(dirpath).lower()
+        if base == "system32" and any(
+            f.lower() == "wibucm64.dll" for f in filenames
+        ):
+            ensure_dir(system32)
+            _copy_dir_contents(dirpath, system32)
+        elif base == "system" and any(
+            f.lower() == "wibucm32.dll" for f in filenames
+        ):
+            ensure_dir(syswow64)
+            _copy_dir_contents(dirpath, syswow64)
+
+
+def _copy_dir_contents(src: str, dst: str) -> None:
+    """Copy every file from ``src`` into ``dst`` (merge)."""
+    for name in os.listdir(src):
+        s = os.path.join(src, name)
+        if os.path.isfile(s):
+            shutil.copy2(s, os.path.join(dst, name))
 
 
 def is_running() -> bool:
@@ -468,7 +655,18 @@ def run_codemeter(args: list[str]) -> int:
     if command in ("status", "info", "check"):
         return status()
 
-    if command in ("setup", "install", "enable"):
+    if command in ("setup", "enable"):
+        if not find_runtime_exe():
+            status()
+            return 1
+        start_runtime()
+        return status()
+
+    if command == "install":
+        if len(args) >= 2:
+            # install <path>: native, msiexec-free runtime installation
+            return 0 if install_runtime(args[1]) else 1
+        # no installer path: behave like setup (runtime already present?)
         if not find_runtime_exe():
             status()
             return 1
@@ -504,6 +702,6 @@ def run_codemeter(args: list[str]) -> int:
         return 0
 
     error(f"Unknown --codemeter command: {command}")
-    info("Commands: status | setup | start | add-server <ip> |")
-    info("          remove-server <ip> | servers")
+    info("Commands: status | setup | start | install <installer-path> |")
+    info("          add-server <ip> | remove-server <ip> | servers")
     return 1
