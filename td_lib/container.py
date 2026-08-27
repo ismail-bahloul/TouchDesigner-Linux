@@ -127,6 +127,9 @@ def create_container(name: str = CONTAINER_NAME, image: str = CONTAINER_IMAGE) -
         return False
 
     cmd = [distrobox, "create", "--name", name, "--image", image]
+    # Non-interactive: accept the image pull prompt so a first run works
+    # when the image is not cached locally (also covers --non-interactive).
+    cmd.append("--yes")
     if _nvidia_available():
         info("NVIDIA GPU detected: enabling host driver passthrough (--nvidia)")
         cmd.append("--nvidia")
