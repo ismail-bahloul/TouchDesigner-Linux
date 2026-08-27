@@ -395,6 +395,16 @@ def _looks_like_dxvk(file_output: str) -> bool:
     return "PE32" in file_output and "for WINE" not in file_output
 
 
+def _read_dxvk_version_marker() -> str:
+    """Return the DXVK version recorded at install time, or "" if unset."""
+    marker = os.path.join(TD_BASE_DIR, ".dxvk-version")
+    try:
+        with open(marker) as f:
+            return f.read().strip()
+    except (IOError, OSError):
+        return ""
+
+
 # ── DXVK ─────────────────────────────────────────────────────────────────────
 
 # DLLs DXVK ships (d3d8 only in newer DXVK releases).
@@ -421,14 +431,21 @@ def install_dxvk(enable: bool = True) -> None:
             text=True,
         )
         if _looks_like_dxvk(result.stdout):
-            # The DLLs may be present while the "native" overrides are not
-            # (an earlier partial install, or a reset prefix). Without the
-            # overrides Wine silently uses its builtin wined3d and ignores
-            # the system32 DLLs — which breaks DXVK-dependent features such
-            # as Spout shared textures. Always repair the overrides.
-            _register_dxvk_overrides()
-            success("DXVK already installed")
-            return
+            # Version-aware: upgrade when the installed DLLs predate the
+            # pinned version (a marker is written on every install, so an
+            # old or marker-less install re-downloads rather than staying
+            # on a stale build). The DLL overrides are always (re)registered
+            # too: without them Wine ignores the system32 DLLs and silently
+            # runs builtin wined3d, which breaks DXVK-dependent features
+            # such as Spout shared textures.
+            if _read_dxvk_version_marker() == DXVK_VERSION:
+                _register_dxvk_overrides()
+                success("DXVK already installed")
+                return
+            info(
+                "Installed DXVK is not the pinned version — "
+                f"upgrading to {DXVK_VERSION}..."
+            )
 
     info(f"Downloading DXVK {DXVK_VERSION}...")
     tarball = os.path.join(TD_BASE_DIR, "dxvk.tar.gz")
@@ -481,6 +498,8 @@ def install_dxvk(enable: bool = True) -> None:
         _install_dxvk_manual(dxvk_root, env)
 
     safe_rm(dxvk_dir)
+    with open(os.path.join(TD_BASE_DIR, ".dxvk-version"), "w") as f:
+        f.write(DXVK_VERSION)
     success("DXVK installed")
 
 

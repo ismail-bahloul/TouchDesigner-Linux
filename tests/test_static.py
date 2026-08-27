@@ -736,6 +736,14 @@ def test_dxvk_module():
     check("DXVK probe rejects non-PE output",
           not wine_mod._looks_like_dxvk("ASCII text"))
 
+    # The version marker makes the install version-aware: an old real DXVK
+    # install (marker missing or stale) must be upgraded, not kept.
+    src = inspect.getsource(wine_mod.install_dxvk)
+    check("install_dxvk upgrades a stale DXVK install",
+          "_read_dxvk_version_marker() == DXVK_VERSION" in src)
+    marker = wine_mod._read_dxvk_version_marker()
+    check("version marker helper returns a string", isinstance(marker, str))
+
 
 # =============================================================================
 #  IDS Patch logic (PE header parsing)
