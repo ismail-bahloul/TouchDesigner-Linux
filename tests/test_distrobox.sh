@@ -1,10 +1,11 @@
 #!/bin/bash
-# Distrobox test — run TouchDesigner-Linux V2 in an isolated container
-# Usage: bash tests/test_distrobox.sh
+# Distrobox container-mode test — run the TouchDesigner-Linux flow inside an
+# isolated container, host untouched.
+# Usage: bash tests/test_distrobox.sh [IMAGE]
 
 set -e
 
-echo "=== TouchDesigner-Linux V2 — Distrobox Test ==="
+echo "=== TouchDesigner-Linux — Distrobox container-mode test ==="
 echo ""
 
 # Check distrobox
@@ -19,51 +20,33 @@ if ! command -v podman &>/dev/null && ! command -v docker &>/dev/null; then
     exit 1
 fi
 
-CONTAINER_NAME="td-test-v2"
 IMAGE="${1:-ubuntu:24.04}"
+export TD_CONTAINER_IMAGE="$IMAGE"
 
-echo "Creating container: $CONTAINER_NAME ($IMAGE)"
-echo ""
-
-# Create container if not exists
-if ! distrobox list 2>/dev/null | grep -q "$CONTAINER_NAME"; then
-    distrobox create \
-        --name "$CONTAINER_NAME" \
-        --image "$IMAGE" \
-        --additional-flags "--security-opt label=disable"
+# The container shares $HOME, so keep a repo copy where both sides see it
+# (this is also what install.sh does for curl installs).
+SOURCE_DIR="$HOME/.local/share/touchdesigner-linux/source"
+if [ ! -f "$SOURCE_DIR/td-install" ]; then
+    echo "Cloning repo into $SOURCE_DIR (shared with the container)..."
+    mkdir -p "$(dirname "$SOURCE_DIR")"
+    git clone --depth 1 https://github.com/ismail-bahloul/TouchDesigner-Linux.git "$SOURCE_DIR"
 fi
 
-# Enter and test
-distrobox enter "$CONTAINER_NAME" -- bash -c '
-    set -e
-    echo ""
-    echo "=== Inside container ==="
+echo ""
+echo "=== 1. Bootstrap container (td-install --container --diagnose) ==="
+"$SOURCE_DIR/td-install" --container --diagnose --non-interactive
 
-    # Install deps
-    sudo apt-get update
-    sudo apt-get install -y curl wget p7zip-full innoextract python3 xz-utils cabextract unzip file
+echo ""
+echo "=== 2. Dry-run install inside the container ==="
+"$SOURCE_DIR/td-install" --container --install --dry-run --headless --non-interactive
 
-    # Clone or copy
-    if [ ! -d /opt/touchdesigner-linux ]; then
-        sudo git clone https://github.com/iswad-lab/TouchDesigner-Linux.git /opt/touchdesigner-linux
-    fi
-    cd /opt/touchdesigner-linux
+echo ""
+echo "=== 3. Static test suite inside the container ==="
+distrobox enter touchdesigner-linux -- python3 "$SOURCE_DIR/tests/test_static.py"
 
-    # Switch to python-rewrite branch
-    sudo git checkout python-rewrite
+echo ""
+echo "=== 4. Cleanup: remove the test container ==="
+"$SOURCE_DIR/td-install" --container-remove --non-interactive
 
-    echo ""
-    echo "=== Running static tests ==="
-    python3 tests/test_static.py
-
-    echo ""
-    echo "=== Dry-run install ==="
-    ./td-install --install --dry-run
-
-    echo ""
-    echo "=== Diagnose ==="
-    ./td-install --diagnose
-
-    echo ""
-    echo "=== Tests complete ==="
-'
+echo ""
+echo "=== Tests complete ==="

@@ -1,6 +1,6 @@
 # TouchDesigner-Linux
 
-[![Tests](https://img.shields.io/github/actions/workflow/status/iswad-lab/TouchDesigner-Linux/tests.yml?label=Tests)](https://github.com/iswad-lab/TouchDesigner-Linux/actions)
+[![Tests](https://img.shields.io/github/actions/workflow/status/ismail-bahloul/TouchDesigner-Linux/tests.yml?label=Tests)](https://github.com/ismail-bahloul/TouchDesigner-Linux/actions)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://python.org)
 [![AUR](https://img.shields.io/aur/version/touchdesigner-linux?label=AUR)](https://aur.archlinux.org/packages/touchdesigner-linux)
 
@@ -17,7 +17,7 @@ One command, works on any distro.
 
 **Any distro (recommended):**
 ```bash
-curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash
 ```
 
 **Arch Linux (AUR):**
@@ -35,7 +35,7 @@ The installer auto-detects your distro and environment:
 
 **Debug mode:**
 ```bash
-DEBUG=true curl -sSL https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/install.sh | bash
+DEBUG=true curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash
 ```
 
 **Install Python packages into TD:**
@@ -53,6 +53,33 @@ td-install --codemeter add-server 192.168.1.15   # add a license server to the s
 > ⚠️ The CodeMeter **server side** works (native Linux / Docker). The **client
 > under Wine is currently blocked** (the CodeMeter service won't start under
 > Wine 9.0). See [docs/codemeter.md](docs/codemeter.md) for status & test results.
+
+---
+
+## Container mode (Distrobox)
+
+**Don't want to touch your host system?** Run the whole install inside an
+isolated Distrobox container (podman/docker) — no sudo, no 32-bit
+repository setup, works on any distro including immutable/SteamOS:
+
+```bash
+td-install --container install
+# or straight from the one-liner:
+curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --container
+```
+
+First run creates a `touchdesigner-linux` container (Ubuntu 24.04), then
+installs everything inside it. The launcher, desktop shortcuts and `.toe`
+associations still work from the host (they re-enter the container
+automatically), and the Wine prefix stays in your `$HOME`.
+
+```bash
+td-install --container update          # same as above for other actions
+TD_CONTAINER_IMAGE=fedora:40 td-install --container-create install   # custom image
+```
+
+See [docs/container.md](docs/container.md) for details, GPU notes and
+limitations.
 
 ![Screenshot](Screenshots/Script_Preview.png)
 
@@ -107,6 +134,7 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 
 | Path | Description |
 | --- | --- |
+| `~/.local/bin/touchdesigner` | Terminal command (launch TD, open `.toe` files) |
 | `~/.local/bin/launch-touchdesigner.sh` | Launcher script |
 | `~/.local/share/touchdesigner-linux/` | Base directory (runner, prefix, assets) |
 | `~/.local/share/touchdesigner-linux/prefix/` | Wine prefix |
@@ -122,7 +150,7 @@ File icons installed by the project:
 
 If this project helps you:
 - ⭐ **Star** the repo
-- Support via [GitHub Sponsors](https://github.com/sponsors/iswad-lab)
+- Support via [GitHub Sponsors](https://github.com/sponsors/ismail-bahloul)
 
 ---
 

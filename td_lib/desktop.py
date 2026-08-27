@@ -37,7 +37,7 @@ MIME_ICON_DIR = os.path.expanduser("~/.local/share/icons/hicolor/scalable/mimety
 
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_ASSETS_URL = (
-    "https://raw.githubusercontent.com/iswad-lab/TouchDesigner-Linux/main/Assets"
+    "https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/Assets"
 )
 
 

@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Troubleshooting guide
-    url: https://github.com/iswad-lab/TouchDesigner-Linux/blob/main/docs/troubleshooting.md
+    url: https://github.com/ismail-bahloul/TouchDesigner-Linux/blob/main/docs/troubleshooting.md
     about: Check known issues and fixes before opening a new one
   - name: Compatibility status
-    url: https://github.com/iswad-lab/TouchDesigner-Linux/blob/main/docs/compatibility.md
+    url: https://github.com/ismail-bahloul/TouchDesigner-Linux/blob/main/docs/compatibility.md
     about: See what's known to work or not before reporting

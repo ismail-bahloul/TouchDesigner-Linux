@@ -155,6 +155,11 @@ def test_imports():
 
     check("patches", True)
 
+    from td_lib import container
+
+    check("container module has bootstrap_container", callable(container.bootstrap_container))
+    check("container module has is_container_mode", callable(container.is_container_mode))
+
 
 # =============================================================================
 #  CLI argument parsing
@@ -206,6 +211,155 @@ def test_cli_args():
 
     args = parse_args(["--pip", "list"])
     check("--pip list", args.pip_args == ["list"])
+
+
+# =============================================================================
+#  Container mode (Distrobox)
+# =============================================================================
+
+
+def test_container_cli_args():
+    print("\n\u2500\u2500 Container CLI args \u2500\u2500")
+    from td_lib.cli import parse_args
+
+    args = parse_args(["--container"])
+    check("--container", args.container)
+    check(
+        "--container alone sets no other container flags",
+        not args.container_create and not args.container_remove,
+    )
+
+    args = parse_args(["--container-create"])
+    check("--container-create", args.container_create)
+
+    args = parse_args(["--container-remove"])
+    check("--container-remove", args.container_remove)
+
+    args = parse_args(["--container", "--install", "--non-interactive"])
+    check(
+        "--container --install -n",
+        args.container and args.action == "install" and args.non_interactive,
+    )
+
+    args = parse_args(["--container", "--pip", "install", "numpy"])
+    check("--container --pip wraps other actions", args.pip_args == ["install", "numpy"])
+
+
+# =============================================================================
+#  td-install bare action translation (--container install UX)
+# =============================================================================
+
+
+def test_bare_action_translation():
+    print("\n\u2500\u2500 td-install bare action translation \u2500\u2500")
+    import importlib.util
+    from importlib.machinery import SourceFileLoader
+
+    repo = os.path.join(os.path.dirname(__file__), "..")
+    loader = SourceFileLoader(
+        "td_install_script", os.path.join(repo, "td-install")
+    )
+    spec = importlib.util.spec_from_loader("td_install_script", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+
+    check("install → --install", mod.translate_action_arg(["install"]) == ["--install"])
+    check(
+        "install with args → --install + args",
+        mod.translate_action_arg(["install", "-n"]) == ["--install", "-n"],
+    )
+    check("update → --update", mod.translate_action_arg(["update"]) == ["--update"])
+    check(
+        "uninstall → --uninstall",
+        mod.translate_action_arg(["uninstall"]) == ["--uninstall"],
+    )
+    check(
+        "flags untouched",
+        mod.translate_action_arg(["--diagnose"]) == ["--diagnose"],
+    )
+    check(
+        "--pip subcommand untouched",
+        mod.translate_action_arg(["--pip", "install", "numpy"])
+        == ["--pip", "install", "numpy"],
+    )
+    check(
+        "--codemeter subcommand untouched",
+        mod.translate_action_arg(["--codemeter", "add-server", "1.2.3.4"])
+        == ["--codemeter", "add-server", "1.2.3.4"],
+    )
+    check(
+        "--container install translates too",
+        mod.translate_action_arg(["--container", "install", "-n"])
+        == ["--container", "--install", "-n"],
+    )
+    check("empty argv untouched", mod.translate_action_arg([]) == [])
+
+
+# =============================================================================
+#  Container module
+# =============================================================================
+
+
+def test_container_module():
+    print("\n\u2500\u2500 Container module \u2500\u2500")
+    from td_lib import container
+
+    check("container module importable", True)
+    check("CONTAINER_NAME non-empty", bool(container.CONTAINER_NAME))
+    check("CONTAINER_IMAGE non-empty", bool(container.CONTAINER_IMAGE))
+
+    old_inside = os.environ.pop("DISTROBOX_ENTER_PATH", None)
+    try:
+        check(
+            "is_inside_distrobox() False when env unset",
+            not container.is_inside_distrobox(),
+        )
+    finally:
+        if old_inside is not None:
+            os.environ["DISTROBOX_ENTER_PATH"] = old_inside
+
+    os.environ["DISTROBOX_ENTER_PATH"] = "/usr/bin/distrobox"
+    try:
+        check(
+            "is_inside_distrobox() True when env set",
+            container.is_inside_distrobox(),
+        )
+        check("is_container_mode() True inside distrobox", container.is_container_mode())
+    finally:
+        if old_inside is not None:
+            os.environ["DISTROBOX_ENTER_PATH"] = old_inside
+        else:
+            os.environ.pop("DISTROBOX_ENTER_PATH", None)
+
+    old_mode = os.environ.pop("TD_CONTAINER_MODE", None)
+    try:
+        os.environ["TD_CONTAINER_MODE"] = "1"
+        check("is_container_mode() True with TD_CONTAINER_MODE", container.is_container_mode())
+    finally:
+        if old_mode is not None:
+            os.environ["TD_CONTAINER_MODE"] = old_mode
+        else:
+            os.environ.pop("TD_CONTAINER_MODE", None)
+
+    distrobox = container.find_distrobox()
+    check(
+        "find_distrobox() returns None or str",
+        distrobox is None or isinstance(distrobox, str),
+    )
+    backend = container.find_backend()
+    check(
+        "find_backend() returns None or podman/docker",
+        backend is None or backend in ("podman", "docker"),
+    )
+    check("container_exists() returns bool", isinstance(container.container_exists(), bool))
+    check("noexec_mount() returns bool", isinstance(container.noexec_mount(), bool))
+
+    # create_container / remove_container with no distrobox must fail cleanly
+    if distrobox is None:
+        check("create_container fails cleanly without distrobox", not container.create_container())
+        check("remove_container no-ops without distrobox", container.remove_container() == 0)
+    else:
+        skip("distrobox present — skipping failure-path checks")
 
 
 # =============================================================================
@@ -800,16 +954,24 @@ def test_headless_auto_detect():
 
 def test_launcher_script():
     print("\n\u2500\u2500 Launcher script generation \u2500\u2500")
-    from td_lib.launcher import LAUNCHER_PATH, create_launcher_script
+    from td_lib.launcher import LAUNCHER_PATH, TD_COMMAND, create_launcher_script
 
     backup = None
     if os.path.isfile(LAUNCHER_PATH):
         with open(LAUNCHER_PATH) as f:
             backup = f.read()
+    symlink_before = os.path.islink(TD_COMMAND)
 
     try:
         path = create_launcher_script()
         check("launcher script generated", os.path.isfile(path))
+
+        check("touchdesigner command symlink created", os.path.islink(TD_COMMAND))
+        check(
+            "symlink points to the launcher",
+            os.path.realpath(TD_COMMAND) == os.path.realpath(path),
+        )
+        check("symlink is executable", os.access(TD_COMMAND, os.X_OK))
 
         with open(path) as f:
             content = f.read()
@@ -848,6 +1010,111 @@ def test_launcher_script():
         check("WINE64_BIN variable", 'WINE64_BIN=' in content)
         check("AUR fallback path", '/opt/touchdesigner/wine/bin/wine64' in content)
 
+        # CLI: flags answered without launching TD; unknown flags rejected
+        from td_lib import __version__
+
+        check("launcher has --help handling", "-h|--help" in content)
+        check("launcher has -v/--version handling", "-v|--version" in content)
+        check("launcher has --list handling", "--list" in content)
+        check("launcher has --no-patch handling", "--no-patch" in content)
+        check("launcher has --verbose handling", "--verbose" in content)
+        check("launcher passes --exe through", "--exe|--exe=*" in content)
+        check("launcher rejects unknown flags", "unknown option" in content)
+        check("help mentions .toe usage", "project.toe" in content)
+        check(
+            "launcher bakes the tool version",
+            f"TouchDesigner-Linux v{__version__}" in content,
+        )
+
+        # Flags parse in a loop, so combined flags work (--no-patch --verbose -v)
+        check("flag parsing loops", "while true; do" in content)
+
+        try:
+            result = subprocess.run(
+                ["bash", path, "--help"],
+                capture_output=True, text=True, timeout=5,
+            )
+            check("--help exits 0 with usage",
+                  result.returncode == 0 and "Usage: touchdesigner" in result.stdout)
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("launcher --help check (bash not available)")
+
+        try:
+            result = subprocess.run(
+                ["bash", path, "--version"],
+                capture_output=True, text=True, timeout=10,
+            )
+            ok = (
+                result.returncode == 0
+                and "Installed TouchDesigner versions" in result.stdout
+            ) or (
+                result.returncode == 1 and "not installed" in result.stderr
+            )
+            check("--version lists versions or says none", ok)
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("launcher --version check (bash not available)")
+
+        try:
+            result = subprocess.run(
+                ["bash", path, "-v"],
+                capture_output=True, text=True, timeout=10,
+            )
+            from td_lib import __version__ as _ver
+
+            ok = (
+                result.returncode == 0
+                and f"TouchDesigner-Linux v{_ver}" in result.stdout
+                and "Installed TouchDesigner versions" in result.stdout
+            ) or (
+                result.returncode == 1
+                and f"TouchDesigner-Linux v{_ver}" in result.stdout
+            )
+            check("-v shows tool + installed versions", ok)
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("launcher -v check (bash not available)")
+
+        try:
+            result = subprocess.run(
+                ["bash", path, "--list"],
+                capture_output=True, text=True, timeout=10,
+            )
+            ok = (
+                result.returncode == 0
+                and "Installed TouchDesigner versions" in result.stdout
+            ) or (
+                result.returncode == 1 and "not installed" in result.stderr
+            )
+            check("--list reports versions/paths or none", ok)
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("launcher --list check (bash not available)")
+
+        # Combined flags: --no-patch and --verbose must be consumed before -v
+        try:
+            result = subprocess.run(
+                ["bash", path, "--no-patch", "--verbose", "-v"],
+                capture_output=True, text=True, timeout=10,
+            )
+            ok = (
+                result.returncode == 0
+                and "Installed TouchDesigner versions" in result.stdout
+            ) or (
+                result.returncode == 1 and "not installed" in result.stderr
+            )
+            check("combined --no-patch --verbose -v parses", ok)
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("launcher combined-flags check (bash not available)")
+
+        try:
+            result = subprocess.run(
+                ["bash", path, "--bogus-flag"],
+                capture_output=True, text=True, timeout=5,
+            )
+            check("unknown flag rejected with usage",
+                  result.returncode == 2 and "unknown option" in result.stderr
+                  and "--help" in result.stderr)
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("launcher unknown-flag check (bash not available)")
+
         # Validate bash syntax (no execution, just parse)
         try:
             result = subprocess.run(
@@ -863,6 +1130,154 @@ def test_launcher_script():
         if backup:
             with open(LAUNCHER_PATH, "w") as f:
                 f.write(backup)
+        else:
+            safe_rm(LAUNCHER_PATH)
+        if not symlink_before:
+            safe_rm(TD_COMMAND)
+
+
+# =============================================================================
+#  touchdesigner command symlink
+# =============================================================================
+
+
+def test_touchdesigner_command():
+    print("\n\u2500\u2500 touchdesigner command symlink \u2500\u2500")
+    from td_lib.launcher import LAUNCHER_PATH, TD_COMMAND, create_launcher_script
+
+    backup = None
+    if os.path.isfile(LAUNCHER_PATH):
+        with open(LAUNCHER_PATH) as f:
+            backup = f.read()
+    symlink_before = os.path.islink(TD_COMMAND)
+    target_before = os.path.realpath(TD_COMMAND) if symlink_before else None
+
+    try:
+        path = create_launcher_script()
+        check("command created", os.path.islink(TD_COMMAND))
+        check(
+            "command resolves to the launcher",
+            os.path.realpath(TD_COMMAND) == os.path.realpath(path),
+        )
+        check("command is executable", os.access(TD_COMMAND, os.X_OK))
+
+        # Re-running is idempotent (recreates our own symlink)
+        create_launcher_script()
+        check(
+            "re-run keeps a valid symlink",
+            os.path.islink(TD_COMMAND)
+            and os.path.realpath(TD_COMMAND) == os.path.realpath(path),
+        )
+
+        # A foreign file must NOT be clobbered
+        safe_rm(TD_COMMAND)
+        with open(TD_COMMAND, "w") as f:
+            f.write("#!/bin/sh\necho foreign\n")
+        create_launcher_script()
+        check(
+            "foreign file is not overwritten",
+            not os.path.islink(TD_COMMAND)
+            and open(TD_COMMAND).read().startswith("#!/bin/sh"),
+        )
+        safe_rm(TD_COMMAND)
+
+        # Cleanup (same condition as cleanup.py) removes only our symlink
+        create_launcher_script()
+        is_ours = os.path.islink(TD_COMMAND) and os.path.realpath(TD_COMMAND) == LAUNCHER_PATH
+        if is_ours:
+            safe_rm(TD_COMMAND)
+        check(
+            "cleanup removes only our symlink",
+            is_ours and not os.path.lexists(TD_COMMAND),
+        )
+    finally:
+        if backup:
+            with open(LAUNCHER_PATH, "w") as f:
+                f.write(backup)
+        else:
+            safe_rm(LAUNCHER_PATH)
+        if symlink_before:
+            safe_rm(TD_COMMAND)
+            os.symlink(target_before, TD_COMMAND)
+        else:
+            safe_rm(TD_COMMAND)
+
+
+# =============================================================================
+#  Launcher container shim (distrobox re-exec)
+# =============================================================================
+
+
+def test_launcher_container_shim():
+    print("\n\u2500\u2500 Launcher container shim \u2500\u2500")
+    from td_lib.launcher import LAUNCHER_PATH, TD_COMMAND, create_launcher_script
+
+    backup = None
+    if os.path.isfile(LAUNCHER_PATH):
+        with open(LAUNCHER_PATH) as f:
+            backup = f.read()
+    symlink_before = os.path.islink(TD_COMMAND)
+
+    old_inside = os.environ.pop("DISTROBOX_ENTER_PATH", None)
+    old_mode = os.environ.pop("TD_CONTAINER_MODE", None)
+    old_name = os.environ.pop("TD_CONTAINER_NAME", None)
+    try:
+        # Native mode: no shim
+        path = create_launcher_script()
+        with open(path) as f:
+            content = f.read()
+        check("native launcher has no distrobox shim", "distrobox enter" not in content)
+
+        # Container mode: shim re-execs into the container. CONTAINER_NAME is
+        # read at module import, so reload it AFTER setting the env override.
+        import importlib
+
+        os.environ["TD_CONTAINER_MODE"] = "1"
+        os.environ["TD_CONTAINER_NAME"] = "my-td-container"
+        from td_lib import container as container_mod
+
+        importlib.reload(container_mod)
+        path = create_launcher_script()
+        with open(path) as f:
+            content = f.read()
+        check("container launcher has distrobox shim", "distrobox enter" in content)
+        check("shim uses the configured container name", "my-td-container" in content)
+        check("shim guards on DISTROBOX_ENTER_PATH", "DISTROBOX_ENTER_PATH" in content)
+        check("shim re-execs the same script with args", '$0' in content and '"$@"' in content)
+        check("shim does not wrap the normal body", "find_touchdesigner_exe" in content)
+
+        try:
+            result = subprocess.run(
+                ["bash", "-n", path],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            check("container launcher has valid bash syntax", result.returncode == 0)
+            if result.returncode != 0:
+                print(f"  bash syntax error: {result.stderr.strip()}")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("bash syntax check (bash not available)")
+    finally:
+        if old_inside is not None:
+            os.environ["DISTROBOX_ENTER_PATH"] = old_inside
+        else:
+            os.environ.pop("DISTROBOX_ENTER_PATH", None)
+        if old_mode is not None:
+            os.environ["TD_CONTAINER_MODE"] = old_mode
+        else:
+            os.environ.pop("TD_CONTAINER_MODE", None)
+        if old_name is not None:
+            os.environ["TD_CONTAINER_NAME"] = old_name
+        else:
+            os.environ.pop("TD_CONTAINER_NAME", None)
+        if backup:
+            with open(LAUNCHER_PATH, "w") as f:
+                f.write(backup)
+        else:
+            safe_rm(LAUNCHER_PATH)
+        if not symlink_before:
+            safe_rm(TD_COMMAND)
 
 
 # =============================================================================
@@ -1305,6 +1720,9 @@ def main():
 
     test_imports()
     test_cli_args()
+    test_container_cli_args()
+    test_bare_action_translation()
+    test_container_module()
     test_dry_run()
     test_safe_rm()
     test_ensure_dir()
@@ -1326,6 +1744,8 @@ def main():
     test_desktop_assets()
     test_headless_auto_detect()
     test_launcher_script()
+    test_launcher_container_shim()
+    test_touchdesigner_command()
     test_pip_module()
     test_codemeter_module()
     test_codemeter_cli_args()

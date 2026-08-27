@@ -2,6 +2,64 @@
 
 All notable changes to this project are documented here.
 
+## [1.8.0] - 2026-08-21
+
+### New
+
+- **`touchdesigner` terminal command** — `~/.local/bin/touchdesigner` is now
+  symlinked to the launcher, so `touchdesigner [project.toe]` works from any
+  terminal (parity with the AUR package's `/usr/bin/touchdesigner`). It
+  works from the host and inside the container, and is removed on
+  uninstall. The command answers `-h`/`--help` (usage) and `-v`/`--version`
+  (tool version + installed TouchDesigner versions) without launching TD,
+  `--list` adds full paths, and unknown `-*` flags are rejected with a usage
+  hint instead of being treated as a `.toe` path. Flags parse in a loop, so
+  they combine (`touchdesigner --no-patch --verbose foo.toe`): `--no-patch`
+  skips the automatic `.toe` font-fix pass, `--verbose` enables Wine debug
+  output. The tool version is baked into the launcher at generation time,
+  so `-v` stays in sync with the installed version after each update.
+- Fix: `--exe <path>` on the launcher never worked — a stray `]` in the
+  template (`[ -n "$2" ]]`) broke argument parsing at runtime (invisible to
+  `bash -n`). Both `--exe <path>` and `--exe=<path>` now parse correctly.
+
+- **Container mode (Distrobox / Podman)** — `td-install --container <action>`
+  runs the whole install inside an isolated container, leaving the host
+  untouched: no sudo, no 32-bit repository setup, works on immutable distros
+  and SteamOS. First run creates a `touchdesigner-linux` container
+  (Ubuntu 24.04, NVIDIA auto-detected via `--nvidia`, `label=disable` on
+  SELinux hosts) and re-executes the requested action inside it.
+  - The launcher, desktop shortcuts and `.toe` associations work from the
+    host through a self re-entering shim (guarded by
+    `DISTROBOX_ENTER_PATH`), and the Wine prefix stays in the shared
+    `$HOME`.
+  - `--container-create` recreates the container; `--container-remove`
+    deletes it.
+  - `TD_CONTAINER_NAME` / `TD_CONTAINER_IMAGE` env vars override the
+    defaults.
+  - New [docs/container.md](docs/container.md) with GPU notes and known
+    limitations.
+- `--diagnose` now reports container-mode status (distrobox installed,
+  backend, container state, inside/outside).
+
+### Fixes
+
+- The one-liner (`curl | bash`) now works in minimal environments without
+  `git` (e.g. a fresh distrobox container ships curl/wget but not git):
+  `install.sh` falls back to downloading the installer tarball. Its
+  `/dev/tty` reconnect also tests the open instead of the node's existence,
+  so containers without a controlling terminal no longer error.
+- `xdg-utils` and `file` added to all distro package lists — the editor
+  bridge (`winebrowser.exe → xdg-open`) and DXVK/winetricks both shell out
+  to those commands, and minimal containers ship neither. Found by the
+  first real container-mode install.
+- `td-install --container install` (bare action word) now works: argparse
+  has no positional actions, so a leading `install`/`update`/`uninstall`
+  (optionally after `--container`/`--container-create`) is translated to
+  the flag form. `--version` is also handled before the container bootstrap
+  now, so it answers without entering the container.
+- `tests/test_distrobox.sh` rewritten for the current flow (the old one
+  referenced the long-gone `python-rewrite` branch).
+
 ## [1.7.0] - 2026-08-20
 
 ### New
@@ -77,4 +135,4 @@ All notable changes to this project are documented here.
 ### Maintenance
 
 - `tdascode/` (experimental .toe editing) removed from the repo; it lives on
-  as its own project, [TDAsCode](https://github.com/iswad-lab/TDAsCode).
+  as its own project, [TDAsCode](https://github.com/ismail-bahloul/TDAsCode).

@@ -5,7 +5,7 @@ import shutil
 import sys
 
 from . import __version__
-from .utils import error, info, print_banner, print_hr, success
+from .utils import error, info, print_banner, print_hr, success, warning
 
 
 def run_install(args):
@@ -14,6 +14,24 @@ def run_install(args):
         print("\033[2J\033[H", end="")
     print_banner(__version__)
     info("Starting TouchDesigner installation...\n")
+
+    # Container mode notice: the host must not be touched, and a noexec
+    # $HOME is the one host issue distrobox cannot paper over.
+    from .container import is_container_mode, noexec_mount
+
+    if is_container_mode():
+        info("Running inside a distrobox container — the host system is untouched")
+        if noexec_mount():
+            warning(
+                "Your home directory is on a noexec filesystem — Wine cannot"
+                + " run from it, even inside the container."
+            )
+            info("Reinstall with a different base directory, e.g.:")
+            info(
+                "  TD_BASE_DIR=/var/tmp/touchdesigner-linux td-install"
+                + " --container install"
+            )
+        print()
 
     # Check prerequisites
     _check_prerequisites()
@@ -176,7 +194,7 @@ def run_install(args):
     success(f"TouchDesigner{ver_str} installation complete")
     print()
     info("Launch TouchDesigner from your desktop shortcut or application menu.")
-    info("Or run: ~/.local/bin/launch-touchdesigner.sh")
+    info("Or run: touchdesigner  (or ~/.local/bin/launch-touchdesigner.sh)")
 
 
 def _pick_installer_file() -> str | None:

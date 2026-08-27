@@ -27,6 +27,7 @@ def run_diagnose():
     print_hr()
 
     _check_os()
+    _check_container()
     _check_gpu()
     _check_disk()
     _check_td_base()
@@ -58,6 +59,38 @@ def _read_os_release() -> str:
     except OSError:
         pass
     return "Unknown"
+
+
+def _check_container():
+    info("Container mode:")
+    from .container import (
+        CONTAINER_NAME,
+        container_exists,
+        find_backend,
+        find_distrobox,
+        is_inside_distrobox,
+    )
+
+    if is_inside_distrobox():
+        print("  location:  inside the container")
+        print("  (distrobox itself only exists on the host — this is normal)")
+        print()
+        return
+
+    distrobox = find_distrobox()
+    if not distrobox:
+        print("  distrobox: not installed (container mode unavailable)")
+        print("  Install: curl -sSL https://distrobox.it/install | sh")
+    else:
+        print(f"  distrobox: {distrobox}")
+        print(f"  backend:   {find_backend() or 'none — install podman or docker'}")
+        if container_exists(CONTAINER_NAME):
+            print(f"  container '{CONTAINER_NAME}': created")
+            print("  usage:     td-install --container <action>")
+        else:
+            print(f"  container '{CONTAINER_NAME}': not created")
+            print("  usage:     td-install --container install")
+    print()
 
 
 def _check_gpu():

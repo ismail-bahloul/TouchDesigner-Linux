@@ -27,6 +27,6 @@ Net effect, in order: `wineboot --init` (headless-safe) → `xvfb-run -a` → `-
 The raw log is mostly download progress-bar spam (`... MB/s` lines). Skip straight to the actual error:
 
 ```bash
-gh run view <run-id> --repo iswad-lab/TouchDesigner-Linux --log-failed \
+gh run view <run-id> --repo ismail-bahloul/TouchDesigner-Linux --log-failed \
   | grep -iE "error|fail|traceback|conflict" | grep -v "MB/s"
 ```

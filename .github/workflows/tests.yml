@@ -110,7 +110,7 @@ jobs:
           esac
       - name: Checkout repo
         run: |
-          cd /tmp && git clone --depth 1 https://github.com/iswad-lab/TouchDesigner-Linux.git td-repo && cp -a td-repo/. /__w/TouchDesigner-Linux/TouchDesigner-Linux
+          cd /tmp && git clone --depth 1 https://github.com/ismail-bahloul/TouchDesigner-Linux.git td-repo && cp -a td-repo/. /__w/TouchDesigner-Linux/TouchDesigner-Linux
       - name: Verify distro detection
         run: python3 -c "exec('from td_lib.distro import detect_distro; d = detect_distro(); print(d.distro_name + \" (\" + d.package_manager + \")\")')"
       - name: Validate package lists

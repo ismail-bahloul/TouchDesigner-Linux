@@ -117,6 +117,12 @@ def uninstall_everything() -> None:
             safe_rm(path)
             success(f"Launcher removed: {path}")
 
+    # Remove the `touchdesigner` command symlink (only if it is ours)
+    td_cmd = os.path.expanduser("~/.local/bin/touchdesigner")
+    if os.path.islink(td_cmd) and os.path.realpath(td_cmd) == LAUNCHER_PATH:
+        safe_rm(td_cmd)
+        success(f"Command removed: {td_cmd}")
+
     info("Removing desktop shortcuts...")
     for d in [DESKTOP_DIR, APPLICATIONS_DIR]:
         if not os.path.isdir(d):

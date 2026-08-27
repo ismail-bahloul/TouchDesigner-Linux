@@ -9,7 +9,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="td-install",
         description="Install TouchDesigner on Linux.",
-        epilog="Report issues: https://github.com/iswad-lab/TouchDesigner-Linux/issues",
+        epilog="Report issues: https://github.com/ismail-bahloul/TouchDesigner-Linux/issues",
     )
 
     # Actions (mutually exclusive)
@@ -135,6 +135,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "licenses). e.g. --codemeter setup, "
             "--codemeter add-server 192.168.1.15"
         ),
+    )
+
+    # Container mode (Distrobox)
+    container = parser.add_argument_group("container")
+    container.add_argument(
+        "--container",
+        dest="container",
+        action="store_true",
+        help=(
+            "Run inside an isolated Distrobox container — the host system "
+            "is never modified. Wraps any other action (install, update, "
+            "uninstall, --pip, --codemeter, --diagnose...)."
+        ),
+    )
+    container.add_argument(
+        "--container-create",
+        dest="container_create",
+        action="store_true",
+        help="Recreate the container first, then run in container mode",
+    )
+    container.add_argument(
+        "--container-remove",
+        dest="container_remove",
+        action="store_true",
+        help="Remove the container (and the system packages inside it)",
     )
 
     args = parser.parse_args(argv)

@@ -113,6 +113,7 @@ PACMAN_PACKAGES = [
     "wget",
     "tar",
     "xz",
+    "file",
     "cabextract",
     "unzip",
     "p7zip",
@@ -140,6 +141,7 @@ PACMAN_PACKAGES = [
     "lib32-fontconfig",
     "lib32-alsa-lib",
     "xorg-xwayland",
+    "xdg-utils",
 ]
 
 APT_PACKAGES = [
@@ -147,6 +149,7 @@ APT_PACKAGES = [
     "wget",
     "tar",
     "xz-utils",
+    "file",
     "cabextract",
     "unzip",
     "p7zip-full",
@@ -192,6 +195,7 @@ APT_PACKAGES = [
     "libstdc++6:i386",
     "mesa-utils",
     "xwayland",
+    "xdg-utils",
 ]
 
 DNF_PACKAGES = [
@@ -199,6 +203,7 @@ DNF_PACKAGES = [
     "wget",
     "tar",
     "xz",
+    "file",
     "cabextract",
     "unzip",
     "p7zip",
@@ -254,6 +259,7 @@ DNF_PACKAGES = [
     "glib2",
     "glib2.i686",
     "mesa-vulkan-drivers.i686",
+    "xdg-utils",
 ]
 
 ZYPPER_BASE_PACKAGES = [
@@ -261,12 +267,14 @@ ZYPPER_BASE_PACKAGES = [
     "wget",
     "tar",
     "xz",
+    "file",
     "cabextract",
     "unzip",
     "p7zip",
     "libvulkan1",
     "libvulkan1-32bit",
     "vulkan-tools",
+    "xdg-utils",
 ]
 
 # Zypper package name aliases (try first, fallback to second)

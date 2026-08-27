@@ -29,7 +29,17 @@ Currently locked to **Soda Wine 9.0-1** — still the recommended default. See [
 
 ### 3. Containerized mode (Distrobox / Docker)
 
-Some users struggle with 32-bit dependencies or `noexec` mounts on `/home`. An optional Distrobox (Podman/Docker) mode would sidestep these issues entirely and work on any distro without touching the host system.
+✅ **Done!** (v1.8) `td-install --container <action>` runs the whole
+TouchDesigner-Wine environment inside an isolated Distrobox container
+(podman/docker backend): no host modifications, no sudo, no 32-bit repo
+setup — works on any distro, including immutable ones and SteamOS. The
+launcher, desktop shortcuts and `.toe` associations work from the host via
+a self re-entering shim, and the Wine prefix stays in the shared `$HOME`.
+GPU passthrough is automatic (NVIDIA via `--nvidia`).
+
+Remaining known limits: a `noexec` `$HOME` needs a custom `TD_BASE_DIR`,
+`.toe` files outside `$HOME` aren't visible inside the container, and only
+Debian/Ubuntu images are battle-tested. See [docs/container.md](docs/container.md).
 
 ### 4. Pip wrapper / Python package manager
 
@@ -43,7 +53,7 @@ td-install --pip list
 td-install --pip uninstall <package>
 ```
 
-**Known issue:** OpenMP crash (`GetNumaNodeProcessorMaskEx` not implemented) when importing torch. **Fixed** with `KMP_AFFINITY=disabled` (auto-set in launcher). CPU-only torch 2.13.0 confirmed working on Wine TkG. See [issue #20](https://github.com/iswad-lab/TouchDesigner-Linux/issues/20).
+**Known issue:** OpenMP crash (`GetNumaNodeProcessorMaskEx` not implemented) when importing torch. **Fixed** with `KMP_AFFINITY=disabled` (auto-set in launcher). CPU-only torch 2.13.0 confirmed working on Wine TkG. See [issue #20](https://github.com/ismail-bahloul/TouchDesigner-Linux/issues/20).
 
 ### 5. Watchdog / systemd service
 
@@ -129,7 +139,7 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ### 20. TD-as-Code — programmatic .toe manipulation
 
-**Moved out of this repo.** What started as an MVP here (built and used to verify the font fix above, every edit round-tripped through the real `toeexpand`/`toecollapse` binaries) grew into its own standalone project, [TDAsCode](https://github.com/iswad-lab/TDAsCode) — it no longer depends on `td_lib` and has its own env-detection layer. The two correctness bugs originally found here (a hardcoded 32-byte `.text` header that's actually variable-length, and incorrect `.toc` regeneration on `write()`) are fixed and verified there, along with a from-scratch node-file write-order corruption bug found on a real production project. It also grew a second, unrelated component: a live TCP bridge for controlling a *running* TD instance in real time, complementary to the offline `.toe` editing.
+**Moved out of this repo.** What started as an MVP here (built and used to verify the font fix above, every edit round-tripped through the real `toeexpand`/`toecollapse` binaries) grew into its own standalone project, [TDAsCode](https://github.com/ismail-bahloul/TDAsCode) — it no longer depends on `td_lib` and has its own env-detection layer. The two correctness bugs originally found here (a hardcoded 32-byte `.text` header that's actually variable-length, and incorrect `.toc` regeneration on `write()`) are fixed and verified there, along with a from-scratch node-file write-order corruption bug found on a real production project. It also grew a second, unrelated component: a live TCP bridge for controlling a *running* TD instance in real time, complementary to the offline `.toe` editing.
 
 This repo's `td_lib` and installer are unaffected — the historical code that lived in `tdascode/` here (last on the `feature/tdascode`/`dev` branches) is superseded by that repo and won't be revived here.
 
@@ -147,4 +157,4 @@ This repo's `td_lib` and installer are unaffected — the historical code that l
 
 ---
 
-*Have a suggestion? [Open an issue](https://github.com/iswad-lab/TouchDesigner-Linux/issues/new) or upvote existing ones — feedback shapes the roadmap.*
+*Have a suggestion? [Open an issue](https://github.com/ismail-bahloul/TouchDesigner-Linux/issues/new) or upvote existing ones — feedback shapes the roadmap.*

@@ -39,7 +39,27 @@ from td_lib.update import run_update
 from td_lib.utils import error, print_banner, setup_logging
 
 
+def translate_action_arg(argv: list[str]) -> list[str]:
+    """Map a bare action word onto its flag form so ``td-install --container
+    install`` reads naturally (argparse has no positional actions).
+
+    Only the first argument (or the second one after a leading container
+    flag) is considered, so ``--pip install`` and ``--codemeter ...``
+    subcommands are never touched.
+    """
+    if argv and argv[0] in ("install", "update", "uninstall"):
+        return ["--" + argv[0]] + argv[1:]
+    if (
+        len(argv) >= 2
+        and argv[0] in ("--container", "--container-create")
+        and argv[1] in ("install", "update", "uninstall")
+    ):
+        return argv[:1] + ["--" + argv[1]] + argv[2:]
+    return argv
+
+
 def main():
+    sys.argv[1:] = translate_action_arg(sys.argv[1:])
     args = parse_args()
 
     # Auto-detect headless mode if no graphical session
@@ -54,14 +74,32 @@ def main():
 
     setup_logging(args.debug)
 
-    if args.diagnose:
-        run_diagnose()
-        return
-
     if args.version:
         from td_lib import __version__
 
         print(f"td-install {__version__}")
+        return
+
+    # ── Container mode (Distrobox) ──
+    if args.container_remove:
+        from td_lib.container import confirm_remove_container
+
+        sys.exit(confirm_remove_container(non_interactive=args.non_interactive))
+
+    if args.container or args.container_create:
+        from td_lib.container import bootstrap_container, is_inside_distrobox
+
+        rc = bootstrap_container(recreate=args.container_create)
+        if rc != 0:
+            sys.exit(rc)
+        if not is_inside_distrobox():
+            # Host side: the inner invocation (inside the container) already
+            # completed the requested action.
+            sys.exit(0)
+        # Inside the container: continue with the normal flow below.
+
+    if args.diagnose:
+        run_diagnose()
         return
 
     # Handle --patch-toe standalone mode
