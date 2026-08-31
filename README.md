@@ -71,29 +71,6 @@ paru -R touchdesigner-linux
 
 ---
 
-## Using TouchDesigner
-
-**Install Python packages into TD:**
-```bash
-td-install --pip install numpy
-td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
-td-install --pip list
-```
-
-**Use a license dongle / network-shared license (CodeMeter):**
-```bash
-td-install --codemeter status   # runtime installed & running?
-td-install --codemeter add-server 192.168.1.15   # add a license server to the search list
-td-install --codemeter install /path/to/CodeMeterRuntime.exe   # install the runtime without msiexec
-td-install --codemeter remove   # remove it again
-```
-> ⚠️ Served entirely by the `td-install --codemeter` subcommand — the runtime
-> is never installed automatically. Status is documented (including the
-> current state of the network-client path under Wine) in
-> [docs/codemeter.md](docs/codemeter.md).
-
----
-
 ## First Launch
 
 The font fix (`wine_ui_fixes.tox`) is injected into `.toe` files on launch.
@@ -113,6 +90,7 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 - [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
 - [CodeMeter dongles & network licenses](docs/codemeter.md) — use a license dongle over the LAN
 - [Container mode (Distrobox)](docs/container.md) — run on an untouched host system
+- [Python packages via pip](docs/advanced-tools.md) — `td-install --pip install <package>`
 - [Advanced tools](docs/advanced-tools.md) — toeexpand / toecollapse
 - [CI notes](docs/ci.md) — maintainer notes on the GitHub Actions setup, headless Wine gotchas
 

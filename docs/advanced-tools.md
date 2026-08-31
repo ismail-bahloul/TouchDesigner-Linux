@@ -1,4 +1,23 @@
-# Advanced tools: toeexpand / toecollapse
+# Advanced tools
+
+## Installing Python packages (`pip`)
+
+TouchDesigner ships its own embedded Python. `td-install --pip` wraps
+`wine64 python.exe -m pip install` with the right Wine environment:
+
+```bash
+td-install --pip install numpy
+td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
+td-install --pip list
+td-install --pip uninstall <package>
+```
+
+> **torch note:** the KMP affinity fix is auto-set by the launcher, so CPU-only
+torch works under Wine without manual tweaking. See the compatibility page.
+
+---
+
+## toeexpand / toecollapse
 
 TouchDesigner includes two utility programs in its `bin/` directory:
 
