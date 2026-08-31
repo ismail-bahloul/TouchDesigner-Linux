@@ -38,6 +38,10 @@ The installer auto-detects your distro and environment:
 DEBUG=true curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash
 ```
 
+The installer runs entirely from your terminal:
+
+![Script preview](Screenshots/Script_Preview.png)
+
 **Container mode** (install on an untouched host system):
 ```bash
 curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --container
