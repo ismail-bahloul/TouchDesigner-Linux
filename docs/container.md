@@ -6,6 +6,8 @@ on your host system, everything runs inside an isolated
 host system is **never modified** — no `sudo`, no 32-bit repositories, no
 system-wide packages.
 
+![Screenshot](../Screenshots/Script_Preview.png)
+
 ```
 td-install --container install
     └─ distrobox enter touchdesigner-linux -- ~/.../td-install install
