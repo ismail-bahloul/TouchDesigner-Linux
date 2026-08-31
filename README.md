@@ -32,6 +32,10 @@ paru -S touchdesigner-linux
 > NVIDIA users: install the GPU driver first, then reboot. On SteamOS, the
 > read-only root is disabled automatically (needs your sudo password).
 
+Native desktop icons for TouchDesigner, `.toe` and `.tox` files:
+
+![SVG icons](Screenshots/SVG_Preview.png)
+
 **Debug mode:**
 ```bash
 DEBUG=true curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash
@@ -102,10 +106,6 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 | `~/.local/share/touchdesigner-linux/` | Base directory (runner, prefix, assets) |
 | `~/.local/share/touchdesigner-linux/prefix/` | Wine prefix |
 | `~/.local/share/touchdesigner-linux/backups/` | Auto-backups of patched `.toe` files |
-
-File icons installed by the project:
-
-![Screenshot](Screenshots/SVG_Preview.png)
 
 ---
 
