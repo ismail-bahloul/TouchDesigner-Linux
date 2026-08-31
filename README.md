@@ -42,36 +42,8 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesig
 ```bash
 curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --container
 ```
-See [Container mode](#container-mode-distrobox) below.
-
----
-
-## Container mode (Distrobox)
-
-**Don't want to touch your host system?** Run the whole install inside an
-isolated Distrobox container (podman/docker) — no sudo, no 32-bit
-repository setup, works on any distro including immutable/SteamOS:
-
-```bash
-td-install --container install
-# or straight from the one-liner:
-curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --container
-```
-
-First run creates a `touchdesigner-linux` container (Ubuntu 24.04), then
-installs everything inside it. The launcher, desktop shortcuts and `.toe`
-associations still work from the host (they re-enter the container
-automatically), and the Wine prefix stays in your `$HOME`.
-
-```bash
-td-install --container update          # same as above for other actions
-TD_CONTAINER_IMAGE=fedora:40 td-install --container-create install   # custom image
-```
-
-See [docs/container.md](docs/container.md) for details, GPU notes and
+See [docs/container.md](docs/container.md) for how it works, GPU notes and
 limitations.
-
-![Screenshot](Screenshots/Script_Preview.png)
 
 ---
 
@@ -140,6 +112,7 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 - [Wine runners comparison](docs/runners.md) — tested runners, source analysis, compatibility
 - [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
 - [CodeMeter dongles & network licenses](docs/codemeter.md) — use a license dongle over the LAN
+- [Container mode (Distrobox)](docs/container.md) — run on an untouched host system
 - [Advanced tools](docs/advanced-tools.md) — toeexpand / toecollapse
 - [CI notes](docs/ci.md) — maintainer notes on the GitHub Actions setup, headless Wine gotchas
 
