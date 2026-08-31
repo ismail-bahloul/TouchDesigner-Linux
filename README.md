@@ -32,7 +32,7 @@ paru -S touchdesigner-linux
 > NVIDIA users: install the GPU driver first, then reboot. On SteamOS, the
 > read-only root is disabled automatically (needs your sudo password).
 
-Native desktop icons for `.toe` and `.tox` files:
+Native desktop icons, `.toe` and `.tox` files:
 
 ![SVG icons](Screenshots/SVG_Preview.png)
 
