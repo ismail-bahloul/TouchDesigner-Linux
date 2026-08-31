@@ -29,11 +29,8 @@ paru -S touchdesigner-linux
 
 > 5-10 min, ~3-5 GB disk, auto-cleanup
 
-The installer auto-detects your distro and environment:
-- **Graphical session** -> full install with desktop shortcuts
-- **SSH / headless** -> auto-detected, skips GUI-only steps
-- **NVIDIA users** -> install GPU driver first, then reboot
-- **SteamOS** -> the read-only root filesystem is disabled automatically (`steamos-readonly disable`, needs your sudo password)
+> NVIDIA users: install the GPU driver first, then reboot. On SteamOS, the
+> read-only root is disabled automatically (needs your sudo password).
 
 **Debug mode:**
 ```bash
