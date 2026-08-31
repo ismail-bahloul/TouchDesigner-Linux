@@ -38,25 +38,11 @@ The installer auto-detects your distro and environment:
 DEBUG=true curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash
 ```
 
-**Install Python packages into TD:**
+**Container mode** (install on an untouched host system):
 ```bash
-td-install --pip install numpy
-td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
-td-install --pip list
+curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --container
 ```
-
-**Use a license dongle / network-shared license (CodeMeter):**
-```bash
-td-install --codemeter status          # runtime installed & running?
-td-install --codemeter add-server 192.168.1.15   # add a license server to the search list
-# No runtime yet? Install one without msiexec (any version, e.g. to test):
-td-install --codemeter install /path/to/CodeMeterRuntime.exe
-```
-> ⚠️ The CodeMeter **server side** works (native Linux / Docker). The **client
-> under Wine is still blocked** while Wibu's protected `cpsrt.dll` won't load
-> under Wine 9.0 (tested with runtimes 8.41a and 9.10) — `--codemeter install`
-> makes it easy to try other runtime versions. See
-> [docs/codemeter.md](docs/codemeter.md) for status & test results.
+See [Container mode](#container-mode-distrobox) below.
 
 ---
 
@@ -110,6 +96,29 @@ paru -Syu
 ```bash
 paru -R touchdesigner-linux
 ```
+
+---
+
+## Using TouchDesigner
+
+**Install Python packages into TD:**
+```bash
+td-install --pip install numpy
+td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
+td-install --pip list
+```
+
+**Use a license dongle / network-shared license (CodeMeter):**
+```bash
+td-install --codemeter status   # runtime installed & running?
+td-install --codemeter add-server 192.168.1.15   # add a license server to the search list
+td-install --codemeter install /path/to/CodeMeterRuntime.exe   # install the runtime without msiexec
+td-install --codemeter remove   # remove it again
+```
+> ⚠️ Served entirely by the `td-install --codemeter` subcommand — the runtime
+> is never installed automatically. Status is documented (including the
+> current state of the network-client path under Wine) in
+> [docs/codemeter.md](docs/codemeter.md).
 
 ---
 
