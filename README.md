@@ -15,12 +15,12 @@ One command, works on any distro.
 
 ## Quick Install
 
+![Script preview](Screenshots/Script_Preview.png)
+
 **Any distro (recommended):**
 ```bash
 curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash
 ```
-
-![Script preview](Screenshots/Script_Preview.png)
 
 **Arch Linux (AUR):**
 ```bash
