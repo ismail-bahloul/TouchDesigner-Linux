@@ -72,6 +72,7 @@ def run_install(args):
         WINETRICKS_TMP,
         download_winetricks,
         install_dxvk,
+        install_lucida_console,
         install_windows_deps,
     )
 
@@ -80,6 +81,7 @@ def run_install(args):
         ensure_dir(WINETRICKS_TMP)
         download_winetricks()
         install_windows_deps()
+        install_lucida_console()
         install_dxvk(enable=args.dxvk)
     print()
 

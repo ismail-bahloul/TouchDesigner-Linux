@@ -384,6 +384,112 @@ def install_windows_deps() -> None:
     success("Windows dependencies installed")
 
 
+# ── Lucida Console (default mono font) fix ──────────────────────────────────
+
+_SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_REPO_ASSETS_URL = (
+    "https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/Assets"
+)
+
+# TouchDesigner uses "Lucida Console" as its default mono font (parameter value
+# fields, OP name fields, DAT tables, Textport). It ships with Windows but is
+# NOT part of the winetricks `corefonts` set, so a corefonts-only prefix cannot
+# resolve it — TD then logs "Error Loading Default Mono Font ... Substituted
+# with Verdana" and renders mono text blank. Installing a mono TTF whose family
+# name is "Lucida Console" (generated from DejaVu Sans Mono, Assets/lucon.ttf)
+# into the prefix fixes both the error and the blank mono text.
+LUCIDA_REGKEY = "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts"
+
+
+def _lucida_font_src() -> str | None:
+    """Fetch a "Lucida Console" font (lucon.ttf) into TD_BASE_DIR.
+
+    Prefers the bundled copy under Assets/, falling back to a download from the
+    project repo. Returns the local path, or None if unavailable.
+    """
+    dest = os.path.join(TD_BASE_DIR, "lucon.ttf")
+    ensure_dir(TD_BASE_DIR)
+    for src in [
+        os.path.join(_SCRIPT_DIR, "Assets", "lucon.ttf"),
+        os.path.join(_SCRIPT_DIR, "lucon.ttf"),
+    ]:
+        if os.path.isfile(src):
+            shutil.copy2(src, dest)
+            return dest
+    if download_file(
+        f"{_REPO_ASSETS_URL}/lucon.ttf",
+        dest,
+        "lucon.ttf",
+        show_progress=False,
+        timeout=20,
+        retries=2,
+    ):
+        return dest
+    safe_rm(dest)
+    return None
+
+
+def install_lucida_console() -> bool:
+    """Install the "Lucida Console" mono font into the Wine prefix.
+
+    Fixes TouchDesigner's "Error Loading Default Mono Font" and the resulting
+    blank mono text on prefixes that only have corefonts. Idempotent: re-running
+    it refreshes the font file and registry entry. Returns True when installed
+    and verified.
+    """
+    fonts_dir = os.path.join(WINE_PREFIX, "drive_c", "windows", "Fonts")
+    if not os.path.isdir(fonts_dir):
+        warning("Wine Fonts dir missing; skipping Lucida Console install")
+        return False
+
+    src = _lucida_font_src()
+    if not src:
+        warning("Could not obtain lucon.ttf; skipping Lucida Console install")
+        return False
+
+    env = _wine_env()
+    # Kill a running wineserver so it can't flush stale state over our reg add.
+    _kill_wineserver()
+    try:
+        shutil.copy2(src, os.path.join(fonts_dir, "lucon.ttf"))
+    except OSError as e:
+        warning(f"Failed to copy lucon.ttf into the prefix: {e}")
+        return False
+
+    result = run_optional(
+        [
+            env["wine64"],
+            "reg",
+            "add",
+            LUCIDA_REGKEY,
+            "/v",
+            "Lucida Console (TrueType)",
+            "/d",
+            "lucon.ttf",
+            "/f",
+        ],
+        env=env["env"],
+        capture_output=True,
+        text=True,
+    )
+    if result is None or result.returncode != 0:
+        warning("Failed to register Lucida Console in the Wine registry")
+        return False
+
+    check = run_optional(
+        [env["wine64"], "reg", "query", LUCIDA_REGKEY],
+        env=env["env"],
+        capture_output=True,
+        text=True,
+    )
+    if check is not None and "Lucida Console" in (check.stdout or ""):
+        success("Lucida Console font installed (fixes default mono font)")
+        return True
+
+    warning("Lucida Console font installed but not found via reg query")
+    return False
+
+
 def _looks_like_dxvk(file_output: str) -> bool:
     """True if a ``file``(1) description of d3d11.dll is a real DXVK DLL.
 

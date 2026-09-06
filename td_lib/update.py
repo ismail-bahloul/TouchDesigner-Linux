@@ -35,6 +35,13 @@ def run_update(args) -> None:
     download_winetricks()
     success("Winetricks updated")
 
+    # 3b. Lucida Console mono font (fixes existing prefixes that lack it)
+    from .wine import install_lucida_console
+
+    info("Installing Lucida Console mono font...")
+    if install_lucida_console():
+        success("Lucida Console font updated")
+
     # 4. DXVK
     from .wine import install_dxvk
 

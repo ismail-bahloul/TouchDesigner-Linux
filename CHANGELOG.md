@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### New
+
+- **Lucida Console mono font in the Wine prefix** — TouchDesigner uses
+  "Lucida Console" as its default mono font (parameter value fields, OP name
+  fields, DAT tables, Textport). It ships with Windows but is not part of
+  `corefonts`, so prefixes built by this tool couldn't resolve it — TD logged
+  `Error Loading Default Mono Font ... Substituted with Verdana` and rendered
+  mono text blank. Install and `--update` now install a mono `lucon.ttf` whose
+  family is "Lucida Console" (generated from DejaVu Sans Mono, in `Assets/`)
+  into `drive_c/windows/Fonts` and register it, which fixes the error and the
+  blank mono text. Independent of the `wine_ui_fixes.tox` pass.
+
 ## [1.8.0] - 2026-08-27
 
 ### New

@@ -42,6 +42,28 @@ This page explains the patches and workarounds applied by the installer and laun
 
 ---
 
+## Lucida Console (default mono font)
+
+**Problem:** TouchDesigner uses **Lucida Console** as its default mono font (parameter value fields, OP name fields, DAT tables, Textport). Lucida Console ships with Windows but is **not** part of the winetricks `corefonts` set, so a prefix that only installs `corefonts` cannot resolve it. TD then reports at startup:
+
+```
+Error Loading Default Mono Font. Failed to load font file. Failed to load . Substituted with Verdana.
+```
+
+and the mono text simply doesn't render. This is independent of the `wine_ui_fixes.tox` pass above (which only changes how Text TOPs are rasterized — bitmap/polygon vs. scalable — it does not load the default mono font), so the error can persist even after the `.tox` fix is applied.
+
+**Fix:** Install a mono font whose family name is `Lucida Console` as `lucon.ttf` into the prefix and register it:
+
+```
+cp lucon.ttf "$WINEPREFIX/drive_c/windows/Fonts/"
+wine64 reg add "HKLM\Software\Microsoft\Windows NT\CurrentVersion\Fonts" \
+  /v "Lucida Console (TrueType)" /d "lucon.ttf" /f
+```
+
+The bundled `Assets/lucon.ttf` is generated from DejaVu Sans Mono with its `name` table rewritten (family `Lucida Console`), so it can be distributed freely — no proprietary Microsoft font is shipped. The install and `--update` flows both run this (`install_lucida_console()` in `td_lib/wine.py`). A running `wineserver` is killed first and the result is verified with `reg query`, because `reg add` can silently lose the entry if a stale wineserver flushes its state afterwards.
+
+---
+
 ## LogPixels DPI
 
 **Problem:** Wine defaults to 96 DPI, which makes TD's UI fonts very small on high-resolution displays (common on modern laptops).
