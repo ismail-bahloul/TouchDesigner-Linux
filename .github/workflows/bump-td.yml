@@ -1,0 +1,67 @@
+name: bump-td
+
+# Keeps the pinned TouchDesigner version current. The tool itself already
+# resolves the newest version online at install time; this only keeps the
+# *packaging* (AUR `_td_ver`) and the offline `FALLBACK_VERSIONS` list in sync,
+# so a new TouchDesigner release becomes a new AUR package automatically.
+#
+# Requires a repository secret `AUR_SSH_KEY` (a private SSH key registered on
+# aur.archlinux.org). Without it the AUR push is skipped and only the GitHub
+# repo is updated.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect and bump pinned TouchDesigner
+        id: bump
+        run: python3 .github/scripts/bump_td.py
+
+      - name: Run static tests
+        if: steps.bump.outputs.changed == 'true'
+        run: python3 tests/test_static.py
+
+      - name: Commit and push to GitHub
+        if: steps.bump.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/arch/PKGBUILD dist/arch/.SRCINFO td_lib/touchdesigner.py
+          git commit -m "chore: bump TouchDesigner to ${{ steps.bump.outputs.version }}"
+          git push
+
+      - name: Push to AUR
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          set -eu
+          if [ -z "${AUR_SSH_KEY:-}" ]; then
+            echo "AUR_SSH_KEY secret is not set; skipping AUR push."
+            exit 0
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null || true
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone ssh://aur@aur.archlinux.org/touchdesigner-linux.git /tmp/aur
+          cp dist/arch/PKGBUILD /tmp/aur/PKGBUILD
+          cp dist/arch/.SRCINFO /tmp/aur/.SRCINFO
+          pkgver=$(grep -m1 '^pkgver=' /tmp/aur/PKGBUILD | cut -d= -f2)
+          pkgrel=$(grep -m1 '^pkgrel=' /tmp/aur/PKGBUILD | cut -d= -f2)
+          cd /tmp/aur
+          git add PKGBUILD .SRCINFO
+          git -c user.name="Iswad" -c user.email="iswad@archlinux.org" \
+            commit -m "upgpkg: touchdesigner-linux ${pkgver}-${pkgrel}"
+          git push
