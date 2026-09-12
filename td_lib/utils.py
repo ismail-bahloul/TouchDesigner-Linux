@@ -146,18 +146,48 @@ def download_file(
     retries: int = 2,
     user_agent: str = "",
 ) -> bool:
-    """Download a file using curl or wget. Returns True on success."""
+    """Download a file using curl or wget. Returns True on success.
+
+    The transfer goes to ``<dest>.part`` first and is renamed onto ``dest``
+    only once complete, so an interrupted or truncated download never leaves a
+    partial file where callers would treat it as "already downloaded".
+    """
     label = label or os.path.basename(dest)
     dest_dir = os.path.dirname(dest)
     os.makedirs(dest_dir, exist_ok=True)
+    part = f"{dest}.part"
 
-    # Use Python's urllib for a clean progress bar (no external deps)
-    if show_progress:
+    ok = False
+    try:
+        # Use Python's urllib for a clean progress bar (no external deps)
+        if show_progress:
+            try:
+                ok = _download_with_progress(url, part, label, timeout, user_agent)
+            except Exception:
+                ok = False  # Fall through to curl/wget
+
+        if not ok:
+            ok = _download_with_cli(
+                url, part, timeout, retries, user_agent, show_progress
+            )
+
+        if ok and os.path.isfile(part) and os.path.getsize(part) > 0:
+            os.replace(part, dest)
+            return True
+        return False
+    finally:
+        # A failed or partial transfer must never survive at ``part`` (and
+        # ``dest`` is only ever written by the atomic rename above).
         try:
-            return _download_with_progress(url, dest, label, timeout, user_agent)
-        except Exception:
-            pass  # Fall through to curl/wget
+            os.remove(part)
+        except OSError:
+            pass
 
+
+def _download_with_cli(
+    url: str, dest: str, timeout: int, retries: int, user_agent: str, show_progress: bool
+) -> bool:
+    """Download using curl or wget (fallback when urllib isn't used)."""
     curl = shutil.which("curl")
     wget = shutil.which("wget")
 
@@ -267,7 +297,10 @@ def _download_with_progress(
                     )
 
         print()
-        return True
+        # A clean EOF before Content-Length bytes is a truncated transfer
+        # (proxies/CDNs can close mid-stream). Report it as a failure so the
+        # caller doesn't cache a partial file.
+        return downloaded >= total if total > 0 else True
 
 
 # ── Checksums ────────────────────────────────────────────────────────────────

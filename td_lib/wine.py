@@ -33,16 +33,30 @@ LOG_DIR = os.path.join(TD_BASE_DIR, "logs")
 WINE_DLL_OVERRIDES = "mscoree="
 
 SODA_URL = "https://github.com/bottlesdevs/wine/releases/download/soda-9.0-1/soda-9.0-1-x86_64.tar.xz"
-SODA_SHA256 = os.environ.get("SODA_SHA256", "")
+# Pinned SHA-256 of the immutable GitHub release asset above. The environment
+# override exists only for a deliberate bump without editing code.
+SODA_SHA256 = os.environ.get(
+    "SODA_SHA256",
+    "c38fe0ad3c12a49b61ec1fcaea5c5d8da4a3d1afc5991befe2af6b125f014c28",
+)
 
 DXVK_VERSION = "2.7.1"
 DXVK_URL = f"https://github.com/doitsujin/dxvk/releases/download/v{DXVK_VERSION}/dxvk-{DXVK_VERSION}.tar.gz"
-DXVK_SHA256 = os.environ.get("DXVK_SHA256", "")
-
-WINETRICKS_URL = (
-    "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
+DXVK_SHA256 = os.environ.get(
+    "DXVK_SHA256",
+    "d85ce7c79f57ecd765aaa1b9e7007cb875e6fde9f6d331df799bce73d513ce87",
 )
-WINETRICKS_SHA256 = os.environ.get("WINETRICKS_SHA256", "")
+
+# Winetricks is a rolling script, so pin to a tag: the raw file at a tag is
+# immutable and therefore verifiable. Bump the tag and hash deliberately.
+WINETRICKS_TAG = "20260125"
+WINETRICKS_URL = (
+    f"https://raw.githubusercontent.com/Winetricks/winetricks/{WINETRICKS_TAG}/src/winetricks"
+)
+WINETRICKS_SHA256 = os.environ.get(
+    "WINETRICKS_SHA256",
+    "431f82fc74000e6c864409f1d8fb495d696c03928808e3e8acffc45179312a7b",
+)
 
 
 # ── Runner download ──────────────────────────────────────────────────────────
@@ -248,6 +262,11 @@ def download_winetricks() -> None:
         WINETRICKS_URL, WINETRICKS_BIN, "winetricks", show_progress=False
     ):
         error("Failed to download winetricks")
+        raise SystemExit(1)
+
+    if not verify_checksum(WINETRICKS_BIN, WINETRICKS_SHA256):
+        error("Winetricks checksum mismatch; refusing to use it")
+        safe_rm(WINETRICKS_BIN)
         raise SystemExit(1)
 
     os.chmod(WINETRICKS_BIN, 0o755)

@@ -37,7 +37,7 @@ def create_launcher_script() -> str:
 # This install runs inside a distrobox container. When launched from the
 # host, re-enter the container first.
 if [ -z "${{DISTROBOX_ENTER_PATH:-}}" ] && command -v distrobox >/dev/null 2>&1; then
-    exec distrobox enter "${{TD_CONTAINER_NAME:-{CONTAINER_NAME}}}" -- "$0" "$@"
+    exec distrobox enter "${{TD_CONTAINER_NAME:-{CONTAINER_NAME}}}" -- "$0" "${{ORIG_ARGS[@]}}"
 fi
 '''
 
@@ -60,6 +60,9 @@ WINE_PREFIX="${{TD_BASE_DIR%/}}/prefix"
 # without launching TD, unknown flags are rejected instead of being
 # treated as a .toe path ──
 NO_PATCH=""
+# Keep the original arguments: the container re-exec (below) must receive the
+# flags that this loop has already consumed (e.g. --no-patch).
+ORIG_ARGS=("$@")
 while true; do
     case "$1" in
       -h|--help)

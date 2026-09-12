@@ -203,9 +203,6 @@ def test_cli_args():
     args = parse_args(["--patch-toe", "test.toe"])
     check("--patch-toe test.toe", args.patch_toe == "test.toe")
 
-    args = parse_args(["--fast"])
-    check("--fast", args.fast)
-
     args = parse_args(["--pip", "install", "numpy"])
     check("--pip install numpy", args.pip_args == ["install", "numpy"])
 
@@ -1291,7 +1288,7 @@ def test_launcher_container_shim():
         check("container launcher has distrobox shim", "distrobox enter" in content)
         check("shim uses the configured container name", "my-td-container" in content)
         check("shim guards on DISTROBOX_ENTER_PATH", "DISTROBOX_ENTER_PATH" in content)
-        check("shim re-execs the same script with args", '$0' in content and '"$@"' in content)
+        check("shim re-execs the same script with args", '$0' in content and 'ORIG_ARGS' in content)
         check("shim does not wrap the normal body", "find_touchdesigner_exe" in content)
 
         try:
@@ -1860,6 +1857,46 @@ def test_release_version_consistency():
 
 
 # =============================================================================
+#  Pinned checksums + atomic download
+# =============================================================================
+
+
+def test_pinned_checksums():
+    print("\n\u2500\u2500 Pinned checksums \u2500\u2500")
+    import inspect
+    import re
+
+    from td_lib import utils, wine
+
+    # Regression guard: these must not silently revert to "" (which makes
+    # verify_checksum() a no-op and disables integrity checking entirely).
+    for label, value in [
+        ("SODA_SHA256", wine.SODA_SHA256),
+        ("DXVK_SHA256", wine.DXVK_SHA256),
+        ("WINETRICKS_SHA256", wine.WINETRICKS_SHA256),
+    ]:
+        check(
+            f"{label} is a pinned sha256",
+            bool(re.fullmatch(r"[0-9a-f]{64}", value or "")),
+        )
+
+    check(
+        "Winetricks URL is pinned to a tag (not master)",
+        "/master/" not in wine.WINETRICKS_URL
+        and wine.WINETRICKS_TAG in wine.WINETRICKS_URL,
+    )
+
+    # download_file must be atomic: write to <dest>.part, then os.replace()
+    dl_src = inspect.getsource(utils.download_file)
+    check("download_file writes to a .part temp file", ".part" in dl_src)
+    check("download_file renames atomically (os.replace)", "os.replace" in dl_src)
+    check(
+        "progress download detects truncation",
+        "downloaded >= total" in inspect.getsource(utils._download_with_progress),
+    )
+
+
+# =============================================================================
 #  Run
 # =============================================================================
 
@@ -1881,6 +1918,7 @@ def main():
     test_ensure_dir()
     test_require_commands()
     test_verify_checksum()
+    test_pinned_checksums()
     test_log_format()
     test_print_banner()
     test_distro_detection()

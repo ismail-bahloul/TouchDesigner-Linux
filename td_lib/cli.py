@@ -58,13 +58,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Headless mode (SSH, no display) — skips GUI-requiring steps",
     )
-    mode.add_argument(
-        "-f",
-        "--fast",
-        dest="fast",
-        action="store_true",
-        help="Fast mode — skip pauses between steps",
-    )
 
     # Version selection
     version = parser.add_argument_group("version")
