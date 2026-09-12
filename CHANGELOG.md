@@ -2,9 +2,9 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [1.8.1] - 2026-09-12
 
-### New
+### Fixes
 
 - **Lucida Console mono font in the Wine prefix** — TouchDesigner uses
   "Lucida Console" as its default mono font (parameter value fields, OP name
