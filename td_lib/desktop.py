@@ -136,15 +136,30 @@ def create_shortcuts(icon_path: str) -> None:
     success("Shortcuts created (Desktop + Application menu)")
 
 
+def _versioned_shortcut_name(version: str, seen: dict[str, int]) -> tuple[str, str]:
+    """Return (file_stem, label) for a versioned shortcut.
+
+    The stem is made unique so two installs that resolve to the same version
+    (for example when the version cannot be detected) do not overwrite each
+    other's .desktop file.
+    """
+    base = re.sub(r"[^a-zA-Z0-9._-]", "-", version)
+    count = seen.get(base, 0) + 1
+    seen[base] = count
+    if count == 1:
+        return base, f"TouchDesigner {version}"
+    return f"{base}-{count}", f"TouchDesigner {version} ({count})"
+
+
 def create_versioned_shortcuts(icon_path: str) -> None:
     """Create version-specific shortcuts when 2+ versions are installed."""
     versions = discover_installed_versions()
     if len(versions) < 2:
         return
 
+    seen: dict[str, int] = {}
     for install_dir, version in versions:
-        safe_version = re.sub(r"[^a-zA-Z0-9._-]", "-", version)
-        label = f"TouchDesigner {version}"
+        safe_version, label = _versioned_shortcut_name(version, seen)
         # install_dir is already the directory containing TouchDesigner.exe
         td_exe = os.path.join(install_dir, "TouchDesigner.exe")
         if not os.path.isfile(td_exe):

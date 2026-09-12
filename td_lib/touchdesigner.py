@@ -134,6 +134,22 @@ def detect_version_from_exe(exe_path: str) -> str | None:
     return None
 
 
+def detect_version_from_path(path: str) -> str | None:
+    """Extract a version from an install path as a fallback.
+
+    Install directories are created as ``Program Files/TouchDesigner <version>``,
+    so the version is usually readable from the path even when reading it out of
+    the executable fails (missing or timed-out ``strings``, partially written
+    file, etc). Without this fallback such installs show up as "unknown".
+    """
+    for part in Path(path).parts:
+        match = re.match(r"TouchDesigner\s+(20\d{2}\.\d+)", part)
+        if match:
+            return match.group(1)
+    match = re.search(r"(?<![\d.])(20\d{2}\.\d{3,6})(?![\d.])", path)
+    return match.group(1) if match else None
+
+
 def discover_installed_versions() -> list[tuple[str, str]]:
     """Return list of (install_dir, version) for each installed TD version."""
     drive_c = os.path.join(WINE_PREFIX, "drive_c")
@@ -145,7 +161,7 @@ def discover_installed_versions() -> list[tuple[str, str]]:
         for f in files:
             if f.lower() == "touchdesigner.exe":
                 exe_path = os.path.join(root, f)
-                version = detect_version_from_exe(exe_path)
+                version = detect_version_from_exe(exe_path) or detect_version_from_path(root)
                 results.append((root, version or "unknown"))
     return results
 

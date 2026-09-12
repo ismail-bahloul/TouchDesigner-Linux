@@ -915,6 +915,18 @@ def test_version_detection():
         result = m.group(1) if m else None
         check(f"version from '{filename[:45]}' = {result}", result == expected)
 
+    from td_lib.touchdesigner import detect_version_from_path
+
+    path_samples = [
+        ("C:/Program Files/TouchDesigner 2025.33230/bin", "2025.33230"),
+        ("/prefix/drive_c/Program Files/TouchDesigner 2023.12120/bin", "2023.12120"),
+        ("C:/Program Files/TouchDesigner/bin", None),
+        ("/some/random/path/bin", None),
+    ]
+    for path, expected in path_samples:
+        result = detect_version_from_path(path)
+        check(f"version from path '...{path[-35:]}' = {result}", result == expected)
+
 
 def test_version_sorting():
     print("\n\u2500\u2500 Version sorting \u2500\u2500")
@@ -927,6 +939,29 @@ def test_version_sorting():
     versions = list(range(20))
     limited = versions[:10]
     check("version list limited to 10", len(limited) == 10)
+
+
+def test_versioned_shortcut_names():
+    print("\n\u2500\u2500 Versioned shortcut names \u2500\u2500")
+    from td_lib.desktop import _versioned_shortcut_name
+
+    seen: dict[str, int] = {}
+    stem, label = _versioned_shortcut_name("2025.33230", seen)
+    check(
+        "versioned shortcut stem",
+        stem == "2025.33230" and label == "TouchDesigner 2025.33230",
+    )
+
+    stem_unknown, _ = _versioned_shortcut_name("unknown", seen)
+    stem_dup, label_dup = _versioned_shortcut_name("unknown", seen)
+    check(
+        "duplicate version gets a unique file stem",
+        stem_unknown == "unknown" and stem_dup == "unknown-2",
+    )
+    check(
+        "duplicate version gets a disambiguated label",
+        label_dup == "TouchDesigner unknown (2)",
+    )
 
 
 def test_discover_installed_versions():
@@ -2031,6 +2066,7 @@ def main():
     test_version_select()
     test_version_detection()
     test_version_sorting()
+    test_versioned_shortcut_names()
     test_discover_installed_versions()
     test_desktop_assets()
     test_headless_auto_detect()
