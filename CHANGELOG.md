@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [1.8.2] - 2026-09-12
 
 ### Fixes
 
@@ -22,6 +22,11 @@ All notable changes to this project are documented here.
   never saw them. The original arguments are now preserved for the re-exec.
 - Removed the `--fast` option, which was accepted and documented but never
   read anywhere.
+
+### Changed
+
+- TouchDesigner pinned to **2025.33230** (AUR `_td_ver`, regenerated
+  `.SRCINFO`, and added to `FALLBACK_VERSIONS`).
 
 ## [1.8.1] - 2026-09-12
 
