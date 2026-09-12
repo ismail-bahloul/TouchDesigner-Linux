@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here.
 
+## [1.8.3] - 2026-09-12
+
+### Fixes
+
+- **Versioned shortcuts are no longer labelled "unknown".** When the version
+  could not be read out of `TouchDesigner.exe` (missing or timed-out `strings`,
+  a partially written file), detection fell back to the literal `"unknown"`, so
+  an entry named "TouchDesigner unknown" could appear in the application menu.
+  The version is now also read from the install path
+  (`.../TouchDesigner <version>/`), which always carries it.
+- **No more silent shortcut collisions.** Two installs that resolved to the
+  same label produced the same `.desktop` filename, so one shortcut silently
+  overwrote the other (which is why a single "unknown" entry could remain for
+  two installs). Versioned shortcut file names and labels are now made unique.
+
 ## [1.8.2] - 2026-09-12
 
 ### Fixes
