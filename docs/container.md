@@ -155,6 +155,16 @@ works as before.
     tree for NVIDIA files on **every** container start and bind-mounts each
     one, which can take several minutes on big systems (no `--nvidia` step
     in the logs = still scanning). The container is usable once it finishes.
+  - **If it looks stuck:** on some very recent NVIDIA drivers the init can
+    hang on a single `mount_bind` (the container log repeats the same
+    `...libnvidia-*.so...` line, ~0% CPU) instead of merely being slow. This
+    is a distrobox limitation, not the tool's. Interrupt the `enter`
+    (Ctrl+C) and run the command again: the container was already created,
+    so the second `enter` is fast and completes.
+    ```bash
+    distrobox enter touchdesigner-linux -- true   # drains the init
+    td-install --container install                # resumes normally
+    ```
   - If you don't need GPU acceleration inside the container (or find the
     init too slow), skip the passthrough:
     ```bash
@@ -213,6 +223,13 @@ works as before.
 - `Error: unable to find user <name>` on first `distrobox enter`: the
   container init was interrupted (Ctrl+C / timeout during creation). Fix:
   `distrobox rm -f touchdesigner-linux` and run the command again.
+- **`distrobox enter` hangs on the NVIDIA init** (the container log repeats
+  the same `mount_bind ... libnvidia-*.so ...` line, ~0% CPU): a distrobox
+  limitation with some recent NVIDIA drivers. Ctrl+C the `enter` and run the
+  command again; the container already exists and the second `enter`
+  completes. If it recurs, skip GPU passthrough with
+  `TD_CONTAINER_NO_NVIDIA=1` (TouchDesigner then falls back to software
+  rendering).
 - `Failed to create container`: check `podman info` / `docker info` works,
   and that your user is in the `docker` group (docker backend) or rootless
   podman is configured.

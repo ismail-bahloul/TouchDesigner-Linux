@@ -45,7 +45,9 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesig
 ```bash
 curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --container
 ```
-See [docs/container.md](docs/container.md) for how it works, GPU notes and
+Requires `distrobox` and `podman` (or `docker`) installed — the installer
+creates the `touchdesigner-linux` container for you. See
+[docs/container.md](docs/container.md) for how it works, GPU notes and
 limitations.
 
 ---
