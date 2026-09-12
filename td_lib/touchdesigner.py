@@ -29,6 +29,7 @@ DOWNLOAD_DIR = os.path.expanduser(os.environ.get("DOWNLOAD_DIR", "~/Downloads"))
 DOWNLOAD_DIR = os.path.expanduser(DOWNLOAD_DIR)
 
 FALLBACK_VERSIONS = [
+    "2025.33230",
     "2025.32460",
     "2025.32280",
     "2025.32050",
