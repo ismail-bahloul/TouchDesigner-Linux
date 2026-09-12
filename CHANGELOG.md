@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Fixes
+
+- **Download integrity.** `download_file()` now writes to `<dest>.part` and
+  renames onto the final path only when complete, and a truncated urllib
+  transfer (fewer bytes than `Content-Length`) is reported as a failure. An
+  interrupted or truncated download can no longer leave a partial file where
+  callers treat it as "already downloaded" (which poisoned the cache for the
+  ~2 GB TouchDesigner installer).
+- **Real checksum verification.** The Soda, DXVK and winetricks SHA-256
+  constants were read from the environment with an empty default, and
+  `verify_checksum()` returns `True` for an empty hash, so nothing was ever
+  verified. They are now pinned to the actual release-asset hashes, winetricks
+  is pinned to a tag (immutable URL) and its checksum is now checked too.
+- **Container mode no longer drops `--no-patch`.** The launcher parsed and
+  `shift`ed its flags before the distrobox re-exec, so the re-entered container
+  never saw them. The original arguments are now preserved for the re-exec.
+- Removed the `--fast` option, which was accepted and documented but never
+  read anywhere.
+
 ## [1.8.1] - 2026-09-12
 
 ### Fixes
