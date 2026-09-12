@@ -159,14 +159,16 @@ def download_file(
 
     ok = False
     try:
-        # Use Python's urllib for a clean progress bar (no external deps)
         if show_progress:
             try:
+                # urllib gives a clean progress bar and Content-Length checks
                 ok = _download_with_progress(url, part, label, timeout, user_agent)
             except Exception:
-                ok = False  # Fall through to curl/wget
-
-        if not ok:
+                # urllib unavailable or failed mid-transfer: fall back to CLI
+                ok = _download_with_cli(
+                    url, part, timeout, retries, user_agent, show_progress
+                )
+        else:
             ok = _download_with_cli(
                 url, part, timeout, retries, user_agent, show_progress
             )

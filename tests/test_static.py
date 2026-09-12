@@ -1303,6 +1303,38 @@ def test_launcher_container_shim():
                 print(f"  bash syntax error: {result.stderr.strip()}")
         except (FileNotFoundError, subprocess.TimeoutExpired):
             skip("bash syntax check (bash not available)")
+
+        # Behavioral: the host parses and shifts flags before the shim, so the
+        # re-exec must forward the ORIGINAL args (else --no-patch is lost).
+        stub_dir = tempfile.mkdtemp(prefix="td_stubdbx_")
+        args_file = os.path.join(stub_dir, "args.txt")
+        stub = os.path.join(stub_dir, "distrobox")
+        with open(stub, "w") as f:
+            f.write('#!/bin/sh\nprintf "%s\\n" "$@" > "$TD_STUB_ARGS_FILE"\n')
+        os.chmod(stub, 0o755)
+        old_path = os.environ.get("PATH", "")
+        old_stub = os.environ.pop("TD_STUB_ARGS_FILE", None)
+        os.environ["PATH"] = stub_dir + os.pathsep + old_path
+        os.environ["TD_STUB_ARGS_FILE"] = args_file
+        try:
+            subprocess.run(
+                ["bash", path, "--no-patch", "/tmp/foo.toe"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            forwarded = open(args_file).read() if os.path.isfile(args_file) else ""
+            check("container shim forwards --no-patch", "--no-patch" in forwarded)
+            check("container shim forwards the project path", "/tmp/foo.toe" in forwarded)
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            skip("container shim arg-forwarding check")
+        finally:
+            os.environ["PATH"] = old_path
+            if old_stub is None:
+                os.environ.pop("TD_STUB_ARGS_FILE", None)
+            else:
+                os.environ["TD_STUB_ARGS_FILE"] = old_stub
+            shutil.rmtree(stub_dir, ignore_errors=True)
     finally:
         if old_inside is not None:
             os.environ["DISTROBOX_ENTER_PATH"] = old_inside
@@ -1897,6 +1929,72 @@ def test_pinned_checksums():
 
 
 # =============================================================================
+#  Download integrity (functional, local HTTP server)
+# =============================================================================
+
+
+def test_download_integrity():
+    print("\n\u2500\u2500 Download integrity \u2500\u2500")
+    import http.server
+    import threading
+
+    from td_lib.utils import download_file
+
+    payload = b"x" * 4096
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.0"
+
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            if self.path == "/good":
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+            elif self.path == "/truncated":
+                # Advertise a larger body than is actually sent, then close:
+                # simulates a proxy/CDN cutting the stream cleanly.
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(payload) * 4))
+                self.end_headers()
+                self.wfile.write(payload)
+            else:
+                self.send_error(404)
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{port}"
+    tmp = tempfile.mkdtemp(prefix="td_dl_test_")
+    try:
+        good = os.path.join(tmp, "good.bin")
+        ok = download_file(f"{base}/good", good, "good", show_progress=True, timeout=10)
+        check("full download succeeds", ok is True)
+        check(
+            "full download has the full body",
+            os.path.isfile(good) and os.path.getsize(good) == len(payload),
+        )
+        check("no .part leftover after success", not os.path.exists(good + ".part"))
+
+        trunc = os.path.join(tmp, "trunc.bin")
+        ok2 = download_file(
+            f"{base}/truncated", trunc, "trunc", show_progress=True, timeout=10
+        )
+        check("truncated download reported as failure", ok2 is False)
+        check("truncated download leaves no dest file", not os.path.exists(trunc))
+        check(
+            "truncated download leaves no .part file",
+            not os.path.exists(trunc + ".part"),
+        )
+    finally:
+        srv.shutdown()
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+# =============================================================================
 #  Run
 # =============================================================================
 
@@ -1918,6 +2016,7 @@ def main():
     test_ensure_dir()
     test_require_commands()
     test_verify_checksum()
+    test_download_integrity()
     test_pinned_checksums()
     test_log_format()
     test_print_banner()
