@@ -150,13 +150,13 @@ This repo's `td_lib` and installer are unaffected — the historical code that l
 
 ### 21. CodeMeter dongle / network license support
 
-**Partial — tooling shipped (`td-install --codemeter`), client blocked.**
+**Tooling shipped (`td-install --codemeter`); client blocked on Wine 9, works on Wine 11.**
 
 **Done:** detection of the runtime in the prefix, Server Search List management (`cmu32 --add-server` / `cmu.exe` / registry), launcher auto-start, a validated **server-side** setup (native Linux daemon or the official `docker-codemeter` image, port 22350), and an **msiexec-free runtime install** (`td-install --codemeter install <path>`: native extraction via innoextract/7z, handles the WiX-bundled 7.60d download, copies the Wibu system DLLs).
 
-**Blocked (tested 2026-08, Wine 9.0 TkG/Soda):** the Windows CodeMeter service (`CodeMeter.exe`) still does not come up. Runtimes 8.41a/9.10 crash on load (protected `cpsrt.dll`, `c000007b`); runtime **7.60d** loads fine but the service **stalls during startup** (single thread, never opens port 22350). Until `CodeMeter.exe` runs, TouchDesigner under Wine cannot borrow network-shared licenses. Direct USB dongle passthrough remains out of scope. See the open feature request and [docs/codemeter.md](docs/codemeter.md).
+**Service blocker solved on Wine 11 (2026-09).** Under Wine 9.0 TkG/Soda the Windows CodeMeter service did not come up: 8.41a/9.10 crash on load (protected `cpsrt.dll`, `c000007b`), and **7.60d stalls during startup** (single thread, never opens port 22350). Under **Wine 11** (`DAW-GE-Proton11-6c` via UMU), runtime 7.60d starts, runs with 12 threads and **listens on port 22350** (WebAdmin answers on 127.0.0.1). The stall was Wine-version dependent, as suspected. Still to verify: a full license checkout against a license server. Direct USB dongle passthrough remains out of scope. See [docs/codemeter.md](docs/codemeter.md).
 
-**Next test to try:** a newer Wine build (10/11 or GE-Proton) with runtime 7.60d — the stall looks Wine-version dependent. Also worth upstreaming both failures (7.60d stall + 9.10 `cpsrt.dll` loader error) to WineHQ.
+**Next step:** a real end-to-end checkout against a license server (native Linux, Docker, or another machine with the dongle). This depends on adopting a Wine 11 runner, which is now also attractive for fonts and GPU (see item #1). Optional: upstream the Wine 9.0 failures (7.60d stall + 9.10 `cpsrt.dll` loader error) to WineHQ, though they no longer block us.
 
 ## Long-term
 
