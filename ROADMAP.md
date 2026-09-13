@@ -14,8 +14,9 @@ Currently locked to **Soda Wine 9.0-1** — still the recommended default. See [
 **Key findings:**
 - **Wine 9.x** (Soda, TkG, vanilla) → fully compatible
 - **Wine 10.x** (GE-Proton10) → works with `wine_ui_fixes.tox` but fonts need correction
-- **Wine 11.x** → Mutter workaround in Valve fork breaks window creation on KWin
-- **Reason:** Soda disables Wine Staging patches (`_use_staging="false"`). Staging introduced the DWrite/mimalloc bug in Wine 10, and Valve added a Mutter workaround in Wine 11.
+- **Wine 11.x** → unpatched builds hang at the splash (DWrite font-enumeration loop)
+- **Wine 11.x + DWrite fix** (`DAW-GE-Proton11-6c` via UMU) → ✅ works, GPU acceleration, fonts correct with **no** `wine_ui_fixes.tox`. Tested 2026-09 (CachyOS + NVIDIA 615). The fix is being upstreamed to GE-Proton.
+- **Reason:** Soda disables Wine Staging patches (`_use_staging="false"`). Staging introduced the DWrite/mimalloc bug in Wine 10; the Wine 11 DWrite loop is fixed by KitsuneDev's patch.
 
 **Known Proton 10 issue:** TD hangs due to mimalloc + DWrite incompatibility. Fix: set `MIMALLOC_DISABLE_REDIRECT=1`. Must be auto-applied when using Proton runners.
 
@@ -23,7 +24,7 @@ Currently locked to **Soda Wine 9.0-1** — still the recommended default. See [
 
 **Spout2PW:** Bridges Spout2 video from Windows apps under Proton to PipeWire on Linux. Useful for OBS capture. AUR package: `spout2pw-bin`. Worth documenting or integrating when Spout output is needed.
 
-**In progress: moving TD to a newer Wine build.** The project is pinned to Soda 9.0 because it is the only runner that is fully compatible today. A newer Wine build would also unlock **DXVK 3.x**, which currently crashes on the Syphon/Spout Out TOP under Wine 9.0 (DXVK stays on 2.7.1 for v1.8). This is also the leading candidate to unblock the CodeMeter client (see #21).
+**In progress: moving TD to a newer Wine build.** The project is pinned to Soda 9.0 because it is the only runner that is fully compatible today. A newer Wine build would also unlock **DXVK 3.x**, which currently crashes on the Syphon/Spout Out TOP under Wine 9.0 (DXVK stays on 2.7.1 for v1.8). This is also the leading candidate to unblock the CodeMeter client (see #21). A working path now exists: **`DAW-GE-Proton11-6c` + UMU** runs TD on Wine 11 with GPU acceleration and no `.tox` font fix (2026-09, see `docs/runners.md`). Before adopting it, two open questions: wait for the DWrite patch to reach upstream **GE-Proton** (rather than depending on a personal fork), and evaluate the UMU + Steam Runtime dependency it pulls in.
 
 ### 2. Diagnostic / Health check (`--diagnose`)
 

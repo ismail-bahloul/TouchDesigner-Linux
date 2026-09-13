@@ -26,8 +26,61 @@ This is exactly what `td-install` sets up, and what `launch-touchdesigner.sh` co
 | **Wine 9.x** (Soda, TkG, vanilla) | ✅ | No Mutter workaround, stable DWrite |
 | **Wine 10.x** (GE-Proton10, Proton) | ⚠️ | Window OK but fonts deformed → `wine_ui_fixes.tox` helps |
 | **Wine 11.x** (vanilla, GE-P11, Proton) | ❌ | Mutter workaround added in Valve fork → window invisible on KWin |
+| **Wine 11.x + DWrite fix** (DAW-GE-Proton11-6c via UMU) | ✅ | See the 2026-09 update below |
 
-The key: Soda 9.0 is built with `_use_staging="false"` (no Wine Staging patches). Staging introduced the DWrite rewrite in Wine 10, and Valve added the Mutter workaround in Wine 11. Both are incompatible with TouchDesigner on KDE/Wayland.
+The key: Soda 9.0 is built with `_use_staging="false"` (no Wine Staging patches). Staging introduced the DWrite rewrite in Wine 10, and Valve added the Mutter workaround in Wine 11. Both were incompatible with TouchDesigner on KDE/Wayland; the Wine 11 part is now fixable (see the update below).
+
+## Update (2026-09): Wine 11 works with the DWrite fix
+
+**DAW-GE-Proton11-6c works.** Tested on CachyOS (Arch-like), NVIDIA 615.71.09, KDE/KWin Wayland.
+
+The Wine 11 DWrite font-enumeration loop is a real Wine bug, but it is fixable.
+[KitsuneDev's `daw-proton-ge` fork](https://github.com/KitsuneDev/daw-proton-ge) carries a
+`dwrite: Fix glyph bitmap cache reuse (TouchDesigner)` patch (plus a WebRender / hardware-acceleration
+fix) and runs TD on Wine 11. The DWrite patch is being upstreamed to GE-Proton.
+
+### Recipe
+
+- [umu-launcher](https://github.com/Open-Wine-Components/umu-launcher) (tested 1.4.3) with the
+  `steamrt4` runtime (downloaded on first run)
+- `DAW-GE-Proton11-6c` extracted from its release tarball
+- A fresh prefix:
+
+```bash
+export WINEPREFIX="$HOME/td-proton/prefix"
+export PROTONPATH="$HOME/td-proton/DAW-GE-Proton11-6c"
+export GAMEID=0
+
+# 1. install TouchDesigner (official installer)
+umu-run TouchDesigner.2025.33230.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+
+# 2. fonts (this is what replaces the wine_ui_fixes.tox workaround)
+umu-run winetricks allfonts
+
+# 3. launch
+umu-run "$WINEPREFIX/pfx/drive_c/Program Files/Derivative/TouchDesigner/bin/TouchDesigner.exe"
+```
+
+### Results
+
+| Check | Result |
+|-------|--------|
+| Splash screen | Passed |
+| Main window | Opens, license accepted |
+| GPU | Used, `nvidia-smi` shows TouchDesigner.exe with ~755 MiB VRAM, ~35% GPU-Util |
+| Fonts | Render correctly, **no `wine_ui_fixes.tox` needed** |
+| CPU | ~60-75% steady (render thread, not software rendering) |
+
+### Caveats
+
+- This needs the **fork**: vanilla Wine 11 and GE-Proton11-6 still loop at the splash, so this is
+  not "Wine 11 works" in general yet. It becomes broadly usable once the DWrite fix lands upstream
+  in GE-Proton.
+- The test used the full UMU + pressure-vessel path, not `files/bin/wine` directly, so it says
+  nothing about the Mutter / window-mapping path used by the direct-binary recipes below.
+- The fork targets DAWs and carries unrelated patches (FL Studio, Native Instruments). Prefer
+  upstream GE-Proton once the TouchDesigner patches are merged.
+- Still pending: NVIDIA CUDA TOPs and video-decoding hardware acceleration.
 
 
 ## Soda build recipe (the "secret sauce")
@@ -110,7 +163,9 @@ cp "$VKD3D_SRC/libvkd3d-utils-1.dll" "$SYS32/"
 ## UMU-Proton / faugus-launcher
 
 ### Status
-Not working reliably. TD either hangs on splash screen or crashes during initialization.
+**Superseded (2026-09):** works with `DAW-GE-Proton11-6c` + `allfonts`. See the
+"Update (2026-09)" section at the top. The findings below still apply to unpatched
+UMU-Proton builds.
 
 ### Issues
 1. **pressure-vessel sandbox** — blocks environment variables like `MIMALLOC_DISABLE_REDIRECT`
@@ -182,7 +237,7 @@ WARN("window %p/%lx is iconic, remapping to workaround Mutter issues.\n");
 ```
 This workaround adds an extra state transition (Iconic → Withdrawn → Normal) instead of (Iconic → Normal). On **KWin (KDE Wayland)**, this likely leaves the window stuck in WithdrawnState — invisible on screen.
 
-**Conclusion:** GE-Proton10-34 + `wine_ui_fixes.tox` is the best path for a working Proton runner. Wine 11's issue is a Wine bug to report upstream.
+**Conclusion (2026-08):** GE-Proton10-34 + `wine_ui_fixes.tox` was the best path for a working Proton runner. Wine 11's issue is a Wine bug to report upstream. **Superseded 2026-09:** a patched Wine 11 (DAW-GE-Proton11-6c) works, see the update at the top.
 
 ### Soda 11 (Bottles, Wine 11)
 **Tested 2026-08 (soda-11.0-5), full investigation:**
@@ -192,9 +247,9 @@ This workaround adds an extra state transition (Iconic → Withdrawn → Normal)
 - **What was ruled out:** the `wine_ui_fixes.tox` COMP (happens on pristine projects too), `MIMALLOC_DISABLE_REDIRECT=1` (does not help), the prefix's font files (loop happens with 0 fonts in `windows/Fonts`), and host fontconfig (loop also happens with `FONTCONFIG_FILE=/dev/null`).
 - **Partial workaround:** `MIMALLOC_DISABLE_REDIRECT=1` + `FONTCONFIG_FILE=/dev/null FONTCONFIG_PATH=/nonexistent` + empty `windows/Fonts` lets TD launch and load projects — but with **no fonts available**, so UI text is broken. Not usable as a daily setup.
 
-**Verdict:** Wine 11 remains unusable for TD until the DWrite font-enumeration loop is fixed upstream. Stick with Soda 9.0-1.
+**Verdict (2026-08):** Wine 11 remains unusable for TD until the DWrite font-enumeration loop is fixed upstream. Stick with Soda 9.0-1. **Superseded 2026-09:** the loop is fixed by the DWrite patch in DAW-GE-Proton11-6c (see the update at the top); upstreaming to GE-Proton is in progress.
 
-**GE-Proton11-5 (Wine 11 Staging) was also tested (2026-08):** identical busy loop at the splash screen. The Valve fork does not change the Wine 11 DWrite behavior — every Wine 11 build loops. The only "newer-than-9" runner that works is GE-Proton10-34 (Wine 10).
+**GE-Proton11-5 (Wine 11 Staging) was also tested (2026-08):** identical busy loop at the splash screen. Unpatched Wine 11 builds loop. The DWrite patch in DAW-GE-Proton11-6c fixes it (see the 2026-09 update at the top). The only other newer-than-9 runner that works is GE-Proton10-34 (Wine 10).
 
 ### Download
 ```bash
@@ -255,14 +310,14 @@ Wine's native Wayland support can cause window creation issues. Always set `WAYL
 
 ## Summary
 
-| Feature | Soda 9.0 | GE-P10 | GE-P11 |
-|---------|----------|--------|--------|
-| TD launches | ✅ | ✅* | ✅* |
-| Font rendering | ✅ (via .tox) | ⚠️ Present but deformed | ⚠️ Present but deformed |
-| D3D11/Vulkan | ✅ | ✅ | ✅ |
-| NDI output | ✅ | ❓ | ❓ |
-| Video Stream Out (NVENC) | ❌ | ❌ | ❌ |
-| CUDA TOPs | ❌ | ❌ | ❌ |
-| Setup complexity | Low | Medium | Medium |
+| Feature | Soda 9.0 | GE-P10 | GE-P11 | DAW-GE-P11-6c (UMU) |
+|---------|----------|--------|--------|---------------------|
+| TD launches | ✅ | ✅* | ✅* | ✅ |
+| Font rendering | ✅ (via .tox) | ⚠️ Present but deformed | ⚠️ Present but deformed | ✅ correct, no `.tox` needed |
+| D3D11/Vulkan | ✅ | ✅ | ✅ | ✅ |
+| NDI output | ✅ | ❓ | ❓ | ❓ |
+| Video Stream Out (NVENC) | ❌ | ❌ | ❌ | ❌ |
+| CUDA TOPs | ❌ | ❌ | ❌ | ❌ (pending) |
+| Setup complexity | Low | Medium | Medium | Medium (needs UMU) |
 
 * *Requires IDS patch, corefonts, vcrun2019, mimalloc fix*
