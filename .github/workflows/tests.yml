@@ -31,9 +31,30 @@ jobs:
       - name: Run full install (virtual display)
         run: |
           # xvfb gives Wine a display so MS installers (vcrun2022) can run;
-          # --non-interactive since stdin is not a TTY here
-          xvfb-run -a ./td-install --install --non-interactive 2>&1
-          echo "--- Install done ---"
+          # --non-interactive since stdin is not a TTY here.
+          #
+          # Wine in CI occasionally loses its wineserver mid-install (seen as
+          # "wine client error: recvmsg: Connection reset by peer" while
+          # winetricks registers fonts), which is transient. Retry once for
+          # that signature only, so a real failure still fails the job.
+          set +e
+          log=$(mktemp)
+          for attempt in 1 2; do
+            xvfb-run -a ./td-install --install --non-interactive 2>&1 | tee "$log"
+            rc=${PIPESTATUS[0]}
+            if [ "$rc" -eq 0 ]; then
+              echo "--- Install done ---"
+              exit 0
+            fi
+            if grep -qE "recvmsg: Connection reset by peer|wine client error" "$log"; then
+              echo "::warning::Transient Wine failure on attempt $attempt, retrying"
+              continue
+            fi
+            echo "Install failed with a non-transient error"
+            exit "$rc"
+          done
+          echo "Install failed twice, giving up"
+          exit 1
       - name: Verify TouchDesigner installed
         run: |
           TD_EXE=$(find "$HOME/.local/share/touchdesigner-linux/prefix" -iname 'TouchDesigner.exe' 2>/dev/null | head -1)
