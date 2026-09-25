@@ -112,6 +112,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Apply wine_ui_fixes.tox to a .toe file",
     )
     opts.add_argument(
+        "--dpi",
+        dest="dpi",
+        nargs="?",
+        const="show",
+        metavar="VALUE",
+        help=(
+            "Set TouchDesigner UI scaling (96/120/144/192 or 'auto'). "
+            "Persistent and survives updates. With no value, print the "
+            "current one. TouchDesigner ignores Wine's own DPI setting, so "
+            "this is the supported way to fix a too-small (or too-large) UI."
+        ),
+    )
+    opts.add_argument(
         "--pip",
         dest="pip_args",
         nargs=argparse.REMAINDER,

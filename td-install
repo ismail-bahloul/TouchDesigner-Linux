@@ -117,6 +117,12 @@ def main():
 
         sys.exit(run_codemeter(args.codemeter_args))
 
+    # Handle --dpi standalone mode
+    if args.dpi is not None:
+        from td_lib.dpi import run_dpi
+
+        sys.exit(run_dpi(args.dpi))
+
     # Main menu loop
     while True:
         # Show interactive menu if no action specified

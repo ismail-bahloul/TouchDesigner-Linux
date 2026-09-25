@@ -2029,6 +2029,57 @@ def test_download_integrity():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_dpi_module():
+    print("\n── UI scaling (--dpi) ──")
+    import td_lib.dpi as dpi
+    from td_lib.cli import parse_args
+
+    check("--dpi 120 parses", parse_args(["--dpi", "120"]).dpi == "120")
+    check("--dpi=120 parses", parse_args(["--dpi=120"]).dpi == "120")
+    check("bare --dpi means 'show'", parse_args(["--dpi"]).dpi == "show")
+    check("no --dpi is None", parse_args([]).dpi is None)
+
+    check("DPI presets are 96/120/144/192", dpi.DPI_PRESETS == (96, 120, 144, 192))
+    check(
+        "detected values round to a preset",
+        [dpi._preset(v) for v in (96, 115, 140, 175)] == [96, 120, 144, 192],
+    )
+    check(
+        "pin file lives inside the prefix",
+        dpi.DPI_PIN_PATH.startswith(dpi.WINE_PREFIX),
+    )
+
+    # Pinned value round-trip, isolated from the real prefix.
+    tmp = tempfile.mkdtemp(prefix="td_dpi_pin_")
+    old_pin = dpi.DPI_PIN_PATH
+    try:
+        dpi.DPI_PIN_PATH = os.path.join(tmp, ".td_dpi")
+        check("no pin by default", dpi.pinned_dpi() is None)
+        dpi._pin(144)
+        check("pinned value round-trips", dpi.pinned_dpi() == 144)
+        dpi._unpin()
+        check("unpin clears the pin", dpi.pinned_dpi() is None)
+        with open(dpi.DPI_PIN_PATH, "w") as f:
+            f.write("not-a-number\n")
+        check("a malformed pin is ignored", dpi.pinned_dpi() is None)
+    finally:
+        dpi.DPI_PIN_PATH = old_pin
+        safe_rm(tmp)
+
+    # Both launchers must honour the pin before auto-detecting.
+    repo = os.path.join(os.path.dirname(__file__), "..")
+    aur = open(os.path.join(repo, "dist", "arch", "touchdesigner-launcher.py")).read()
+    check(
+        "AUR launcher reads the .td_dpi pin",
+        ".td_dpi" in aur and "td-install --dpi" in aur,
+    )
+    shell = open(os.path.join(repo, "td_lib", "launcher.py")).read()
+    check(
+        "shell launcher reads the .td_dpi pin",
+        '.td_dpi"' in shell and "td-install --dpi" in shell,
+    )
+
+
 # =============================================================================
 #  Run
 # =============================================================================
@@ -2077,6 +2128,7 @@ def main():
     test_codemeter_module()
     test_codemeter_install_runtime()
     test_codemeter_cli_args()
+    test_dpi_module()
     test_diagnose_output()
     test_uninstall_text_selection()
     test_distro_package_lists()

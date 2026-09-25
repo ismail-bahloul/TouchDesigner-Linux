@@ -2,6 +2,39 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Added
+
+- **`td-install --dpi`** — set TouchDesigner's UI scaling (LogPixels) without
+  hunting for the undocumented `TD_DPI` variable: `td-install --dpi 120`
+  (96/120/144/192, or `auto`). The choice is stored in `prefix/.td_dpi` and
+  reapplied by the launcher, so it survives launches and updates. With no value,
+  it prints the scaling currently in effect.
+
+### Fixes
+
+- **UI scaling is no longer a discoverability trap.** TouchDesigner ignores the
+  DPI reported by Wine (`winecfg`/`winetricks` have no effect on it), and when
+  the first-launch auto-detection settled on 96 DPI the launcher said nothing —
+  leaving a tiny UI with no hint. The launcher now always reports the scaling it
+  applies on first launch together with the command to change it, and honours
+  `TD_DPI`/`.td_dpi` even on that first launch (previously `TD_DPI` was ignored
+  until the second launch).
+
+### Docs
+
+- Documented `TD_DPI` and `td-install --dpi` (README, how-it-works,
+  troubleshooting, runners, advanced-tools).
+- Corrected the stale NVIDIA note in troubleshooting: NVIDIA is auto-detected by
+  the launcher, and edits to the launcher are **not** preserved across updates
+  (it is regenerated).
+
+### Changed
+
+- Removed the unreferenced `touchdesigner-launcher.py` at the repo root, which
+  had drifted from the shipped AUR launcher (`dist/arch/touchdesigner-launcher.py`).
+
 ## [1.8.3] - 2026-09-12
 
 ### Fixes

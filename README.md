@@ -85,6 +85,15 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 2. Enter your license, close TD
 3. Launch again → fonts are fixed
 
+If the UI is too small (or too large), set the scaling explicitly — Wine's own
+DPI setting has no effect on TD:
+
+```bash
+td-install --dpi 120     # 96/120/144/192, or 'auto'
+```
+
+See [Troubleshooting](docs/troubleshooting.md#ui-scaling-too-small-or-too-large).
+
 ---
 
 ## Documentation

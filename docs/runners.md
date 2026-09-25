@@ -13,7 +13,7 @@ Based on extensive testing and source code analysis, this is the optimal configu
 | **Winetricks** | corefonts, vcrun2019, vcrun2022 | Missing fonts and MSVC runtimes |
 | **IDS patch** | Required | Zero AddressOfEntryPoint in 4 IDS DLLs |
 | **Font fix** | `wine_ui_fixes.tox` | Corrects font rendering (auto-injected by launcher) |
-| **DPI** | LogPixels auto-detect | Readability on HiDPI displays |
+| **DPI** | LogPixels auto-detect (`td-install --dpi`) | Readability on HiDPI displays |
 | **KMP_AFFINITY** | `disabled` | Fixes torch import (Intel OpenMP + Wine) |
 | **PYTHONPATH** | Set automatically | Makes pip packages visible to TD |
 

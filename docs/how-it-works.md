@@ -66,11 +66,13 @@ The bundled `Assets/lucon.ttf` is generated from DejaVu Sans Mono with its `name
 
 ## LogPixels DPI
 
-**Problem:** Wine defaults to 96 DPI, which makes TD's UI fonts very small on high-resolution displays (common on modern laptops).
+**Problem:** Wine defaults to 96 DPI, which makes TD's UI fonts very small on high-resolution displays (common on modern laptops). Changing the DPI through `winecfg` or `winetricks` has **no effect** — TouchDesigner ignores the DPI Wine reports and only reads the `LogPixels` registry value at startup, so the override has to be written into the prefix directly.
 
-**Fix:** The launcher runs `regedit` inside the Wine prefix to set `LogPixels=0x78` (120 DPI) in `HKEY_CURRENT_CONFIG\Software\Fonts`. Applied after wineboot so it persists across launches.
+**Fix:** On first launch the launcher detects the display's logical DPI (`Xft.dpi` via `xrdb`, falling back to `xdpyinfo`) and writes the matching value (`96`, `120`, `144` or `192`) to `LogPixels` in `HKEY_CURRENT_CONFIG\Software\Fonts`. It runs after `wineboot`, which would otherwise reset the value, and is skipped on later launches so the prefix keeps it.
 
-**File:** `apply_font_dpi()` in the launcher script.
+**Override:** `td-install --dpi 120` records a persistent value (survives launches and updates), or `TD_DPI=120 touchdesigner` for a one-off launch. The persistent choice is stored in `prefix/.td_dpi`, which the launcher reads before falling back to auto-detection.
+
+**File:** `apply_font_dpi()` (AUR launcher) and the `UI scaling (LogPixels)` block in the generated shell launcher (`td_lib/launcher.py`).
 
 ---
 

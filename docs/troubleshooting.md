@@ -28,6 +28,31 @@ If text is missing, tiny, or broken, apply `wine_ui_fixes.tox` manually once per
 
 The launcher also auto-patches on launch.
 
+## UI scaling too small (or too large)
+
+The UI is tiny after a fresh install. Changing the DPI in `winecfg`, `winetricks` or the Wine registry has **no effect**: TouchDesigner ignores the DPI Wine reports and only reads `LogPixels` at startup, so the value must be written into the prefix directly.
+
+Set it with `td-install --dpi` (persistent — remembered across launches and updates):
+
+```bash
+td-install --dpi 120     # 125% (most common on HiDPI laptops)
+td-install --dpi 144     # 150%
+td-install --dpi 192     # 200%
+td-install --dpi 96      # 100% (reset to default)
+td-install --dpi auto    # re-detect from the display
+td-install --dpi         # show the current value
+```
+
+Values are LogPixels: `96` = 100%, `120` = 125%, `144` = 150%, `192` = 200%. Relaunch TouchDesigner for the change to take effect.
+
+For a one-off launch instead of a persistent change, set the environment variable:
+
+```bash
+TD_DPI=120 touchdesigner
+```
+
+On first launch the launcher auto-detects the DPI from the display and prints the value it chose together with the command to change it.
+
 ## Ubuntu/Debian `:i386` dependency errors (Breaks, version mismatch)
 
 Usually caused by third-party repo skew between amd64 and i386 packages. The installer does not force downgrades. Align package versions in apt sources, then rerun the script.
@@ -46,7 +71,7 @@ Backups are automatically cleaned up after 30 days. You can also delete `~/.loca
 
 ## NVIDIA hybrid laptop uses wrong GPU
 
-Set `USE_NVIDIA_DGPU=Y` before launching, or edit `~/.local/bin/launch-touchdesigner.sh` and change `USE_NVIDIA_DGPU="N"` to `"Y"`. The setting is preserved across updates.
+NVIDIA is auto-detected on hybrid systems: the launcher runs `nvidia-smi` and exposes the Optimus offload variables itself, so no manual setting is needed when the driver works. If your dGPU is picked up but shouldn't be (or isn't, despite a working driver), run `td-install --diagnose`. Note that the launcher script is regenerated on `td-install --update`, so edits to it do not survive updates.
 
 ## Python packages fail to install or import (pip)
 

@@ -20,6 +20,9 @@ BACKUP_DIR = f"{PREFIX}/backups"
 WINE_PREFIX = os.path.expanduser("~/.local/share/touchdesigner-linux/prefix")
 DOSDEVICES = os.path.join(WINE_PREFIX, "dosdevices")
 INIT_FLAG = os.path.join(WINE_PREFIX, ".td_initialized")
+# Persisted UI-scaling choice, written by 'td-install --dpi'. When present it
+# takes precedence over the first-launch auto-detection.
+DPI_PIN = os.path.join(WINE_PREFIX, ".td_dpi")
 
 # TouchDesigner's default mono font is "Lucida Console", which corefonts does
 # not provide. See ensure_lucida_font().
@@ -212,15 +215,19 @@ def _detect_logical_dpi() -> int | None:
 def apply_font_dpi():
     """Set LogPixels DPI for readable UI fonts in TouchDesigner.
 
-    Reads the system's logical DPI (Xft.dpi) which already accounts
-    for the user's display scale factor, and applies it to Wine.
+    TouchDesigner ignores the DPI reported by Wine (winecfg / winetricks
+    registry tweaks have no effect), so LogPixels must be written into the
+    prefix directly. That is what this does.
 
-    - First launch: auto-detect and apply.
-    - Subsequent launches: skip unless TD_DPI is set.
-    - Override: TD_DPI=96, TD_DPI=144, TD_DPI=auto
+    Precedence:
+
+    - ``TD_DPI`` environment variable (session override)
+    - a value pinned by ``td-install --dpi`` (persisted, survives updates)
+    - auto-detect from Xft.dpi on the first launch only
     """
     dpi_env = os.environ.get("TD_DPI", "").strip().lower()
     is_first_launch = not os.path.isfile(INIT_FLAG)
+    from_pin = False
 
     if dpi_env == "auto":
         dpi_val = _detect_logical_dpi()
@@ -229,12 +236,23 @@ def apply_font_dpi():
         else:
             dpi_val = 96
             print("  Could not detect DPI, using LogPixels 96")
+        source = "auto-detected"
     elif dpi_env:
         try:
             dpi_val = int(dpi_env)
         except ValueError:
             print(f"  TD_DPI: invalid value '{dpi_env}', ignoring")
             return
+        source = "from TD_DPI"
+    elif os.path.isfile(DPI_PIN):
+        try:
+            with open(DPI_PIN) as f:
+                dpi_val = int(f.read().strip())
+        except (OSError, ValueError):
+            print(f"  Ignoring malformed {DPI_PIN}")
+            return
+        source = "pinned by td-install --dpi"
+        from_pin = True
     elif is_first_launch:
         dpi_val = _detect_logical_dpi()
         if dpi_val:
@@ -242,6 +260,7 @@ def apply_font_dpi():
         else:
             dpi_val = 96
             print("  Using default LogPixels 96")
+        source = "auto-detected"
     else:
         return
 
@@ -261,8 +280,9 @@ def apply_font_dpi():
     wine_run([WINE, "regedit", f"z:{reg_file}"], timeout=10)
     shutil.rmtree(tmp, True)
 
-    if dpi_env:
-        print(f"  LogPixels DPI set to {dpi_val} (from TD_DPI)")
+    print(f"  UI scaling: LogPixels={dpi_val} ({source})")
+    if is_first_launch and not dpi_env and not from_pin:
+        print("  Change it with: td-install --dpi <96|120|144|192>")
 
 
 def ensure_lucida_font():
@@ -527,6 +547,11 @@ def main():
         print("Options:")
         print("  --exe <path>     Use a specific TouchDesigner.exe")
         print("  --help, -h       Show this help")
+        print()
+        print("Environment:")
+        print("  TD_DPI=<dpi>     UI scaling override: 96, 120, 144, 192 or 'auto'")
+        print()
+        print("Run 'td-install --dpi' to change the persistent UI scaling.")
         sys.exit(0)
 
     setup_prefix()

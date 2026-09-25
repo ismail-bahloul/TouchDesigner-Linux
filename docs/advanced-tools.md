@@ -17,6 +17,22 @@ torch works under Wine without manual tweaking. See the compatibility page.
 
 ---
 
+## UI scaling (`--dpi`)
+
+TouchDesigner ignores the DPI that Wine reports, so `winecfg` and `winetricks`
+cannot fix a too-small (or too-large) UI. Set it directly:
+
+```bash
+td-install --dpi 120     # 96/120/144/192, or 'auto'
+td-install --dpi         # show the current value
+```
+
+The choice is stored in `prefix/.td_dpi` and reapplied by the launcher on every
+launch, so it survives updates. `TD_DPI=120 touchdesigner` overrides it for a
+single launch. See [Troubleshooting](troubleshooting.md#ui-scaling-too-small-or-too-large).
+
+---
+
 ## toeexpand / toecollapse
 
 TouchDesigner includes two utility programs in its `bin/` directory:

@@ -81,7 +81,11 @@ Options:
   --exe <path>      Launch a specific TouchDesigner.exe (or --exe=<path>)
   project.toe       Open a project file (file:// URLs work too)
 
-Run 'td-install --diagnose' for a full system health check.
+Environment:
+  TD_DPI=<value>    UI scaling override: 96, 120, 144, 192 or 'auto'
+
+Run 'td-install --dpi' to change the persistent scaling, or
+'td-install --diagnose' for a full system health check.
 HELP
         exit 0
         ;;
@@ -354,10 +358,12 @@ if [ -z "$NO_PATCH" ] && [ -f "$TOE_EXPAND" ] && [ -f "$TOE_COLLAPSE" ] && [ -f 
     fi
 fi
 
-# --- First-launch setup: wineboot, license, DPI ---
+# --- First-launch setup: wineboot, license ---
 INIT_FLAG="$WINE_PREFIX/.td_initialized"
+FIRST_LAUNCH=false
 
 if [ ! -f "$INIT_FLAG" ] && [ -f "$WINE_BIN/wineboot" ]; then
+FIRST_LAUNCH=true
 echo "TouchDesigner - Setting up..."
 
 if [ -d "$WINE_PREFIX/drive_c/ProgramData/Derivative" ]; then
@@ -376,6 +382,23 @@ if [ -d "$WINE_PREFIX/drive_c/ProgramData/Derivative.bak" ]; then
     rm -rf "$WINE_PREFIX/drive_c/ProgramData/Derivative.bak" 2>/dev/null || true
 fi
 
+touch "$INIT_FLAG"
+fi
+
+# --- UI scaling (LogPixels) ---
+# TouchDesigner ignores the DPI reported by Wine (setting it via winecfg or
+# winetricks has no effect) and only reads LogPixels at startup, so the launcher
+# writes it directly into the prefix. Precedence: TD_DPI env > value pinned by
+# 'td-install --dpi' > auto-detect on first launch.
+DPI_PIN="$WINE_PREFIX/.td_dpi"
+DPI_SRC=""
+if [ -n "${{TD_DPI:-}}" ]; then
+LOGPX="${{TD_DPI}}"
+DPI_SRC="from TD_DPI"
+elif [ -f "$DPI_PIN" ]; then
+LOGPX=$(cat "$DPI_PIN" 2>/dev/null)
+DPI_SRC="pinned by td-install --dpi"
+elif [ "$FIRST_LAUNCH" = true ]; then
 XFT_DPI=$(xrdb -query 2>/dev/null | grep "^Xft.dpi" | awk '{{print $2}}' | head -1)
 if [ -z "$XFT_DPI" ]; then
     XFT_DPI=$(xdpyinfo 2>/dev/null | grep "resolution" | grep -oP '[0-9]+(?=x)' | head -1)
@@ -391,16 +414,19 @@ elif [ "$XFT_DPI" -lt 168 ]; then
 else
     LOGPX=192
 fi
+DPI_SRC="auto-detected"
+else
+LOGPX=""
+fi
 
+if [ -n "$LOGPX" ]; then
 WINEPREFIX="$WINE_PREFIX" "$WINE64_BIN" reg add \
     "HKEY_CURRENT_CONFIG\\\\Software\\\\Fonts" \
-    /v LogPixels /t REG_DWORD /d $LOGPX /f >/dev/null 2>&1 || true
-
-touch "$INIT_FLAG"
-elif [ -n "${{TD_DPI:-}}" ]; then
-WINEPREFIX="$WINE_PREFIX" "$WINE64_BIN" reg add \
-    "HKEY_CURRENT_CONFIG\\\\Software\\\\Fonts" \
-    /v LogPixels /t REG_DWORD /d "${{TD_DPI}}" /f >/dev/null 2>&1 || true
+    /v LogPixels /t REG_DWORD /d "$LOGPX" /f >/dev/null 2>&1 || true
+log "UI scaling: LogPixels=$LOGPX ($DPI_SRC)"
+if [ "$FIRST_LAUNCH" = true ] && [ -z "${{TD_DPI:-}}" ] && [ ! -f "$DPI_PIN" ]; then
+    echo "  UI scaling is $LOGPX ($DPI_SRC). Change it with: td-install --dpi <96|120|144|192>"
+fi
 fi
 
 # Auto-cleanup backups older than 30 days
