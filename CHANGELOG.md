@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [1.8.4] - 2026-09-25
 
 ### Added
 
@@ -29,6 +29,13 @@ All notable changes to this project are documented here.
 - Corrected the stale NVIDIA note in troubleshooting: NVIDIA is auto-detected by
   the launcher, and edits to the launcher are **not** preserved across updates
   (it is regenerated).
+- Updated the runner docs for Wine 11: the old "Wine 11 unusable / UMU
+  unreliable" verdicts are superseded — a patched Wine 11 (DAW-GE-Proton11-6c via
+  `umu-run` + `winetricks allfonts`) launches TD, uses the GPU and renders fonts
+  correctly.
+- Updated the CodeMeter docs: `CodeMeter.exe` starts under Wine 11 (opens port
+  22350), unblocking network-shared licenses. A real license checkout against a
+  server is still unverified.
 
 ### Changed
 
