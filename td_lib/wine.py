@@ -146,6 +146,8 @@ def setup_wine_prefix(headless: bool = False) -> None:
                 env=env["env"],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=120,
             )
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -171,6 +173,8 @@ def setup_wine_prefix(headless: bool = False) -> None:
             env=env["env"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         if result.returncode != 0:
             _handle_wineboot_error(result.stdout + result.stderr)
@@ -289,6 +293,8 @@ def install_windows_deps() -> None:
             env=env["env"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         appdata = result.stdout.strip().strip("\r\n\x00")
         if not appdata or appdata == "%AppData%":
@@ -299,6 +305,8 @@ def install_windows_deps() -> None:
                 env=env["env"],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             appdata = result.stdout.strip()
             if not appdata or appdata == "%AppData%":
@@ -554,6 +562,8 @@ def install_dxvk(enable: bool = True) -> None:
             ["file", d3d11],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         if _looks_like_dxvk(result.stdout):
             # Version-aware: upgrade when the installed DLLs predate the

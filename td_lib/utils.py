@@ -116,8 +116,16 @@ def require_any_command(*cmds: str) -> str | None:
 
 
 def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
-    """Run a command and return the result. Raises on failure."""
+    """Run a command and return the result. Raises on failure.
+
+    Text captures decode leniently: external tools, Wine above all, can emit
+    bytes that are not valid UTF-8 (registry dumps, font names, binary strings),
+    which makes the strict default crash with UnicodeDecodeError.
+    """
     debug(f"Running: {' '.join(cmd)}")
+    if kwargs.get("text") or kwargs.get("universal_newlines"):
+        kwargs.setdefault("encoding", "utf-8")
+        kwargs.setdefault("errors", "replace")
     return subprocess.run(cmd, check=True, **kwargs)
 
 

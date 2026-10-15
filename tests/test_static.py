@@ -2080,6 +2080,29 @@ def test_dpi_module():
     )
 
 
+def test_subprocess_lenient_decode():
+    print("\n── Subprocess text decoding ──")
+    import subprocess
+
+    from td_lib.utils import run
+
+    # `printf` with hex escapes emits raw non-UTF-8 bytes, like Wine's
+    # registry dumps do in the wild (see issue #33).
+    bad = ["printf", "\\x90\\x91"]
+
+    # Sanity: the strict default (the old behaviour) crashes.
+    crashed = False
+    try:
+        subprocess.run(bad, capture_output=True, text=True)
+    except UnicodeDecodeError:
+        crashed = True
+    check("strict text decode raises on non-UTF-8 (sanity)", crashed)
+
+    result = run(bad, capture_output=True, text=True)
+    check("run() survives non-UTF-8 output", isinstance(result.stdout, str))
+    check("run() replaces invalid bytes", "\ufffd" in result.stdout)
+
+
 # =============================================================================
 #  Run
 # =============================================================================
@@ -2099,6 +2122,7 @@ def main():
     test_container_module()
     test_dry_run()
     test_safe_rm()
+    test_subprocess_lenient_decode()
     test_ensure_dir()
     test_require_commands()
     test_verify_checksum()

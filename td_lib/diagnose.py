@@ -242,7 +242,12 @@ def _detect_td_version(exe_path: str) -> str | None:
         return None
     try:
         result = subprocess.run(
-            [strings, exe_path], capture_output=True, text=True, timeout=10
+            [strings, exe_path],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=10,
         )
         for line in result.stdout.splitlines():
             if "TouchDesigner" in line and "20" in line:
