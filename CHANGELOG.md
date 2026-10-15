@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## [1.8.5] - 2026-10-15
+
+### Fixes
+
+- **Install no longer aborts on non-UTF-8 command output.** The installer decoded
+  subprocess output as strict UTF-8, so a single invalid byte made Python raise
+  `UnicodeDecodeError` and stopped the install ([#33]). The `wine64 reg query`
+  on the Wine `Fonts` key, run right after winetricks installs `corefonts`, can
+  dump a value with a non-UTF-8 byte, which aborted the install at step 4. Text
+  captures now decode leniently (`errors="replace"`) in the shared `run()`
+  helper, in the direct Wine/binary calls on the install path (`wineboot`,
+  `%AppData%`, `file`), and in `--diagnose` (which ran `strings` on
+  `TouchDesigner.exe` with strict decoding).
+
+[#33]: https://github.com/ismail-bahloul/TouchDesigner-Linux/issues/33
+
 ## [1.8.4] - 2026-09-25
 
 ### Added
