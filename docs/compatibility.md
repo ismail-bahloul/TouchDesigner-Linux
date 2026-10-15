@@ -10,6 +10,7 @@
 | TDAbleton | ✅ | Confirmed working |
 | TDBitwig | ✅ | Confirmed working |
 | Video Device In | ⚠️ | USB Webcams work on first init, but Wine "locks" the device. Replug or TD restart required to reset |
+| Virtual webcam (SpoutCam) | ❌ | Windows virtual cameras like SpoutCam are not exposed to the embedded Chromium that browser-based plugins (e.g. MediaPipe) use to grab video, so they never show up in the camera list. Wine has no equivalent for a DirectShow virtual-camera filter. Workaround: a Linux virtual camera (NDI out of TD into a native receiver writing to `v4l2loopback`) |
 | NVIDIA TOP | ❌ | Background, Flow and Denoise fail to init CUDA/TensorRT in this environment |
 | Engine COMP | ❌ | The background process may start (PID assigned), but the IPC bridge fails to initialize. Workaround: move your logic into a Base or Container COMP to run within the main process |
 | Video Stream Out TOP | ❌ | Requires NVENC (`nvEncodeAPI64.dll`) which is not available under Wine. Use Spout2PW + OBS, NDI, or FFmpeg instead |

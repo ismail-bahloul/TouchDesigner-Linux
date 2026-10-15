@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Docs
+
+- Documented a known limitation: Windows virtual cameras (SpoutCam) never appear
+  in the camera list of browser-based plugins (MediaPipe), because they are not
+  exposed to TouchDesigner's embedded Chromium under Wine (issue #30).
+- Corrected two stale roadmap entries: NVIDIA/Optimus switching is auto-detected
+  by the launcher (#7), and the persistent DPI override is now `td-install --dpi`
+  (#16).
+
 ## [1.8.5] - 2026-10-15
 
 ### Fixes

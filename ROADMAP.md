@@ -78,7 +78,7 @@ Partially done — **multi-version side-by-side**, version picker on install, ve
 
 ### 7. Auto-detect NVIDIA + Optimus switching
 
-Currently requires `USE_NVIDIA_DGPU=Y` manually. Could detect NVIDIA + Intel/AMD hybrid setups automatically and offer config on first launch.
+✅ **Mostly done.** The launcher auto-detects a working NVIDIA driver (`nvidia-smi`) on hybrid systems and exposes the Optimus offload variables itself, gated on `nvidia-smi` actually succeeding (forcing the offload vars when the driver doesn't work breaks GLX and TD won't start). `USE_NVIDIA_DGPU` no longer exists. Still missing: a manual override to force NVIDIA on or off when auto-detection guesses wrong.
 
 ### 8. Distribution packages (Flatpak)
 
@@ -120,7 +120,7 @@ Centralise user preferences in `~/.config/touchdesigner-linux/config.toml`: defa
 
 ### 16. Auto-detect display DPI
 
-✅ **Done!** (v1.5) The launcher now reads `Xft.dpi` from the display server on first launch and applies the correct LogPixels value to Wine (96/120/144/192). No more hardcoded 120 DPI forced on every launch. Override with `TD_DPI=96 touchdesigner`.
+✅ **Done!** The launcher reads `Xft.dpi` from the display server on first launch and applies the correct LogPixels value to Wine (96/120/144/192). No more hardcoded 120 DPI forced on every launch. Override persistently with `td-install --dpi 120` (or `TD_DPI=120 touchdesigner` for a single launch); see [docs/how-it-works.md](docs/how-it-works.md).
 
 ### 17. License preservation on install/reinstall
 
