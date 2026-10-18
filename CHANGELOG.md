@@ -9,6 +9,10 @@ All notable changes to this project are documented here.
 - Documented a known limitation: Windows virtual cameras (SpoutCam) never appear
   in the camera list of browser-based plugins (MediaPipe), because they are not
   exposed to TouchDesigner's embedded Chromium under Wine (issue #30).
+- Documented the missing-text case for palette components added after launch
+  (e.g. kantanMapper): the font fix runs at project start and on **Fix Now**, so
+  newly added components need another **Fix Now** (or a reopen), or their Text
+  TOPs must be switched to `Scalable` manually (issue #34).
 - Corrected two stale roadmap entries: NVIDIA/Optimus switching is auto-detected
   by the launcher (#7), and the persistent DPI override is now `td-install --dpi`
   (#16).
