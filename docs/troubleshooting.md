@@ -28,6 +28,17 @@ If text is missing, tiny, or broken, apply `wine_ui_fixes.tox` manually once per
 
 The launcher also auto-patches on launch.
 
+### Text missing in a palette component added after launch
+
+The font fix runs at project start and when you pulse **Fix Now** inside the
+`wine_ui_fixes` component. A component dragged in from the palette afterwards
+(for example kantanMapper) is not converted until you pulse **Fix Now** again, or
+save and reopen the project.
+
+If the text is still blank after that, find the Text TOP in the component and set
+its **Display Method** to `Scalable` manually. Wine's DirectWrite/Direct2D
+support is incomplete, and `Automatic`/`Bitmap` can render blank.
+
 ## UI scaling too small (or too large)
 
 The UI is tiny after a fresh install. Changing the DPI in `winecfg`, `winetricks` or the Wine registry has **no effect**: TouchDesigner ignores the DPI Wine reports and only reads `LogPixels` at startup, so the value must be written into the prefix directly.
