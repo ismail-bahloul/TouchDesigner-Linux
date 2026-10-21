@@ -86,18 +86,35 @@ Put the dongle on any machine on your LAN and enable the network server:
 - **Linux server (native daemon):** install the `codemeter` package, plug the
   dongle in, and set `IsNetworkServer=1` in
   `/etc/wibu/CodeMeter/Server.ini`, then restart the `codemeter` service.
-- **Containerized server (validated):** run Wibu's official
-  [`docker-codemeter`](https://github.com/wibu-systems/docker-codemeter)
-  image with the network server enabled, a good fit for the
-  containerized/distrobox plans:
+- **Containerized server:** Wibu's official
+  [`docker-codemeter`](https://github.com/wibu-systems/docker-codemeter) image
+  works, but two things bit us while testing a USB dongle (#29):
+  - **Pin `v1.0.2`.** Later releases dropped the `libusb` dependency, so an
+    HID-mode dongle passed with `--device=/dev/bus/usb/...` is no longer
+    visible to the container (`Container Type HID Disabled while libusb not
+    available`).
+  - **Mount the config directory, not a single file.** When only
+    `Server.ini` is bind-mounted, the image generates one with
+    `EnabledContainerTypes=10`, which disables HID/MSD containers and makes
+    the dongle invisible. With the whole directory mounted, the container
+    writes a complete config (full bitmask) on startup.
+
   ```bash
-  # Server.ini in /etc/wibu/CodeMeter/Server.ini inside the container:
-  printf '[Global]\nIsNetworkServer=1\n' > Server.ini
+  lsusb | grep WIBU            # get the bus/device numbers
+  # first run: let the container generate a complete config
   docker run -d --name cm-server --network host \
-      -v "$PWD/Server.ini:/etc/wibu/CodeMeter/Server.ini" \
-      wibusystems/codemeter
-  # verify:  ss -ltn | grep 22350   → "Server ready" in the logs
+      --device=/dev/bus/usb/001/004 \
+      -v "$PWD/codemeter-data:/etc/wibu/CodeMeter" \
+      wibusystems/codemeter:v1.0.2
+  # then set IsNetworkServer=1 in codemeter-data/Server.ini
+  docker restart cm-server
+  # verify:  ss -ltn | grep 22350
   ```
+
+  Passing a dongle into the container is the awkward part: Wibu's own FAQ
+  recommends running the license server outside Docker and using the
+  container as a client. A native daemon on the host, or in a distrobox
+  container, is the simpler route.
 - **Firewall:** allow UDP/TCP **22350** on the server.
 
 ### Diagnostics, installation & configuration (working)
@@ -110,6 +127,18 @@ td-install --codemeter start             # start CodeMeter.exe now
 td-install --codemeter add-server <ip>   # add a license server to the search list
 td-install --codemeter remove-server <ip>
 td-install --codemeter servers           # show the current search list
+```
+
+These commands act on the project prefix
+(`~/.local/share/touchdesigner-linux/prefix`) by default. Export
+`WINEPREFIX` to target another one, and `WINELOADER` if that prefix needs a
+different Wine binary. This is how you drive the Wine 11 / UMU prefix where
+`CodeMeter.exe` actually starts:
+
+```bash
+WINEPREFIX=/path/to/umu-prefix \
+WINELOADER=/path/to/proton/files/bin/wine64 \
+  td-install --codemeter status
 ```
 
 Behind the scenes:

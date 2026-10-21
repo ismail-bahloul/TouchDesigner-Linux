@@ -4,8 +4,18 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- `td-install --codemeter` now honors `WINEPREFIX` (and `WINELOADER` for the
+  Wine binary), so the commands can target another prefix, such as the Wine
+  11 / UMU one where the CodeMeter service actually starts (#29).
+
 ### Docs
 
+- Documented two traps with Wibu's official `docker-codemeter` image: pin
+  `v1.0.2` (later releases drop `libusb`, so HID dongles can't be passed
+  through), and mount the whole `CodeMeter` config directory so `Server.ini`
+  gets a complete `EnabledContainerTypes` bitmask (#29).
 - Documented a known limitation: Windows virtual cameras (SpoutCam) never appear
   in the camera list of browser-based plugins (MediaPipe), because they are not
   exposed to TouchDesigner's embedded Chromium under Wine (issue #30).

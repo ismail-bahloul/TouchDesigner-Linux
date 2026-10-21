@@ -57,9 +57,29 @@ _SERVER_LIST_KEY = (
 CODEMETER_PORT = 22350
 
 
+def _prefix() -> str:
+    """Return the Wine prefix the CodeMeter commands act on.
+
+    Defaults to the project prefix (``TD_BASE_DIR/prefix``). ``WINEPREFIX``
+    overrides it, which is how the same commands can target another prefix,
+    such as a Wine 11 / UMU one where the CodeMeter service actually starts.
+    """
+    from .wine import WINE_PREFIX
+
+    return os.environ.get("WINEPREFIX") or WINE_PREFIX
+
+
 def _find_wine64() -> str | None:
-    """Find the wine64 binary (Soda runner, AUR, or system PATH)."""
+    """Find the wine64 binary (Soda runner, AUR, or system PATH).
+
+    ``WINELOADER`` takes precedence, so a foreign prefix can be driven with
+    the Wine build that owns it (e.g. a Proton/UMU ``files/bin/wine64``).
+    """
     from .wine import RUNNER_DIR
+
+    loader = os.environ.get("WINELOADER")
+    if loader and os.path.isfile(loader):
+        return loader
 
     candidates = [
         os.path.join(RUNNER_DIR, "bin", "wine64"),
@@ -81,12 +101,10 @@ def _wine_env() -> dict:
         )
         raise SystemExit(1)
 
-    from .wine import WINE_PREFIX
-
     env = os.environ.copy()
     env.update(
         {
-            "WINEPREFIX": WINE_PREFIX,
+            "WINEPREFIX": _prefix(),
             "WINEARCH": "win64",
             "WINEDEBUG": "fixme-all,warn-all",
             "PATH": f"{os.path.dirname(wine64)}:{env.get('PATH', '')}",
@@ -100,9 +118,7 @@ def _wine_env() -> dict:
 
 def find_runtime_dir(prefix: str | None = None) -> str | None:
     """Return the CodeMeter install directory inside the prefix, or None."""
-    from .wine import WINE_PREFIX
-
-    prefix = prefix or WINE_PREFIX
+    prefix = prefix or _prefix()
     drive_c = os.path.join(prefix, "drive_c")
     for sub in _RUNTIME_DIRS:
         candidate = os.path.join(drive_c, sub)
@@ -160,9 +176,7 @@ def install_runtime(installer_path: str) -> bool:
         error(f"Installer not found: {installer_path}")
         return False
 
-    from .wine import WINE_PREFIX
-
-    drive_c = os.path.join(WINE_PREFIX, "drive_c")
+    drive_c = os.path.join(_prefix(), "drive_c")
     if not os.path.isdir(drive_c):
         error("No Wine prefix found — install TouchDesigner first (run 'td-install').")
         return False
@@ -340,11 +354,9 @@ def remove_runtime() -> bool:
     (e.g. a partial install or a leftover), TouchDesigner detects CodeMeter
     at startup and can hang waiting for the absent service.
     """
-    from .wine import WINE_PREFIX
-
     stop_runtime()
 
-    drive_c = os.path.join(WINE_PREFIX, "drive_c")
+    drive_c = os.path.join(_prefix(), "drive_c")
     removed = False
 
     for sub in ("Program Files (x86)", "Program Files"):
@@ -697,6 +709,7 @@ def status() -> int:
         info("See docs/codemeter.md for the current status of the network path.")
         return 0
 
+    info(f"Prefix:      {_prefix()}")
     info(f"Runtime:     {exe}")
     info(f"cmu tool:    {cmu32 or '(not found)'}")
     info(f"Running:     {'yes' if is_running() else 'no'}")
