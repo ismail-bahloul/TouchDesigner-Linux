@@ -54,7 +54,7 @@ export GAMEID=0
 # 1. install TouchDesigner (official installer)
 umu-run TouchDesigner.2025.33230.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 
-# 2. fonts (this is what replaces the wine_ui_fixes.tox workaround)
+# 2. fonts (needed for text to render at all; wine_ui_fixes.tox is still needed, see Caveats)
 umu-run winetricks allfonts
 
 # 3. launch
@@ -68,7 +68,7 @@ umu-run "$WINEPREFIX/pfx/drive_c/Program Files/Derivative/TouchDesigner/bin/Touc
 | Splash screen | Passed |
 | Main window | Opens, license accepted |
 | GPU | Used, `nvidia-smi` shows TouchDesigner.exe with ~755 MiB VRAM, ~35% GPU-Util |
-| Fonts | Render correctly, **no `wine_ui_fixes.tox` needed** |
+| Fonts | Render, but descenders (p, g, j, y) are clipped in Bitmap-mode UI text, e.g. "Tem_o" in the timeline bar. `wine_ui_fixes.tox` fixes it |
 | CPU | ~60-75% steady (render thread, not software rendering) |
 
 ### Caveats
@@ -80,7 +80,12 @@ umu-run "$WINEPREFIX/pfx/drive_c/Program Files/Derivative/TouchDesigner/bin/Touc
   nothing about the Mutter / window-mapping path used by the direct-binary recipes below.
 - The fork targets DAWs and carries unrelated patches (FL Studio, Native Instruments). Prefer
   upstream GE-Proton once the TouchDesigner patches are merged.
-- Still pending: NVIDIA CUDA TOPs and video-decoding hardware acceleration.
+- `wine_ui_fixes.tox` is still needed. Text TOPs in TD's own UI that use the Bitmap display
+  method lose the bottom of their glyphs; switching them to Scalable (what the `.tox` does)
+  fixes it. Checked with before/after screenshots on TD 2025.33230 (2026-11).
+- NVIDIA TOPs: Background, Denoise, Upscaler, RTX Video and Video Stream In/Out work with a
+  patched nvcuda and the NVIDIA Video Effects SDK runtime (see issue #31). Flow, Flex and
+  Web Render still don't.
 
 
 ## Soda build recipe (the "secret sauce")
