@@ -349,7 +349,7 @@ def _show_menu(args):
 
 def run_patch_toe(file_path: str) -> None:
     """Apply wine_ui_fixes.tox to a single .toe file (--patch-toe)."""
-    from td_lib.utils import ensure_dir, error, info
+    from td_lib.utils import TD_BASE_DIR, ensure_dir, error, info
     from td_lib.wine import RUNNER_DIR, WINE_PREFIX
 
     file_path = os.path.expanduser(file_path)
@@ -453,7 +453,12 @@ def run_patch_toe(file_path: str) -> None:
                             shutil.rmtree(dst, ignore_errors=True)
                         else:
                             os.remove(dst)
-                    shutil.copytree(src, dst, dirs_exist_ok=True)
+                    # The expanded .tox holds files (wine_ui_fixes.n/.parm/...)
+                    # next to the wine_ui_fixes/ directory
+                    if os.path.isdir(src):
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(src, dst)
 
             # Add fix entries to .toc (drop stale ones from a previous
             # injection first, else duplicate entries corrupt the collapse)
