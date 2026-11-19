@@ -11,11 +11,12 @@
 | TDBitwig | ✅ | Confirmed working |
 | Video Device In | ⚠️ | USB Webcams work on first init, but Wine "locks" the device. Replug or TD restart required to reset |
 | Virtual webcam (SpoutCam) | ❌ | Windows virtual cameras like SpoutCam are not exposed to the embedded Chromium that browser-based plugins (e.g. MediaPipe) use to grab video, so they never show up in the camera list. Wine has no equivalent for a DirectShow virtual-camera filter. Workaround: a Linux virtual camera (NDI out of TD into a native receiver writing to `v4l2loopback`) |
-| NVIDIA TOP | ❌ | Background, Flow and Denoise fail to init CUDA/TensorRT in this environment |
+| NVIDIA TOPs (Background, Denoise, Upscaler, RTX Video) | ⚠️ | ❌ on the default Soda runner: CUDA/TensorRT fail to initialise. ✅ with the experimental `--runner proton11` (patched nvcuda + NVIDIA Video Effects SDK), see [docs/runners.md](runners.md#experimental-td-install---runner-proton11) |
+| NVIDIA Flow / Flex TOPs | ❌ | Flow: Wine lacks the keyed mutex for Vulkan-exported memory. Flex: needs a private NVAPI function that dxvk-nvapi does not implement. Same on both runners |
 | Engine COMP | ❌ | The background process may start (PID assigned), but the IPC bridge fails to initialize. Workaround: move your logic into a Base or Container COMP to run within the main process |
-| Video Stream Out TOP | ❌ | Requires NVENC (`nvEncodeAPI64.dll`) which is not available under Wine. Use Spout2PW + OBS, NDI, or FFmpeg instead |
-| Video Stream In TOP | ❌ | Requires NVIDIA's hardware decoder, not supported under Wine |
-| WebRender TOP | ❌ | Web pages do not render (no errors thrown). Known upstream limitation with Chromium-based components in Wine environments |
+| Video Stream Out TOP | ⚠️ | ❌ on Soda: needs NVENC (`nvEncodeAPI64.dll`), which is not available there. Use Spout2PW + OBS, NDI, or FFmpeg instead. ✅ on `--runner proton11` (NVENC through the nvidia-libs bridge; encoding is limited by the non-commercial license) |
+| Video Stream In TOP | ⚠️ | ❌ on Soda: needs NVIDIA's hardware decoder. ✅ on `--runner proton11` |
+| WebRender TOP | ❌ | Web pages do not render (no errors thrown). Known upstream limitation with Chromium-based components in Wine environments. On `--runner proton11` TouchDesigner never even starts its Chromium helper |
 | External installs / integrations | ❓ | Third-party installs, Kinect, extra plugins, and advanced external production pipelines still need broader testing |
 | Python packages (pip) | ⚠️ | Works for pure-Python packages (numpy, opencv, requests). Native extensions (.pyd) may fail under Wine — see troubleshooting |
 | PyTorch (torch, CPU-only) | ⚠️ | Works with `KMP_AFFINITY=disabled` (auto-set in launcher). Tested 2.13.0+cpu on Wine TkG — see [issue #20](https://github.com/ismail-bahloul/TouchDesigner-Linux/issues/20) |

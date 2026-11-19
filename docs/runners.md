@@ -88,6 +88,83 @@ umu-run "$WINEPREFIX/pfx/drive_c/Program Files/Derivative/TouchDesigner/bin/Touc
   Web Render still don't.
 
 
+## Experimental: `td-install --runner proton11`
+
+The DAW-GE-Proton11-6c recipe above, packaged in the installer. Soda 9 stays the default;
+this is opt-in, for the NVIDIA CUDA TOPs and the CodeMeter service.
+
+```bash
+td-install --runner proton11                  # asks before downloading NVIDIA's Video Effects SDK
+td-install --runner proton11 --nvidia-vfx     # downloads it without asking (~770 MB)
+```
+
+Or through the one-liner: `curl -sSL .../install.sh | bash -s -- --runner proton11`.
+
+**Needs** [umu-launcher](https://github.com/Open-Wine-Components/umu-launcher) (`umu-run` in
+`PATH`: `sudo pacman -S umu-launcher` on Arch, `sudo dnf install umu-launcher` on Fedora). The
+first run also downloads the Steam Linux Runtime (a few hundred MB). Expect about **13 GB** on
+disk (Soda: 3-5 GB).
+
+### What it sets up
+
+- DAW-GE-Proton11-6c from [KitsuneDev's fork](https://github.com/KitsuneDev/daw-proton-ge),
+  checksum pinned, run through umu-launcher.
+- A fresh prefix, fonts (`winetricks allfonts`) and the Lucida Console mono font. No DXVK or
+  vcrun: Proton manages its own DXVK and re-copies it on every launch.
+- On an NVIDIA GPU: a **patched nvcuda** (the CUDA bridge), see [`patches/`](../patches/README.md),
+  and the NVAPI / nvenc / nvml bridges bundled with the runner. For a hybrid laptop, DXVK and
+  vkd3d are limited to the NVIDIA GPU, otherwise Direct3D 12 code can land on the iGPU.
+- Optionally NVIDIA's **Video Effects SDK** runtime (0.7.6), downloaded from NVIDIA for your GPU
+  generation (RTX 20 / 30 / 40 / 50 series, checksum pinned). The NVIDIA Background, Denoise and
+  Upscaler TOPs need it; it is not a Wine thing, Windows needs it too.
+- Small relay scripts at `runner/bin/{wine64,wine,wineboot,wineserver}` that forward to
+  `umu-run`, so `--pip`, `--dpi`, `--codemeter` and the `.toe` font patching keep working
+  unchanged.
+- `.runner` (which runner this install uses), `proton11.env` (managed, rewritten by
+  `td-install --update`) and `proton11.user.env` (yours, never overwritten: put `PROTON_LOG=1`
+  and the like there). The launcher reads them.
+
+### What was verified
+
+Clean install made by the installer, then the generated launcher, 2026-11-19: CachyOS, KDE
+Wayland, RTX 3070 Laptop + AMD iGPU, driver 620.70, TouchDesigner 2025.33230.
+
+| Works | Notes |
+|-------|-------|
+| NVIDIA Background, Denoise, Upscaler TOPs | with the patched nvcuda and the Video Effects SDK |
+| NDI Out to NDI In, Video Device In, Spout Out, Python (numpy, cv2, requests, HTTPS) | |
+| Font fix (`wine_ui_fixes.tox`) | still needed, the launcher injects it as usual |
+| Projects stored outside `$HOME` | tried with `/var/tmp`. If TouchDesigner cannot see files on another mount, add `export PRESSURE_VESSEL_FILESYSTEMS_RW=/your/path` to `proton11.user.env` (not tried) |
+
+NVIDIA RTX Video and Video Stream In/Out were checked by hand on the same runner and nvcuda,
+but not re-run on the installer-made install. Video Stream Out encoding is also limited by the
+non-commercial TouchDesigner license, which has nothing to do with Wine.
+
+| Does not work | Why |
+|---------------|-----|
+| NVIDIA Flow TOP | Wine does not create the keyed mutex for memory *exported* by Vulkan, so TouchDesigner's GPU submit fails ("NVIDIA Driver Error"). Needs a patch in Wine's `win32u` |
+| NVIDIA Flex TOP / Flex Solver COMP | Flex calls a private NVAPI function (id `0x07B86467`) that dxvk-nvapi does not have, and crashes on the null result |
+| Web Render TOP | TouchDesigner never starts its Chromium helper |
+
+### Trade-offs
+
+- **Slower launch.** Every Wine call goes through umu's container, about 3.3 s each. Opening an
+  already patched project takes about 23 s from the launcher to a loaded TouchDesigner, against
+  15 s for the bare launch (`touchdesigner --no-patch`). Most of the difference is the font-fix
+  check. A first launch, or a project that is not patched yet, costs more.
+- **A runner cannot be switched on an existing install.** `td-install` refuses, because a Wine 9
+  prefix upgraded in place by Proton 11 (or the reverse) breaks in ways that are hard to debug.
+  Run `td-install --uninstall` first (this also removes the TouchDesigner license activation),
+  or install into another directory: `TD_BASE_DIR=~/td-proton td-install --runner proton11`.
+- **The license is tied to the prefix.** A new prefix has a new Wine machine id, so TouchDesigner
+  asks for a key again, the same as after any reinstall (issue #26).
+- **Pinned to one Proton build.** The patched nvcuda is only valid for DAW-GE-Proton11-6c; see
+  [`patches/README.md`](../patches/README.md) for why and how to rebuild it. The fork has not
+  had a release since 2026-09-13; once the DWrite fix reaches upstream GE-Proton, that is the
+  better target.
+- `td-install --codemeter` has not been tried on this runner yet. The CodeMeter service itself
+  starts on it (issue #31).
+
 ## Soda build recipe (the "secret sauce")
 
 Soda 9.0-1 is built using **wine-tkg** (Frogging-Family) with this configuration:

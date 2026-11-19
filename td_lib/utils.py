@@ -322,9 +322,12 @@ def verify_checksum(file_path: str, expected_hash: str) -> bool:
         return True
 
     try:
+        digest = hashlib.sha256()
         with open(file_path, "rb") as f:
-            actual = hashlib.sha256(f.read()).hexdigest()
-        return actual.lower() == expected_hash.lower()
+            # Chunked: runner / SDK archives are hundreds of MB
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest().lower() == expected_hash.lower()
     except (IOError, OSError):
         return False
 

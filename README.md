@@ -50,6 +50,14 @@ creates the `touchdesigner-linux` container for you. See
 [docs/container.md](docs/container.md) for how it works, GPU notes and
 limitations.
 
+**Experimental Proton runner** (NVIDIA CUDA TOPs, CodeMeter service):
+```bash
+curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --runner proton11
+```
+Needs [umu-launcher](https://github.com/Open-Wine-Components/umu-launcher) and about 13 GB of
+disk. Soda stays the default; see [docs/runners.md](docs/runners.md#experimental-td-install---runner-proton11)
+for what works and what doesn't.
+
 ---
 
 ## Update & Uninstall

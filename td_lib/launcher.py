@@ -56,6 +56,9 @@ fi
 {baked_base}TD_BASE_DIR="${{TD_BASE_DIR:-${{HOME}}/.local/share/touchdesigner-linux}}"
 RUNNER_DIR="${{TD_BASE_DIR%/}}/runner"
 WINE_PREFIX="${{TD_BASE_DIR%/}}/prefix"
+# Runner kind written by td-install: "soda" (default) or "proton11" (--runner proton11)
+RUNNER_KIND="soda"
+[ -f "${{TD_BASE_DIR%/}}/.runner" ] && RUNNER_KIND="$(cat "${{TD_BASE_DIR%/}}/.runner" 2>/dev/null)"
 # ── CLI: flags are parsed before anything else; -h/-v/--list answer
 # without launching TD, unknown flags are rejected instead of being
 # treated as a .toe path ──
@@ -152,6 +155,20 @@ notify_warn() {{
     echo "  !! $*" >&2
     command -v notify-send >/dev/null 2>&1 && notify-send -a "TouchDesigner" -u normal -i "TouchDesigner" "TouchDesigner" "$*" 2>/dev/null || true
 }}
+
+# --- Proton runner (td-install --runner proton11): Wine goes through umu-run.
+# runner/bin/wine64 is a relay to umu-run, so the rest of this script is unchanged.
+if [ "$RUNNER_KIND" = "proton11" ]; then
+    if ! command -v umu-run >/dev/null 2>&1; then
+        notify_fail "umu-run not found. The Proton runner needs umu-launcher (run 'td-install --diagnose')."
+        exit 1
+    fi
+    export PROTONPATH="$RUNNER_DIR"
+    export WINEPREFIX="$WINE_PREFIX"
+    export GAMEID="${{GAMEID:-umu-default}}"
+    [ -f "${{TD_BASE_DIR%/}}/proton11.env" ] && . "${{TD_BASE_DIR%/}}/proton11.env"
+    [ -f "${{TD_BASE_DIR%/}}/proton11.user.env" ] && . "${{TD_BASE_DIR%/}}/proton11.user.env"
+fi
 
 # --- Find wine64 (support both Soda runner and AUR paths) ---
 find_wine64() {{
@@ -332,9 +349,17 @@ if [ -z "$NO_PATCH" ] && [ -f "$TOE_EXPAND" ] && [ -f "$TOE_COLLAPSE" ] && [ -f 
                 FIX_FP="$(fp_tree "$FIX_COPY.dir/wine_ui_fixes")"
             fi
 
-            while IFS= read -r -d '' NP_TOE; do
-                check_and_patch_toe "$NP_TOE"
-            done < <(find "$WINE_PREFIX/drive_c" -type f -iname 'NewProject.toe' -print0 2>/dev/null || true)
+            # Every Wine call costs ~3 s through umu on the Proton runner, and the
+            # NewProject.toe files are already patched by td-install (install and
+            # --update). So there, only re-check them when the fix itself changed.
+            NP_STAMP="${{TD_BASE_DIR%/}}/.newproject_fix_stamp"
+            NP_KEY="$(md5sum "$FIX_FILE" 2>/dev/null | cut -d' ' -f1)"
+            if [ "$RUNNER_KIND" != "proton11" ] || [ -z "$NP_KEY" ] || [ "$(cat "$NP_STAMP" 2>/dev/null)" != "$NP_KEY" ]; then
+                while IFS= read -r -d '' NP_TOE; do
+                    check_and_patch_toe "$NP_TOE"
+                done < <(find "$WINE_PREFIX/drive_c" -type f -iname 'NewProject.toe' -print0 2>/dev/null || true)
+                [ "$RUNNER_KIND" = "proton11" ] && [ -n "$NP_KEY" ] && echo "$NP_KEY" > "$NP_STAMP"
+            fi
 
             PREF_FILE="$WINE_PREFIX/drive_c/users/steamuser/AppData/Local/Derivative/TouchDesigner099/pref.txt"
             if [ -f "$PREF_FILE" ]; then

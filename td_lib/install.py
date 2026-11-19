@@ -36,6 +36,16 @@ def run_install(args):
     # Check prerequisites
     _check_prerequisites()
 
+    # A runner cannot be switched on an existing prefix; fail before downloading anything
+    from .runner import RUNNER_PROTON11, ensure_runner_compatible, require_umu
+
+    runner = getattr(args, "runner", "soda")
+    ensure_runner_compatible(runner)
+    if runner == RUNNER_PROTON11 and not args.dry_run:
+        require_umu()
+        info("Runner: DAW-GE-Proton11 via umu-launcher (experimental)")
+        info("Credit: KitsuneDev/daw-proton-ge\n")
+
     # Step 1: System packages
     from .distro import detect_distro, install_packages
 
@@ -55,7 +65,12 @@ def run_install(args):
 
     info("Step 2/6: Setting up compatibility runtime...")
     if not args.dry_run:
-        download_soda_runner()
+        if runner == RUNNER_PROTON11:
+            from .runner import download_proton11_runner
+
+            download_proton11_runner()
+        else:
+            download_soda_runner()
     print()
 
     # Step 3: Wine prefix
@@ -63,7 +78,12 @@ def run_install(args):
 
     info("Step 3/6: Setting up compatibility environment...")
     if not args.dry_run:
-        setup_wine_prefix(headless=args.headless)
+        if runner == RUNNER_PROTON11:
+            from .runner import setup_proton_prefix
+
+            setup_proton_prefix()
+        else:
+            setup_wine_prefix(headless=args.headless)
     print()
 
     # Step 4: Windows dependencies (winetricks, DXVK)
@@ -78,11 +98,17 @@ def run_install(args):
 
     if not args.dry_run:
         info("Step 4/6: Installing compatibility libraries...")
-        ensure_dir(WINETRICKS_TMP)
-        download_winetricks()
-        install_windows_deps()
-        install_lucida_console()
-        install_dxvk(enable=args.dxvk)
+        if runner == RUNNER_PROTON11:
+            from .runner import install_proton_fonts
+
+            install_proton_fonts()
+            install_lucida_console()
+        else:
+            ensure_dir(WINETRICKS_TMP)
+            download_winetricks()
+            install_windows_deps()
+            install_lucida_console()
+            install_dxvk(enable=args.dxvk)
     print()
 
     # Step 5: Download TouchDesigner
@@ -159,6 +185,16 @@ def run_install(args):
     if not args.dry_run:
         patch_toe_projects_in_drive()
     print()
+
+    # Step 7c: NVIDIA TOP support (Proton runner only)
+    if runner == RUNNER_PROTON11 and not args.dry_run:
+        from .runner import install_nvidia_extras
+
+        install_nvidia_extras(
+            vfx=True if getattr(args, "nvidia_vfx", False) else None,
+            interactive=not (args.non_interactive or args.headless),
+        )
+        print()
 
     # Step 8: Launcher script + desktop integration
     from .launcher import LAUNCHER_PATH, create_launcher_script

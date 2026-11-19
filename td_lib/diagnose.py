@@ -182,8 +182,14 @@ def _check_wine():
     runner_dir = os.path.join(TD_BASE_DIR, "runner")
     prefix_dir = os.path.join(TD_BASE_DIR, "prefix")
 
+    from .runner import describe_runner
+
     wine64 = os.path.join(runner_dir, "bin", "wine64")
-    if os.path.isfile(wine64):
+    proton_desc = describe_runner()
+    if proton_desc:
+        # wine64 is a relay to umu-run here: its --version would report umu, not Wine
+        print(f"  Runner: {proton_desc}")
+    elif os.path.isfile(wine64):
         try:
             result = subprocess.run(
                 [wine64, "--version"], capture_output=True, text=True, timeout=5
