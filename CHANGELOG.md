@@ -6,9 +6,35 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- **Experimental `td-install --runner proton11`.** Installs DAW-GE-Proton11-6c
+  (KitsuneDev's GE-Proton fork, checksum pinned) run through umu-launcher, instead
+  of Soda Wine 9. It is the runner where the NVIDIA CUDA TOPs (Background, Denoise,
+  Upscaler, RTX Video, Video Stream In/Out) and the CodeMeter service work. On an
+  NVIDIA GPU it also installs a patched nvcuda (Wine 11 shared-handle fix, source
+  in `patches/`), limits DXVK/vkd3d to the NVIDIA GPU on hybrid laptops, and can
+  download NVIDIA's Video Effects SDK (`--nvidia-vfx`, ~770 MB, per GPU generation,
+  checksum pinned). Soda stays the default, and a runner cannot be switched on an
+  existing install. Details, limits (Flow, Flex and Web Render still fail, launches
+  are slower) and measurements in `docs/runners.md`. Thanks to KitsuneDev for the
+  fork and the DWrite fix, and to SveSop for nvcuda (#31).
+- `patches/`: the nvcuda patch, the tool that reads a wineserver request number out
+  of a Wine build, and the rebuild recipe.
 - `td-install --codemeter` now honors `WINEPREFIX` (and `WINELOADER` for the
   Wine binary), so the commands can target another prefix, such as the Wine
   11 / UMU one where the CodeMeter service actually starts (#29).
+
+### Fixes
+
+- `td-install --patch-toe` crashed with `NameError: TD_BASE_DIR` before doing
+  anything, and, once past that, with `NotADirectoryError`: the current
+  `wine_ui_fixes.tox` expands to files as well as a folder, and the merge called
+  `copytree` on the files. Both fixed. The launcher's own `.toe` patching was not
+  affected.
+
+### Changed
+
+- Checksums are verified in 1 MB chunks instead of reading the whole file into
+  memory (the new runner and SDK archives are several hundred MB).
 
 ### Docs
 

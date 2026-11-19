@@ -13,6 +13,10 @@ def run_update(args) -> None:
     print_banner(__version__)
     info("Starting TouchDesigner update...\n")
 
+    from .runner import RUNNER_PROTON11, get_runner_kind, update_proton_runner
+
+    proton = get_runner_kind() == RUNNER_PROTON11
+
     # 1. Regenerate launcher
     from .launcher import create_launcher_script
 
@@ -28,12 +32,13 @@ def run_update(args) -> None:
     if icon_path != "touchdesigner":
         info(f"Icon installed: {icon_path}")
 
-    # 3. Winetricks
-    from .wine import download_winetricks
+    # 3. Winetricks (the Proton runner uses umu's own)
+    if not proton:
+        from .wine import download_winetricks
 
-    info("Updating winetricks...")
-    download_winetricks()
-    success("Winetricks updated")
+        info("Updating winetricks...")
+        download_winetricks()
+        success("Winetricks updated")
 
     # 3b. Lucida Console mono font (fixes existing prefixes that lack it)
     from .wine import install_lucida_console
@@ -42,12 +47,16 @@ def run_update(args) -> None:
     if install_lucida_console():
         success("Lucida Console font updated")
 
-    # 4. DXVK
-    from .wine import install_dxvk
+    # 4. DXVK (Proton manages its own) / Proton runner scripts
+    if proton:
+        info("Updating the Proton runner scripts...")
+        update_proton_runner()
+    else:
+        from .wine import install_dxvk
 
-    info("Updating DXVK...")
-    install_dxvk(enable=args.dxvk)
-    success("DXVK updated")
+        info("Updating DXVK...")
+        install_dxvk(enable=args.dxvk)
+        success("DXVK updated")
 
     # 5. Font fix
     from .desktop import distribute_font_fix, install_font_fix

@@ -387,7 +387,16 @@ def run_patch_toe(file_path: str) -> None:
             error("wine_ui_fixes.tox not found. Cannot patch.")
             sys.exit(1)
 
-    # Run patch using Wine's toeexpand/toecollapse
+    # Run patch using Wine's toeexpand/toecollapse. Soda executes the .exe
+    # directly (binfmt); the Proton runner has no such path, so go through its
+    # wine64 relay (-> umu-run).
+    from td_lib.runner import RUNNER_PROTON11, get_runner_kind
+
+    wine_cmd = (
+        [os.path.join(runner_bin, "wine64")]
+        if get_runner_kind() == RUNNER_PROTON11
+        else []
+    )
     import shutil
     import subprocess
     import tempfile
@@ -403,7 +412,7 @@ def run_patch_toe(file_path: str) -> None:
 
         # Expand the fix file to get entries
         subprocess.run(
-            [toeexpand, f"z:{fix_copy}"],
+            wine_cmd + [toeexpand, f"z:{fix_copy}"],
             env=env,
             capture_output=True,
             timeout=30,
@@ -427,7 +436,7 @@ def run_patch_toe(file_path: str) -> None:
         # Expand target .toe
         wine_path = f"z:{file_path}"
         subprocess.run(
-            [toeexpand, wine_path],
+            wine_cmd + [toeexpand, wine_path],
             env=env,
             capture_output=True,
             timeout=30,
@@ -437,7 +446,7 @@ def run_patch_toe(file_path: str) -> None:
         if os.path.isdir(toe_dir):
             # Merge fix
             subprocess.run(
-                [toeexpand, f"z:{fix_copy}"],
+                wine_cmd + [toeexpand, f"z:{fix_copy}"],
                 env=env,
                 capture_output=True,
                 timeout=30,
@@ -473,7 +482,7 @@ def run_patch_toe(file_path: str) -> None:
 
             # Collapse back
             subprocess.run(
-                [toecollapse, wine_path],
+                wine_cmd + [toecollapse, wine_path],
                 env=env,
                 capture_output=True,
                 timeout=30,

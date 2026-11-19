@@ -1,0 +1,204 @@
+diff --git a/dlls/nvcuda/internal.c b/dlls/nvcuda/internal.c
+index 09fb7f5..f853c00 100644
+--- a/dlls/nvcuda/internal.c
++++ b/dlls/nvcuda/internal.c
+@@ -95,6 +95,65 @@ void cuda_process_tls_callbacks(DWORD reason)
+     LeaveCriticalSection( &tls_callback_section );
+ }
+ 
++/* Wine >= 10.x / Proton 11 share GPU objects through D3DKMT objects held by
++ * the wineserver instead of Proton's old sharedgpures.sys device. The shared NT
++ * handle (or KMT global handle) resolves to a d3dkmt object that owns the host
++ * opaque fd, which we can fetch with wine_server_handle_to_fd().
++ *
++ * The request number depends on the exact Wine build (wine-staging adds
++ * requests), so it is a build-time default that can be overridden at runtime
++ * with NVCUDA_D3DKMT_OPEN_REQ. */
++#ifndef NVCUDA_D3DKMT_OPEN_REQ
++#define NVCUDA_D3DKMT_OPEN_REQ REQ_d3dkmt_object_open
++#endif
++
++static int d3dkmt_open_req(void)
++{
++    static int req = -1;
++    if (req < 0)
++    {
++        const char *env = getenv("NVCUDA_D3DKMT_OPEN_REQ");
++        req = env ? atoi(env) : NVCUDA_D3DKMT_OPEN_REQ;
++        TRACE("using d3dkmt_object_open request %d\n", req);
++    }
++    return req;
++}
++
++int get_d3dkmt_object_fd(HANDLE shared, BOOL kmt, unsigned int type)
++{
++    obj_handle_t handle = 0;
++    NTSTATUS status;
++    int unix_fd = -1;
++
++    SERVER_START_REQ( d3dkmt_object_open )
++    {
++        req->__header.req = d3dkmt_open_req();
++        req->type   = type;
++        req->global = kmt ? HandleToULong(shared) : 0;
++        req->handle = kmt ? 0 : wine_server_obj_handle(shared);
++        status = wine_server_call( req );
++        handle = reply->handle;
++    }
++    SERVER_END_REQ;
++
++    if (status || !handle)
++    {
++        WARN("d3dkmt_object_open failed for %p (kmt %d, type %u), status %#x\n", shared, kmt, type, (UINT)status);
++        return -1;
++    }
++
++    status = wine_server_handle_to_fd(wine_server_ptr_handle(handle), GENERIC_ALL, &unix_fd, NULL);
++    NtClose(wine_server_ptr_handle(handle));
++    if (status || unix_fd < 0)
++    {
++        WARN("no host fd for d3dkmt object %p (type %u), status %#x\n", shared, type, (UINT)status);
++        return -1;
++    }
++
++    TRACE("d3dkmt object %p (kmt %d, type %u) -> fd %d\n", shared, kmt, type, unix_fd);
++    return unix_fd;
++}
++
+ #define IOCTL_SHARED_GPU_RESOURCE_GET_UNIX_RESOURCE CTL_CODE(FILE_DEVICE_VIDEO, 3, METHOD_BUFFERED, FILE_READ_ACCESS)
+ #define IOCTL_SHARED_GPU_RESOURCE_GETKMT CTL_CODE(FILE_DEVICE_VIDEO, 2, METHOD_BUFFERED, FILE_READ_ACCESS)
+ 
+diff --git a/dlls/nvcuda/nvcuda.c b/dlls/nvcuda/nvcuda.c
+index 4597ecd..e042c00 100644
+--- a/dlls/nvcuda/nvcuda.c
++++ b/dlls/nvcuda/nvcuda.c
+@@ -4236,24 +4236,38 @@ CUresult WINAPI wine_cuLaunchHostFunc_ptsz(CUstream hStream, CUhostFn fn, void *
+     return launch_host_func(pcuLaunchHostFunc_ptsz, NULL, pcuStreamIsCapturing_ptsz, hStream, fn, userData, 0);
+ }
+ 
++/* Values of enum d3dkmt_type in the wineserver protocol */
++#define NVCUDA_D3DKMT_SYNC     5
++#define NVCUDA_D3DKMT_RESOURCE 6
++
++/* Linux libcuda only understands host fds: resolve a Windows shared handle
++ * through Wine's D3DKMT objects first, then fall back to Proton's legacy
++ * sharedgpures device for older runners. */
++static int win32_handle_to_fd(HANDLE handle, BOOL kmt, unsigned int type)
++{
++    int fd = get_d3dkmt_object_fd(handle, kmt, type);
++    if (fd >= 0) return fd;
++    if (kmt) handle = get_shared_resource_kmt_handle(handle);
++    return get_shared_resource_fd(handle);
++}
++
+ CUresult WINAPI wine_cuImportExternalMemory(void *extMem_out, const CUDA_EXTERNAL_MEMORY_HANDLE_DESC *memHandleDesc)
+ {
+     TRACE("(%p, %p)\n", extMem_out, memHandleDesc);
+ 
+     CUDA_EXTERNAL_MEMORY_HANDLE_DESC linuxHandleDesc = *memHandleDesc;
+-    HANDLE handle;
+ 
+     /* Linux libcuda does not work win32 handles */
+     switch (linuxHandleDesc.type)
+     {
+         case CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32:
+-            linuxHandleDesc.handle.fd = get_shared_resource_fd(linuxHandleDesc.handle.win32.handle);
++            linuxHandleDesc.handle.fd = win32_handle_to_fd(linuxHandleDesc.handle.win32.handle, FALSE, NVCUDA_D3DKMT_RESOURCE);
+             linuxHandleDesc.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD;
+             break;
+         case CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT:
+-            handle = get_shared_resource_kmt_handle(linuxHandleDesc.handle.win32.handle);
+-            linuxHandleDesc.handle.fd = get_shared_resource_fd(handle);
++            linuxHandleDesc.handle.fd = win32_handle_to_fd(linuxHandleDesc.handle.win32.handle, TRUE, NVCUDA_D3DKMT_RESOURCE);
+             linuxHandleDesc.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD;
++            break;
+         default:
+             break;
+     }
+@@ -4285,6 +4299,31 @@ static pthread_mutex_t semMutex = PTHREAD_MUTEX_INITIALIZER;
+ static int semCounter = 0;
+ static CUexternalSemaphore semList[4] = {0};
+ 
++/* The "keep only the last 4 imported semaphores" ring works around a game
++ * that leaks semaphores, but it destroys semaphores that are still in use by
++ * apps holding more than 4 at once (e.g. TouchDesigner with several NVIDIA
++ * TOPs), which deadlocks the CUDA stream. Opt-in with NVCUDA_SEMAPHORE_RING=1. */
++static BOOL semaphore_ring_enabled(void)
++{
++    static int enabled = -1;
++    if (enabled < 0)
++    {
++        const char *env = getenv("NVCUDA_SEMAPHORE_RING");
++        enabled = env && *env && *env != '0';
++    }
++    return enabled;
++}
++
++/* Forget a semaphore the app destroyed itself, so the ring never destroys it twice */
++static void semaphoreForget(CUexternalSemaphore extSem)
++{
++    int i;
++    pthread_mutex_lock(&semMutex);
++    for (i = 0; i < 4; i++)
++        if (semList[i] == extSem) semList[i] = NULL;
++    pthread_mutex_unlock(&semMutex);
++}
++
+ static void semaphoreHandling(CUexternalSemaphore *extSem_out)
+ {
+     pthread_mutex_lock(&semMutex);
+@@ -4305,21 +4344,19 @@ CUresult WINAPI wine_cuImportExternalSemaphore(CUexternalSemaphore *extSem_out,
+     TRACE("(%p, %p, %d)\n", extSem_out, semHandleDesc, semHandleDesc->type);
+ 
+     CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC linuxHandleDesc = *semHandleDesc;
+-    HANDLE handle;
+ 
+     switch (linuxHandleDesc.type)
+     {
+         case CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32:
+-            linuxHandleDesc.handle.fd = get_shared_resource_fd(linuxHandleDesc.handle.win32.handle);
++            linuxHandleDesc.handle.fd = win32_handle_to_fd(linuxHandleDesc.handle.win32.handle, FALSE, NVCUDA_D3DKMT_SYNC);
+             linuxHandleDesc.type = CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD;
+             break;
+         case CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT:
+-            handle = get_shared_resource_kmt_handle(linuxHandleDesc.handle.win32.handle);
+-            linuxHandleDesc.handle.fd = get_shared_resource_fd(handle);
++            linuxHandleDesc.handle.fd = win32_handle_to_fd(linuxHandleDesc.handle.win32.handle, TRUE, NVCUDA_D3DKMT_SYNC);
+             linuxHandleDesc.type = CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD;
+             break;
+         case CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_TIMELINE_SEMAPHORE_WIN32:
+-            linuxHandleDesc.handle.fd = get_shared_resource_fd(linuxHandleDesc.handle.win32.handle);
++            linuxHandleDesc.handle.fd = win32_handle_to_fd(linuxHandleDesc.handle.win32.handle, FALSE, NVCUDA_D3DKMT_SYNC);
+             linuxHandleDesc.type = CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_TIMELINE_SEMAPHORE_FD;
+             break;
+         default:
+@@ -4327,8 +4364,8 @@ CUresult WINAPI wine_cuImportExternalSemaphore(CUexternalSemaphore *extSem_out,
+     }
+ 
+     CUresult ret = pcuImportExternalSemaphore(extSem_out, &linuxHandleDesc);
+-    if(!ret) semaphoreHandling(extSem_out);
+-    else ERR("Returned error: %d\n", ret);
++    if(ret) ERR("Returned error: %d\n", ret);
++    else if(semaphore_ring_enabled()) semaphoreHandling(extSem_out);
+ 
+     return ret;
+ }
+@@ -4360,6 +4397,7 @@ CUresult WINAPI wine_cuWaitExternalSemaphoresAsync_ptsz(const CUexternalSemaphor
+ CUresult WINAPI wine_cuDestroyExternalSemaphore(CUexternalSemaphore extSem)
+ {
+     TRACE("(%p)\n", extSem);
++    if (semaphore_ring_enabled()) semaphoreForget(extSem);
+     return pcuDestroyExternalSemaphore(extSem);
+ }
+ 
+diff --git a/dlls/nvcuda/nvcuda.h b/dlls/nvcuda/nvcuda.h
+index fd24aca..bb2cc4b 100644
+--- a/dlls/nvcuda/nvcuda.h
++++ b/dlls/nvcuda/nvcuda.h
+@@ -28,5 +28,6 @@ void __attribute((visibility("hidden"))) cuda_process_tls_callbacks(DWORD reason
+ CUresult __attribute((visibility("hidden"))) cuda_get_table(const void **table, const CUuuid *uuid, const void *orig_table, CUresult orig_result);
+ int __attribute((visibility("hidden"))) get_shared_resource_fd(HANDLE win32_handle);
+ HANDLE __attribute((visibility("hidden"))) get_shared_resource_kmt_handle(HANDLE shared_resource);
++int __attribute((visibility("hidden"))) get_d3dkmt_object_fd(HANDLE shared, BOOL kmt, unsigned int type);
+ 
+ #endif

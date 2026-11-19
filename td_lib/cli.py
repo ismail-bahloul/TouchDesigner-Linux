@@ -79,6 +79,28 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     opts = parser.add_argument_group("options")
 
     opts.add_argument(
+        "--runner",
+        dest="runner",
+        choices=["soda", "proton11"],
+        default="soda",
+        help=(
+            "Wine runner to install. 'soda' (default) is Soda Wine 9. "
+            "'proton11' (experimental) is DAW-GE-Proton11 through umu-launcher: "
+            "adds the NVIDIA CUDA TOPs and CodeMeter, needs umu-launcher and an "
+            "NVIDIA GPU for the CUDA part. A runner cannot be switched on an "
+            "existing install."
+        ),
+    )
+    opts.add_argument(
+        "--nvidia-vfx",
+        dest="nvidia_vfx",
+        action="store_true",
+        help=(
+            "With --runner proton11: also download NVIDIA's Video Effects SDK "
+            "(~770 MB) used by the NVIDIA Background / Denoise / Upscaler TOPs"
+        ),
+    )
+    opts.add_argument(
         "--no-dxvk",
         dest="dxvk",
         action="store_false",

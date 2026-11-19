@@ -2108,6 +2108,293 @@ def test_subprocess_lenient_decode():
 # =============================================================================
 
 
+# =============================================================================
+#  Proton runner (--runner proton11)
+# =============================================================================
+
+
+def test_proton11_runner():
+    print("\n\u2500\u2500 Proton runner (--runner proton11) \u2500\u2500")
+    import contextlib
+    import io
+    import re
+
+    import td_lib.launcher as launcher
+    import td_lib.runner as runner
+    import td_lib.wine as wine
+    from td_lib.cli import parse_args
+
+    # ── CLI ──
+    check("--runner defaults to soda", parse_args([]).runner == "soda")
+    check(
+        "--runner proton11 accepted",
+        parse_args(["--runner", "proton11"]).runner == "proton11",
+    )
+    try:
+        with contextlib.redirect_stderr(io.StringIO()):
+            parse_args(["--runner", "wine7"])
+        rejected = False
+    except SystemExit:
+        rejected = True
+    check("--runner rejects unknown runners", rejected)
+    check("--nvidia-vfx is off by default", parse_args([]).nvidia_vfx is False)
+    check("--nvidia-vfx flag parsed", parse_args(["--nvidia-vfx"]).nvidia_vfx is True)
+
+    # ── GPU architecture -> NVIDIA Video Effects installer ──
+    for cc, arch in (("7.5", "turing"), ("8.6", "ampere"), ("8.9", "ada"), ("12.0", "blackwell")):
+        check(f"compute capability {cc} -> {arch}", runner.vfx_arch_for_compute_cap(cc) == arch)
+    for cc in ("9.0", "8.0", "6.1", "", None):
+        check(f"compute capability {cc!r} has no SDK", runner.vfx_arch_for_compute_cap(cc) is None)
+
+    # ── Pinned artifacts ──
+    hexre = re.compile(r"^[0-9a-f]{64}$")
+    check("Proton runner sha256 is pinned", bool(hexre.match(runner.PROTON11_SHA256)))
+    check("patched nvcuda sha256 is pinned", bool(hexre.match(runner.NVCUDA_PATCHED_SHA256)))
+    check(
+        "every supported GPU architecture has a pinned SDK sha256",
+        all(
+            hexre.match(runner.VFX_SHA256.get(a, ""))
+            for a in set(runner._COMPUTE_CAP_TO_ARCH.values())
+        ),
+    )
+    check("Proton runner comes from KitsuneDev's release", "KitsuneDev/daw-proton-ge" in runner.PROTON11_URL)
+
+    # ── verify_checksum streams (runner / SDK archives are hundreds of MB) ──
+    from td_lib.utils import verify_checksum
+
+    tmp = tempfile.mkdtemp(prefix="td_runner_test_")
+    tmp = os.path.realpath(tmp)
+    saved = (
+        runner.RUNNER_MARKER,
+        runner.PROTON11_ENV_FILE,
+        wine.RUNNER_DIR,
+        wine.WINE_PREFIX,
+        launcher.LAUNCHER_PATH,
+        launcher.TD_COMMAND,
+    )
+    try:
+        big = os.path.join(tmp, "big.bin")
+        with open(big, "wb") as f:
+            f.write(os.urandom(3 * 1024 * 1024 + 17))
+        with open(big, "rb") as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+        check("verify_checksum accepts a multi-chunk file", verify_checksum(big, digest))
+        check("verify_checksum rejects a wrong hash", not verify_checksum(big, "0" * 64))
+
+        # ── Runner kind marker ──
+        runner.RUNNER_MARKER = os.path.join(tmp, ".runner")
+        check("no marker means soda (installs predating --runner)", runner.get_runner_kind() == "soda")
+        runner.set_runner_kind("proton11")
+        check("marker round-trips", runner.get_runner_kind() == "proton11")
+        with open(runner.RUNNER_MARKER, "w") as f:
+            f.write("bogus\n")
+        check("unknown marker falls back to soda", runner.get_runner_kind() == "soda")
+
+        # ── Refuse to switch runner on an existing prefix ──
+        wine.WINE_PREFIX = os.path.join(tmp, "prefix")
+
+        def switch_refused(requested: str) -> bool:
+            try:
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    runner.ensure_runner_compatible(requested)
+                return False
+            except SystemExit:
+                return True
+
+        check("fresh install: any runner allowed", not switch_refused("proton11"))
+        os.makedirs(os.path.join(wine.WINE_PREFIX, "drive_c"))
+        os.remove(runner.RUNNER_MARKER)
+        check("existing soda prefix: proton11 refused", switch_refused("proton11"))
+        check("existing soda prefix: soda allowed", not switch_refused("soda"))
+        runner.set_runner_kind("proton11")
+        check("existing proton11 prefix: soda refused", switch_refused("soda"))
+        check("existing proton11 prefix: proton11 allowed", not switch_refused("proton11"))
+
+        # ── Relay scripts ──
+        wine.RUNNER_DIR = os.path.join(tmp, "runner")
+        runner.PROTON11_ENV_FILE = os.path.join(tmp, "proton11.env")
+        runner.write_relay_scripts()
+        bin_dir = os.path.join(wine.RUNNER_DIR, "bin")
+        for name in ("wine64", "wine", "wineboot", "wineserver"):
+            path = os.path.join(bin_dir, name)
+            check(f"relay {name} is executable", os.access(path, os.X_OK))
+            check(
+                f"relay {name} is valid bash",
+                subprocess.run(["bash", "-n", path]).returncode == 0,
+            )
+        check(
+            "proton11.env is valid bash",
+            subprocess.run(["bash", "-n", runner.PROTON11_ENV_FILE]).returncode == 0,
+        )
+
+        # Run the real scripts against a fake umu-run and nvidia-smi
+        fakebin = os.path.join(tmp, "fakebin")
+        os.makedirs(fakebin)
+
+        def fake(name: str, body: str) -> None:
+            path = os.path.join(fakebin, name)
+            with open(path, "w") as f:
+                f.write("#!/bin/bash\n" + body)
+            os.chmod(path, 0o755)
+
+        fake(
+            "umu-run",
+            'echo "ARGS:$*"; echo "PROTONPATH:$PROTONPATH"; echo "WINEPREFIX:$WINEPREFIX"; '
+            'echo "GAMEID:$GAMEID"; echo "NVLIBS:${PROTON_NVIDIA_LIBS-unset}"; '
+            'echo "FILTER:${DXVK_FILTER_DEVICE_NAME-unset}"; echo "VFX:${NV_VIDEO_EFFECTS_PATH-unset}"\n',
+        )
+        base_env = {
+            k: v
+            for k, v in os.environ.items()
+            if not k.startswith(("PROTON", "WINEPREFIX", "GAMEID", "DXVK_", "VKD3D_", "NV_VIDEO"))
+        }
+        base_env["PATH"] = f"{fakebin}:{os.environ['PATH']}"
+
+        def relay(script: str, args: list[str], env_extra: dict | None = None):
+            env = dict(base_env)
+            env.update(env_extra or {})
+            return subprocess.run(
+                [os.path.join(bin_dir, script)] + args, capture_output=True, text=True, env=env
+            )
+
+        fake("nvidia-smi", "exit 0\n")
+        out = relay("wine64", ["cmd", "/c", "exit"]).stdout
+        check("wine64 relay forwards its arguments to umu-run", "ARGS:cmd /c exit" in out)
+        check("relay points PROTONPATH at <base>/runner", f"PROTONPATH:{wine.RUNNER_DIR}" in out)
+        check("relay defaults WINEPREFIX to <base>/prefix", f"WINEPREFIX:{wine.WINE_PREFIX}" in out)
+        check("relay sets a GAMEID", "GAMEID:umu-default" in out)
+        check("NVIDIA GPU: nvidia-libs enabled", "NVLIBS:1" in out)
+        check("NVIDIA GPU: DXVK/vkd3d filtered to NVIDIA", "FILTER:NVIDIA" in out)
+        check("no Video Effects SDK: NV_VIDEO_EFFECTS_PATH not set", "VFX:unset" in out)
+        out = relay("wine64", ["x"], {"PROTON_NVIDIA_LIBS": "0"}).stdout
+        check("user PROTON_NVIDIA_LIBS=0 is respected", "NVLIBS:0" in out)
+
+        os.makedirs(os.path.join(wine.WINE_PREFIX, runner.VFX_DIR_REL))
+        out = relay("wine64", ["x"]).stdout
+        check("Video Effects SDK present: NV_VIDEO_EFFECTS_PATH set", "VFX:C:\\Program Files" in out)
+
+        fake("nvidia-smi", "exit 1\n")
+        out = relay("wine64", ["x"]).stdout
+        check("no NVIDIA driver: nvidia-libs left off", "NVLIBS:unset" in out and "FILTER:unset" in out)
+
+        with open(os.path.join(tmp, "proton11.user.env"), "w") as f:
+            f.write("export GAMEID=custom-id\n")
+        check("proton11.user.env overrides managed settings", "GAMEID:custom-id" in relay("wine64", ["x"]).stdout)
+
+        check("wineserver -k relays to wineboot -k", "ARGS:wineboot -k" in relay("wineserver", ["-k"]).stdout)
+        check("wineserver -w is a no-op", relay("wineserver", ["-w"]).returncode == 0)
+        check("wineserver rejects other arguments", relay("wineserver", ["-p"]).returncode == 2)
+        check("wineboot relay forwards to wineboot", "ARGS:wineboot -u" in relay("wineboot", ["-u"]).stdout)
+
+        # ── Launcher ──
+        launcher.LAUNCHER_PATH = os.path.join(tmp, "launch-touchdesigner.sh")
+        launcher.TD_COMMAND = os.path.join(tmp, "touchdesigner")
+        with contextlib.redirect_stdout(io.StringIO()):
+            launcher.create_launcher_script()
+        with open(launcher.LAUNCHER_PATH) as f:
+            content = f.read()
+        check("launcher stays valid bash", subprocess.run(["bash", "-n", launcher.LAUNCHER_PATH]).returncode == 0)
+        check("launcher reads the runner kind marker", 'RUNNER_KIND="soda"' in content and "/.runner" in content)
+        check("launcher requires umu-run on the proton11 runner", "command -v umu-run" in content and '"$RUNNER_KIND" = "proton11"' in content)
+        check("launcher sources the Proton environment files", "proton11.env" in content and "proton11.user.env" in content)
+        check(
+            "launcher skips the NewProject.toe re-check on proton11 once stamped",
+            ".newproject_fix_stamp" in content and '"$RUNNER_KIND" != "proton11"' in content,
+        )
+
+        # ── patched nvcuda ──
+        nv_dir = os.path.join(wine.RUNNER_DIR, os.path.dirname(runner._NVCUDA_REL))
+        nv_dest = os.path.join(wine.RUNNER_DIR, runner._NVCUDA_REL)
+        os.makedirs(nv_dir)
+        with open(nv_dest, "wb") as f:
+            f.write(b"original nvcuda")
+        patched_src = os.path.join(tmp, "patched.so")
+        with open(patched_src, "wb") as f:
+            f.write(b"patched nvcuda")
+        with open(patched_src, "rb") as f:
+            patched_sha = hashlib.sha256(f.read()).hexdigest()
+
+        saved_dl, saved_sha = runner.download_file, runner.NVCUDA_PATCHED_SHA256
+        calls = []
+
+        def fake_download(url, dest, *a, **kw):
+            calls.append(url)
+            shutil.copy2(patched_src, dest)
+            return True
+
+        try:
+            runner.download_file = fake_download
+            runner.NVCUDA_PATCHED_SHA256 = patched_sha
+            with contextlib.redirect_stdout(io.StringIO()):
+                ok = runner.install_patched_nvcuda()
+            with open(nv_dest, "rb") as f:
+                replaced = f.read() == b"patched nvcuda"
+            with open(nv_dest + ".orig", "rb") as f:
+                kept = f.read() == b"original nvcuda"
+            check("patched nvcuda replaces the bundled one", ok and replaced)
+            check("original nvcuda is kept as .orig", kept)
+            check("patched nvcuda is executable", os.access(nv_dest, os.X_OK))
+
+            calls.clear()
+            with contextlib.redirect_stdout(io.StringIO()):
+                ok = runner.install_patched_nvcuda()
+            check("patched nvcuda already in place: no re-download", ok and not calls)
+
+            with open(nv_dest, "wb") as f:
+                f.write(b"original nvcuda")
+            runner.NVCUDA_PATCHED_SHA256 = "0" * 64
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                ok = runner.install_patched_nvcuda()
+            with open(nv_dest, "rb") as f:
+                untouched = f.read() == b"original nvcuda"
+            check("nvcuda with a wrong checksum is not installed", not ok and untouched)
+
+            # ── Video Effects SDK: never download without a pinned checksum ──
+            calls.clear()
+            saved_vfx, saved_cap, saved_which = runner.VFX_SHA256, runner.nvidia_compute_cap, runner.shutil.which
+            try:
+                shutil.rmtree(os.path.join(wine.WINE_PREFIX, "drive_c", "Program Files"))
+                runner.VFX_SHA256 = {**saved_vfx, "ampere": ""}
+                runner.nvidia_compute_cap = lambda: "8.6"
+                runner.shutil.which = lambda name: "/usr/bin/7z"
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    ok = runner.install_nvidia_vfx_sdk()
+                check("SDK without a pinned checksum is refused, nothing downloaded", not ok and not calls)
+            finally:
+                runner.VFX_SHA256, runner.nvidia_compute_cap, runner.shutil.which = (
+                    saved_vfx,
+                    saved_cap,
+                    saved_which,
+                )
+        finally:
+            runner.download_file, runner.NVCUDA_PATCHED_SHA256 = saved_dl, saved_sha
+
+        # ── describe_runner / dry-run ──
+        runner.set_runner_kind("soda")
+        check("describe_runner is empty on soda", runner.describe_runner() == "")
+        runner.set_runner_kind("proton11")
+        check("describe_runner names the Proton build", runner.PROTON11_NAME in runner.describe_runner())
+
+        env = dict(base_env)
+        env["TD_BASE_DIR"] = os.path.join(tmp, "dry-run-base")
+        r = subprocess.run(
+            [sys.executable, "-I", os.path.join(os.path.dirname(__file__), "..", "td-install"),
+             "--install", "--dry-run", "--headless", "--runner", "proton11"],
+            capture_output=True, text=True, env=env,
+        )
+        check("td-install --runner proton11 --dry-run exits cleanly", r.returncode == 0)
+    finally:
+        (
+            runner.RUNNER_MARKER,
+            runner.PROTON11_ENV_FILE,
+            wine.RUNNER_DIR,
+            wine.WINE_PREFIX,
+            launcher.LAUNCHER_PATH,
+            launcher.TD_COMMAND,
+        ) = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     print("=" * 60)
     from td_lib import __version__
@@ -2162,6 +2449,7 @@ def main():
     test_aur_launcher_license_preservation()
     test_install_sh_sync()
     test_release_version_consistency()
+    test_proton11_runner()
 
     total = PASS + FAIL
     print(f"\n{'=' * 60}")

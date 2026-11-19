@@ -549,6 +549,13 @@ def install_dxvk(enable: bool = True) -> None:
     if not enable:
         return
 
+    from .runner import RUNNER_PROTON11, get_runner_kind
+
+    if get_runner_kind() == RUNNER_PROTON11:
+        # Proton ships its own DXVK and re-copies it on every launch
+        info("Proton manages DXVK itself; skipping")
+        return
+
     sys32 = os.path.join(WINE_PREFIX, "drive_c", "windows", "system32")
     d3d11 = os.path.join(sys32, "d3d11.dll")
 
