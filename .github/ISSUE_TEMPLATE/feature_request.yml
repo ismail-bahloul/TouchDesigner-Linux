@@ -14,6 +14,6 @@ body:
     id: proposal
     attributes:
       label: Proposed solution
-      description: Optional — how you imagine it working. Check the [roadmap](../../ROADMAP.md) first, it may already be planned.
+      description: Optional - how you imagine it working. Check the [roadmap](../../ROADMAP.md) first, it may already be planned.
     validations:
       required: false

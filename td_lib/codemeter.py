@@ -168,7 +168,7 @@ def install_runtime(installer_path: str) -> bool:
     - ``Program Files (x86)/CodeMeter`` (the runtime itself)
     - ``ProgramData/WIBU-SYSTEMS`` (configuration, if shipped)
 
-    Bypassing msiexec makes it trivial to try multiple runtime versions —
+    Bypassing msiexec makes it trivial to try multiple runtime versions -
     the leading fix for the protected ``cpsrt.dll`` loader issue (the
     runtimes 8.41a/9.10 don't map under Wine 9.0; see docs/codemeter.md).
     """
@@ -178,7 +178,7 @@ def install_runtime(installer_path: str) -> bool:
 
     drive_c = os.path.join(_prefix(), "drive_c")
     if not os.path.isdir(drive_c):
-        error("No Wine prefix found — install TouchDesigner first (run 'td-install').")
+        error("No Wine prefix found - install TouchDesigner first (run 'td-install').")
         return False
 
     extract_root = tempfile.mkdtemp(prefix="td_cm_runtime_")
@@ -209,7 +209,7 @@ def install_runtime(installer_path: str) -> bool:
         info("Next: td-install --codemeter add-server <license-server-ip>")
     else:
         warning(
-            "Runtime installed but did not stay up — under Wine 9.0 the"
+            "Runtime installed but did not stay up - under Wine 9.0 the"
             " CodeMeter service stalls during startup (see docs/codemeter.md)."
         )
     return True
@@ -218,8 +218,8 @@ def install_runtime(installer_path: str) -> bool:
 def _extract_installer(installer_path: str, dest: str) -> bool:
     """Extract a CodeMeter runtime installer natively.
 
-    Tries each available extractor in order — ``innoextract`` then ``7z``
-    for Inno ``.exe`` bundles, ``7z`` then ``msiextract`` for ``.msi`` — so
+    Tries each available extractor in order - ``innoextract`` then ``7z``
+    for Inno ``.exe`` bundles, ``7z`` then ``msiextract`` for ``.msi`` - so
     a fallback is used when the preferred tool doesn't recognize the format
     (Wibu also ships WiX bundles that innoextract rejects but 7z unwraps).
     """

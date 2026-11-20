@@ -3,7 +3,7 @@
 An **optional** way to run TouchDesigner-Linux: instead of installing packages
 on your host system, everything runs inside an isolated
 [Distrobox](https://distrobox.it/) container (podman or docker backend). The
-host system is **never modified** — no `sudo`, no 32-bit repositories, no
+host system is **never modified** - no `sudo`, no 32-bit repositories, no
 system-wide packages.
 
 ![Screenshot](../Screenshots/Script_Preview.png)
@@ -20,9 +20,9 @@ td-install --container install
 - **No 32-bit dependency pain.** The installer normally has to enable i386 /
   multilib on your host (`dpkg --add-architecture i386`, editing
   `pacman.conf`, ...). In container mode those packages are installed inside
-  an Ubuntu container — the host repo setup doesn't matter.
+  an Ubuntu container - the host repo setup doesn't matter.
 - **Works on any distro, immutable or not.** SteamOS, Fedora Silverblue,
-  NixOS, or anything else — no `steamos-readonly disable`, no touching
+  NixOS, or anything else - no `steamos-readonly disable`, no touching
   `/etc`.
 - **No `sudo` on the host.** Only the user-level `distrobox` / `podman`
   (or `docker`) commands are used.
@@ -72,14 +72,14 @@ td-install --container install
 
 The `curl | bash` one-liner plays nicely with container mode, both ways:
 
-**From the host** (recommended) — pass `--container` through the pipe, the
+**From the host** (recommended) - pass `--container` through the pipe, the
 installer bootstraps the container and runs everything inside it:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --container
 ```
 
-**Inside an existing container** — the one-liner also works when run from
+**Inside an existing container** - the one-liner also works when run from
 inside a distrobox container (e.g. after `distrobox create` +
 `distrobox enter`). install.sh now falls back to a tarball download when
 `git` is missing (fresh containers ship `curl`/`wget` but not git), so
@@ -102,7 +102,7 @@ it works from the host.
    creates the container if missing (passing `--nvidia` automatically when
    an NVIDIA GPU is detected, and `label=disable` on SELinux hosts), then
    re-executes the same command inside the container.
-2. Inside the container the **normal** install flow runs — distro detection
+2. Inside the container the **normal** install flow runs - distro detection
    sees Ubuntu, packages (including all `:i386` libraries Wine needs) are
    installed inside the container.
 3. The container shares the host `$HOME`, so:
@@ -122,7 +122,7 @@ it works from the host.
 
 A `touchdesigner` command is installed in `~/.local/bin` (symlink to the
 launcher, same as the AUR package's `/usr/bin/touchdesigner`). It works
-from the host *and* from inside the container — with the shim it re-enters
+from the host *and* from inside the container - with the shim it re-enters
 the container when needed:
 
 ```bash
@@ -178,7 +178,7 @@ works as before.
 ## Known limitations
 
 - **`noexec` on `$HOME`:** the one host problem container mode cannot paper
-  over with the default layout — the home directory is bind-mounted into the
+  over with the default layout - the home directory is bind-mounted into the
   container, so a noexec mount stays noexec. If `td-install --container`
   warns about it, install with a different base directory:
   ```bash
@@ -193,7 +193,7 @@ works as before.
 - **Shared prefix with a native install:** if you already have a native
   install, its prefix/runner in the shared home are reused by the container.
   That usually works, but mixing a host-created prefix with container
-  libraries is the least tested path — `td-install --container-create` +
+  libraries is the least tested path - `td-install --container-create` +
   fresh install is the cleanest when switching.
 - **CodeMeter client** stays blocked under Wine regardless of container mode
   (see [codemeter.md](codemeter.md)). The `docker-codemeter` *server*
@@ -204,12 +204,12 @@ works as before.
 - **Shell config errors on `distrobox enter`** (`command not found: fastfetch`,
   `no such file or directory: /usr/share/...-zsh-config/...`). The container
   shares your `$HOME`, and distrobox gives the container user the same shell
-  as your host — so your host `.zshrc`/`.bashrc` runs inside the container
+  as your host - so your host `.zshrc`/`.bashrc` runs inside the container
   too, where host-only programs and config paths don't exist. This only
   affects interactive `distrobox enter`; command entries
   (`distrobox enter NAME -- cmd`, used by the launcher and the installer)
   don't source shell configs. Two fixes:
-  - Guard your host shell config (recommended) — add at the **top** of
+  - Guard your host shell config (recommended) - add at the **top** of
     `~/.zshrc` (or `~/.bashrc`):
     ```zsh
     # distrobox: skip host-only config inside containers

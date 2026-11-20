@@ -56,7 +56,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--headless",
         dest="headless",
         action="store_true",
-        help="Headless mode (SSH, no display) — skips GUI-requiring steps",
+        help="Headless mode (SSH, no display) - skips GUI-requiring steps",
     )
 
     # Version selection
@@ -174,7 +174,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="container",
         action="store_true",
         help=(
-            "Run inside an isolated Distrobox container — the host system "
+            "Run inside an isolated Distrobox container - the host system "
             "is never modified. Wraps any other action (install, update, "
             "uninstall, --pip, --codemeter, --diagnose...)."
         ),

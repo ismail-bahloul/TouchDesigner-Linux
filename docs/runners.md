@@ -204,7 +204,7 @@ This is why Soda works perfectly while GE-Proton (which enables Staging) has iss
 ### Status
 Main window opens and renders. **Fonts are present** (unlike Soda without fix, where fonts are missing entirely), but slightly deformed. The `wine_ui_fixes.tox` should correct them. Needs the same fixes as Soda: IDS DLL patch, corefonts, vcrun2019.
 
-Note: GE-Proton10's default font rendering is actually **better** than Soda without the `.tox` fix — fonts are visible, just not perfectly shaped.
+Note: GE-Proton10's default font rendering is actually **better** than Soda without the `.tox` fix - fonts are visible, just not perfectly shaped.
 
 Tested with GE-Proton10-34. The `MIMALLOC_DISABLE_REDIRECT=1` fix is required (Wine 10+ DWrite incompatibility).
 
@@ -230,8 +230,8 @@ export KMP_AFFINITY="disabled"
 ```
 
 ### Known issues
-- **NVENC** — not available (missing `nvEncodeAPI64.dll`)
-- **CUDA TOPs** — not available (NVIDIA CUDA under Wine limitation)
+- **NVENC** - not available (missing `nvEncodeAPI64.dll`)
+- **CUDA TOPs** - not available (NVIDIA CUDA under Wine limitation)
 
 ## GE-Proton11-1
 
@@ -262,10 +262,10 @@ cp "$VKD3D_SRC/libvkd3d-utils-1.dll" "$SYS32/"
 UMU-Proton builds.
 
 ### Issues
-1. **pressure-vessel sandbox** — blocks environment variables like `MIMALLOC_DISABLE_REDIRECT`
-2. **UMU-Proton builds** — automated builds lack GE patches needed for TD compatibility
-3. **Steam Runtime dependency** — heavy (~800 MB), complex setup
-4. **prefix version conflicts** — UMU-Proton may fail when upgrading prefixes from other runners
+1. **pressure-vessel sandbox** - blocks environment variables like `MIMALLOC_DISABLE_REDIRECT`
+2. **UMU-Proton builds** - automated builds lack GE patches needed for TD compatibility
+3. **Steam Runtime dependency** - heavy (~800 MB), complex setup
+4. **prefix version conflicts** - UMU-Proton may fail when upgrading prefixes from other runners
 
 ### Workaround attempt (partial success)
 - Using `UMU_USE_STEAM=0` bypasses sandbox but breaks DXVK deployment
@@ -276,7 +276,7 @@ UMU-Proton builds.
 ## Proton-CachyOS
 
 ### Status
-Tested briefly — TD process launched successfully (process alive). Window visibility not confirmed. Likely same behavior as GE-Proton10 (window appears with deformed fonts).
+Tested briefly - TD process launched successfully (process alive). Window visibility not confirmed. Likely same behavior as GE-Proton10 (window appears with deformed fonts).
 
 ### Differences from GE-Proton
 - Based on Wine 11.0 Staging (same base as GE-Proton11)
@@ -303,18 +303,18 @@ Use the system `wine64` binary with the same prefix and env vars as other runner
 ## Wine-GE (Lutris) 8-26
 
 ### Status
-Does not work. Wine 8.x is too old — TD 2025+ requires DLL features only available in Wine 9+.
+Does not work. Wine 8.x is too old - TD 2025+ requires DLL features only available in Wine 9+.
 
 ## Vanilla Wine 11.0 Staging (Kron4ek)
 
 ### Status
-TD process starts, DXVK/Vulkan/D3D11 initialize successfully, swapchain created, Present called — but the X11 window never appears. The difference with Soda 9 is in the X11 window creation layer, not in D3D11/DXGI.
+TD process starts, DXVK/Vulkan/D3D11 initialize successfully, swapchain created, Present called - but the X11 window never appears. The difference with Soda 9 is in the X11 window creation layer, not in D3D11/DXGI.
 
 ### Key finding
-Both Soda 9 and Wine 11 create D3D11 swapchains and call Present identically. The divergence is in the X11 window mapping — Wine 9 creates a visible X11 window, Wine 10+ doesn't.
+Both Soda 9 and Wine 11 create D3D11 swapchains and call Present identically. The divergence is in the X11 window mapping - Wine 9 creates a visible X11 window, Wine 10+ doesn't.
 
 ### Likely cause
-Changes in Wine 10's `dlls/win32u/` or `dlls/winex11.drv/` — the X11 driver that handles native window creation and mapping.
+Changes in Wine 10's `dlls/win32u/` or `dlls/winex11.drv/` - the X11 driver that handles native window creation and mapping.
 
 ### Root cause identified
 
@@ -329,17 +329,17 @@ Changes in Wine 10's `dlls/win32u/` or `dlls/winex11.drv/` — the X11 driver th
  * windows iconic/minimized as Mutter needs to support live preview for minimized windows. */
 WARN("window %p/%lx is iconic, remapping to workaround Mutter issues.\n");
 ```
-This workaround adds an extra state transition (Iconic → Withdrawn → Normal) instead of (Iconic → Normal). On **KWin (KDE Wayland)**, this likely leaves the window stuck in WithdrawnState — invisible on screen.
+This workaround adds an extra state transition (Iconic → Withdrawn → Normal) instead of (Iconic → Normal). On **KWin (KDE Wayland)**, this likely leaves the window stuck in WithdrawnState - invisible on screen.
 
 **Conclusion (2026-08):** GE-Proton10-34 + `wine_ui_fixes.tox` was the best path for a working Proton runner. Wine 11's issue is a Wine bug to report upstream. **Superseded 2026-09:** a patched Wine 11 (DAW-GE-Proton11-6c) works, see the update at the top.
 
 ### Soda 11 (Bottles, Wine 11)
 **Tested 2026-08 (soda-11.0-5), full investigation:**
 
-- **Symptom:** TD freezes at the end of the splash screen (during project load) — a busy loop, not a crash (CPU stays at 60-120%).
+- **Symptom:** TD freezes at the end of the splash screen (during project load) - a busy loop, not a crash (CPU stays at 60-120%).
 - **Root cause:** a DWrite font-enumeration infinite loop. A `+dwrite` trace shows ~1.9M `localizedstrings_` and ~1.1M `dwritefontfile_` calls in 25 seconds. It is an upstream Wine 11 bug, not a TD or mimalloc issue.
 - **What was ruled out:** the `wine_ui_fixes.tox` COMP (happens on pristine projects too), `MIMALLOC_DISABLE_REDIRECT=1` (does not help), the prefix's font files (loop happens with 0 fonts in `windows/Fonts`), and host fontconfig (loop also happens with `FONTCONFIG_FILE=/dev/null`).
-- **Partial workaround:** `MIMALLOC_DISABLE_REDIRECT=1` + `FONTCONFIG_FILE=/dev/null FONTCONFIG_PATH=/nonexistent` + empty `windows/Fonts` lets TD launch and load projects — but with **no fonts available**, so UI text is broken. Not usable as a daily setup.
+- **Partial workaround:** `MIMALLOC_DISABLE_REDIRECT=1` + `FONTCONFIG_FILE=/dev/null FONTCONFIG_PATH=/nonexistent` + empty `windows/Fonts` lets TD launch and load projects - but with **no fonts available**, so UI text is broken. Not usable as a daily setup.
 
 **Verdict (2026-08):** Wine 11 remains unusable for TD until the DWrite font-enumeration loop is fixed upstream. Stick with Soda 9.0-1. **Superseded 2026-09:** the loop is fixed by the DWrite patch in DAW-GE-Proton11-6c (see the update at the top); upstreaming to GE-Proton is in progress.
 
@@ -398,9 +398,9 @@ unsupported pixel format. With the fixed bridge that `td-install --runner proton
 Video Stream Out TOP encodes on the GPU, see [patches/README.md](../patches/README.md).
 
 **Workarounds on Soda:**
-- **Spout2PW** — TD → Spout → PipeWire → OBS (NVENC on Linux side)
-- **NDI** — confirmed working
-- **FFmpeg** — pipe frames to native Linux FFmpeg with `-hwaccel nvenc`
+- **Spout2PW** - TD → Spout → PipeWire → OBS (NVENC on Linux side)
+- **NDI** - confirmed working
+- **FFmpeg** - pipe frames to native Linux FFmpeg with `-hwaccel nvenc`
 
 ### Wayland
 Wine's native Wayland support can cause window creation issues. Always set `WAYLAND_DISPLAY=""` to force XWayland.

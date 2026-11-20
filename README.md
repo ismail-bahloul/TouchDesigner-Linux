@@ -45,7 +45,7 @@ DEBUG=true curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesig
 ```bash
 curl -sSL https://raw.githubusercontent.com/ismail-bahloul/TouchDesigner-Linux/main/install.sh | bash -s -- --container
 ```
-Requires `distrobox` and `podman` (or `docker`) installed — the installer
+Requires `distrobox` and `podman` (or `docker`) installed - the installer
 creates the `touchdesigner-linux` container for you. See
 [docs/container.md](docs/container.md) for how it works, GPU notes and
 limitations.
@@ -68,7 +68,7 @@ for what works and what doesn't.
 
 Regenerates launcher, winetricks, DXVK, and UI fixes. No need to reinstall TD or recreate the Wine prefix.
 
-**Note:** a full uninstall removes everything, including your TouchDesigner license activation (`ins*.dat`) — you will need to re-enter your license key after reinstalling. The uninstaller warns you before deleting it.
+**Note:** a full uninstall removes everything, including your TouchDesigner license activation (`ins*.dat`) - you will need to re-enter your license key after reinstalling. The uninstaller warns you before deleting it.
 
 ### Arch Linux (AUR)
 
@@ -93,7 +93,7 @@ The **license activation screen** loads before any `.toe`, so text may look brok
 2. Enter your license, close TD
 3. Launch again → fonts are fixed
 
-If the UI is too small (or too large), set the scaling explicitly — Wine's own
+If the UI is too small (or too large), set the scaling explicitly - Wine's own
 DPI setting has no effect on TD:
 
 ```bash
@@ -106,15 +106,15 @@ See [Troubleshooting](docs/troubleshooting.md#ui-scaling-too-small-or-too-large)
 
 ## Documentation
 
-- [How it works](docs/how-it-works.md) — explains each fix and why it's applied
-- [Compatibility status](docs/compatibility.md) — what works and what doesn't
-- [Wine runners comparison](docs/runners.md) — tested runners, source analysis, compatibility
-- [Troubleshooting](docs/troubleshooting.md) — common issues and fixes
-- [CodeMeter dongles & network licenses](docs/codemeter.md) — use a license dongle over the LAN
-- [Container mode (Distrobox)](docs/container.md) — run on an untouched host system
-- [Python packages via pip](docs/advanced-tools.md) — `td-install --pip install <package>`
-- [Advanced tools](docs/advanced-tools.md) — toeexpand / toecollapse
-- [CI notes](docs/ci.md) — maintainer notes on the GitHub Actions setup, headless Wine gotchas
+- [How it works](docs/how-it-works.md) - explains each fix and why it's applied
+- [Compatibility status](docs/compatibility.md) - what works and what doesn't
+- [Wine runners comparison](docs/runners.md) - tested runners, source analysis, compatibility
+- [Troubleshooting](docs/troubleshooting.md) - common issues and fixes
+- [CodeMeter dongles & network licenses](docs/codemeter.md) - use a license dongle over the LAN
+- [Container mode (Distrobox)](docs/container.md) - run on an untouched host system
+- [Python packages via pip](docs/advanced-tools.md) - `td-install --pip install <package>`
+- [Advanced tools](docs/advanced-tools.md) - toeexpand / toecollapse
+- [CI notes](docs/ci.md) - maintainer notes on the GitHub Actions setup, headless Wine gotchas
 
 ### Useful paths
 

@@ -1,11 +1,11 @@
 #!/bin/bash
-# Distrobox container-mode test — run the TouchDesigner-Linux flow inside an
+# Distrobox container-mode test - run the TouchDesigner-Linux flow inside an
 # isolated container, host untouched.
 # Usage: bash tests/test_distrobox.sh [IMAGE]
 
 set -e
 
-echo "=== TouchDesigner-Linux — Distrobox container-mode test ==="
+echo "=== TouchDesigner-Linux - Distrobox container-mode test ==="
 echo ""
 
 # Check distrobox

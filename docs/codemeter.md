@@ -46,7 +46,7 @@ server and client machines need the CodeMeter Runtime installed.
 | Software licenses (`ins*.dat`) | ✅ | TD reads them without any runtime installed |
 | Runtime detection / config CLI | ✅ | `td-install --codemeter status\|servers\|add-server` work |
 | Runtime CLI tools (`cmu.exe`/`cmu32.exe`) | ✅ | Version output works; used for server-list management |
-| Runtime **installation** | ✅ | `td-install --codemeter install <path>` extracts natively (innoextract/7z) — no msiexec |
+| Runtime **installation** | ✅ | `td-install --codemeter install <path>` extracts natively (innoextract/7z) - no msiexec |
 | Network **server** (share a license) | ✅ via native Linux/Docker | Validated with the official `wibusystems/codemeter` container |
 | CodeMeter **service** (`CodeMeter.exe`) | ⚠️ Wine 11 ✅ / Wine 9 ❌ | Wine 9: 8.41a/9.10 fail on `cpsrt.dll` (`c000007b`), 7.60d stalls during init (1 thread, no port 22350). Wine 11: 7.60d starts, 12 threads, listens on 22350 |
 | Network **client** under Wine (borrow) | ⚠️ not verified end-to-end | The service now starts on Wine 11. A full license checkout still needs a license server or dongle |
@@ -58,7 +58,7 @@ Three problems were found, one of which is now solved:
    `-Embedding` mode for 20+ minutes (tested with the official
    `CodeMeterRuntime` 8.41a/9.10 downloads). **Solved:**
    `td-install --codemeter install <path>` extracts the installer natively
-   on the host (innoextract for Inno setups, `7z` for WiX/MSI bundles — the
+   on the host (innoextract for Inno setups, `7z` for WiX/MSI bundles - the
    official 7.60d download is a WiX bundle that innoextract rejects but 7z
    unwraps) and lifts the files into the prefix, no msiexec involved.
 2. **Runtimes 8.41a/9.10 crash on load.** The AxProtector-protected
@@ -158,13 +158,13 @@ Behind the scenes:
 installer natively on the host and lays the files into the Wine prefix at
 the locations a Windows install would use. It accepts either format:
 
-- `CodeMeterRuntime*.exe` (Inno Setup — extracted with `innoextract`),
+- `CodeMeterRuntime*.exe` (Inno Setup - extracted with `innoextract`),
 - `CodeMeterRuntime*.msi` (extracted with `7z` or `msiextract`).
 
 The runtime installers are downloaded from Wibu-Systems
 (https://www.wibu.com → Downloads → CodeMeter Runtime; the 32-bit and
 64-bit variants are separate). There is no need for Wine to install
-anything — `msiexec` is never invoked. The launcher also auto-starts
+anything - `msiexec` is never invoked. The launcher also auto-starts
 `CodeMeter.exe` when a runtime is detected.
 
 **CodeMeter is never installed automatically.** The installer never runs
@@ -201,11 +201,11 @@ in the test).
 
 ### Older findings (tested 2026-08 on Wine 9.0 TkG/Soda)
 
-- **8.41a / 9.10** — the protected `cpsrt.dll` fails to map (`c000007b` /
+- **8.41a / 9.10** - the protected `cpsrt.dll` fails to map (`c000007b` /
   "section .text, file probably truncated") and `CodeMeter.exe` never comes
   up.
 - **7.60d** (the version Derivative recommends and older TD installers
-  bundled) — `cpsrt.dll` loads cleanly, `cmu32.exe` works, but
+  bundled) - `cpsrt.dll` loads cleanly, `cmu32.exe` works, but
   `CodeMeter.exe` **stalls during startup**: the process stays alive with a
   single thread, never creates its `ProgramData\WIBU-SYSTEMS` config, and
   never opens port 22350.
@@ -230,7 +230,7 @@ Things worth trying, in order:
    the full network round-trip below.
 3. **Reporting upstream.** The 7.60d stall is a clean repro (CodeMeter
    Runtime 7.60d + `wine64 CodeMeter.exe`; process stays single-threaded,
-   no port) — a good WineHQ bug report, as is the 9.10 `cpsrt.dll` loader
+   no port) - a good WineHQ bug report, as is the 9.10 `cpsrt.dll` loader
    failure.
 
 If you have a dongle and a compatible runtime setup, the round-trip to test
@@ -238,7 +238,7 @@ is: `td-install --codemeter install <runtime>`, `td-install --codemeter
 status` (expect `Running: yes`), `td-install --codemeter add-server
 <server-ip>`, then launch TD and check the Key Manager. The license server
 can be any machine on the LAN with the dongle plugged in and its network
-server enabled — or a second machine running the native Linux/Docker
+server enabled - or a second machine running the native Linux/Docker
 server above.
 
 ---

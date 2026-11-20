@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TouchDesigner-Linux — Automated installer for TouchDesigner on Linux.
+TouchDesigner-Linux - Automated installer for TouchDesigner on Linux.
 
 Usage:
     td-install                      Install (auto-detect graphical / headless)
@@ -221,7 +221,7 @@ def _show_menu(args):
     options = [
         (
             "Install",
-            "Install and run TouchDesigner on Linux — idempotent, safe to re-run",
+            "Install and run TouchDesigner on Linux - idempotent, safe to re-run",
         ),
         ("Update", "Update launcher, Wine components, UI fixes and icons"),
         (
@@ -236,7 +236,7 @@ def _show_menu(args):
     if not sys.stdin.isatty():
         print(f"  1. Install")
         print(
-            f"{Colors.accent}     Install and run TouchDesigner on Linux — idempotent, safe to re-run{Colors.nc}"
+            f"{Colors.accent}     Install and run TouchDesigner on Linux - idempotent, safe to re-run{Colors.nc}"
         )
         print()
         print(f"  2. Update")

@@ -1,4 +1,4 @@
-"""Pip wrapper — install Python packages into TouchDesigner's embedded Python.
+"""Pip wrapper - install Python packages into TouchDesigner's embedded Python.
 
 TouchDesigner ships its own embedded Python with pip available. This module
 wraps ``wine64 python.exe -m pip <args>`` so users can install packages into

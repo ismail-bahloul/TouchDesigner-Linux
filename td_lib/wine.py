@@ -179,7 +179,7 @@ def setup_wine_prefix(headless: bool = False) -> None:
         if result.returncode != 0:
             _handle_wineboot_error(result.stdout + result.stderr)
     except FileNotFoundError:
-        error("wineboot not found — is the Wine runner installed?")
+        error("wineboot not found - is the Wine runner installed?")
         raise SystemExit(1)
 
     # Let wineboot finish
@@ -421,7 +421,7 @@ _REPO_ASSETS_URL = (
 # TouchDesigner uses "Lucida Console" as its default mono font (parameter value
 # fields, OP name fields, DAT tables, Textport). It ships with Windows but is
 # NOT part of the winetricks `corefonts` set, so a corefonts-only prefix cannot
-# resolve it — TD then logs "Error Loading Default Mono Font ... Substituted
+# resolve it - TD then logs "Error Loading Default Mono Font ... Substituted
 # with Verdana" and renders mono text blank. Installing a mono TTF whose family
 # name is "Lucida Console" (generated from DejaVu Sans Mono, Assets/lucon.ttf)
 # into the prefix fixes both the error and the blank mono text.
@@ -562,7 +562,7 @@ def install_dxvk(enable: bool = True) -> None:
     # Check if already installed by looking for a real DXVK d3d11.dll. Wine
     # also copies its builtin wined3d DLLs into system32 at prefix creation
     # and they are PE32 too, so "file" must confirm it is a Windows PE and
-    # NOT a Wine builtin — otherwise a fresh prefix would skip the DXVK
+    # NOT a Wine builtin - otherwise a fresh prefix would skip the DXVK
     # install and silently keep running wined3d.
     if os.path.isfile(d3d11):
         result = subprocess.run(
@@ -585,7 +585,7 @@ def install_dxvk(enable: bool = True) -> None:
                 success("DXVK already installed")
                 return
             info(
-                "Installed DXVK is not the pinned version — "
+                "Installed DXVK is not the pinned version - "
                 f"upgrading to {DXVK_VERSION}..."
             )
 

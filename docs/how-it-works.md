@@ -8,7 +8,7 @@ This page explains the patches and workarounds applied by the installer and laun
 
 **Problem:** TouchDesigner ships four IDS camera SDK DLLs (`ids_peak_ipl.dll`, `ids_peak_afl.dll`, `ids_peak_ifl.dll`, `ids_peak_comfort_c.dll`). These DLLs have a `DllMain` entry point that crashes under Wine, causing TouchDesigner to abort at startup with `status c0000005`.
 
-**Fix:** Zero the `AddressOfEntryPoint` in each DLL's PE header. This tells the Windows loader to skip `DllMain` entirely — the DLL is loaded but not initialized. Since these DLLs are only needed when an IDS camera is actually connected (rare in TD workflows), this has no practical downside.
+**Fix:** Zero the `AddressOfEntryPoint` in each DLL's PE header. This tells the Windows loader to skip `DllMain` entirely - the DLL is loaded but not initialized. Since these DLLs are only needed when an IDS camera is actually connected (rare in TD workflows), this has no practical downside.
 
 **Technical detail:** The PE header offset is found at `e_lfanew` (offset `0x3C` in the file). The `AddressOfEntryPoint` is at `e_lfanew + 40`. Zeroing those 4 bytes is the entire patch.
 
@@ -34,7 +34,7 @@ This page explains the patches and workarounds applied by the installer and laun
 
 **Fix:** A `.tox` component (`wine_ui_fixes.tox`) is injected into `.toe` files at launch time using TD's own `toeexpand` and `toecollapse` utilities. The fix overrides font rendering for the affected UI elements.
 
-**Version-aware re-patching:** The launcher compares a content fingerprint of the fix injected in a `.toe` with the currently shipped `wine_ui_fixes.tox`. If they differ (e.g. after a new fix release), the old fix is replaced — so upgrading the fix actually reaches projects that were already patched with an older version.
+**Version-aware re-patching:** The launcher compares a content fingerprint of the fix injected in a `.toe` with the currently shipped `wine_ui_fixes.tox`. If they differ (e.g. after a new fix release), the old fix is replaced - so upgrading the fix actually reaches projects that were already patched with an older version.
 
 **Caveat:** The license activation screen appears before any `.toe` file is loaded, so the fix is not applied on the very first launch. After entering your license and restarting TD, the fix works normally.
 
@@ -50,7 +50,7 @@ This page explains the patches and workarounds applied by the installer and laun
 Error Loading Default Mono Font. Failed to load font file. Failed to load . Substituted with Verdana.
 ```
 
-and the mono text simply doesn't render. This is independent of the `wine_ui_fixes.tox` pass above (which only changes how Text TOPs are rasterized — bitmap/polygon vs. scalable — it does not load the default mono font), so the error can persist even after the `.tox` fix is applied.
+and the mono text simply doesn't render. This is independent of the `wine_ui_fixes.tox` pass above (which only changes how Text TOPs are rasterized - bitmap/polygon vs. scalable - it does not load the default mono font), so the error can persist even after the `.tox` fix is applied.
 
 **Fix:** Install a mono font whose family name is `Lucida Console` as `lucon.ttf` into the prefix and register it:
 
@@ -60,13 +60,13 @@ wine64 reg add "HKLM\Software\Microsoft\Windows NT\CurrentVersion\Fonts" \
   /v "Lucida Console (TrueType)" /d "lucon.ttf" /f
 ```
 
-The bundled `Assets/lucon.ttf` is generated from DejaVu Sans Mono with its `name` table rewritten (family `Lucida Console`), so it can be distributed freely — no proprietary Microsoft font is shipped. The install and `--update` flows both run this (`install_lucida_console()` in `td_lib/wine.py`). A running `wineserver` is killed first and the result is verified with `reg query`, because `reg add` can silently lose the entry if a stale wineserver flushes its state afterwards.
+The bundled `Assets/lucon.ttf` is generated from DejaVu Sans Mono with its `name` table rewritten (family `Lucida Console`), so it can be distributed freely - no proprietary Microsoft font is shipped. The install and `--update` flows both run this (`install_lucida_console()` in `td_lib/wine.py`). A running `wineserver` is killed first and the result is verified with `reg query`, because `reg add` can silently lose the entry if a stale wineserver flushes its state afterwards.
 
 ---
 
 ## LogPixels DPI
 
-**Problem:** Wine defaults to 96 DPI, which makes TD's UI fonts very small on high-resolution displays (common on modern laptops). Changing the DPI through `winecfg` or `winetricks` has **no effect** — TouchDesigner ignores the DPI Wine reports and only reads the `LogPixels` registry value at startup, so the override has to be written into the prefix directly.
+**Problem:** Wine defaults to 96 DPI, which makes TD's UI fonts very small on high-resolution displays (common on modern laptops). Changing the DPI through `winecfg` or `winetricks` has **no effect** - TouchDesigner ignores the DPI Wine reports and only reads the `LogPixels` registry value at startup, so the override has to be written into the prefix directly.
 
 **Fix:** On first launch the launcher detects the display's logical DPI (`Xft.dpi` via `xrdb`, falling back to `xdpyinfo`) and writes the matching value (`96`, `120`, `144` or `192`) to `LogPixels` in `HKEY_CURRENT_CONFIG\Software\Fonts`. It runs after `wineboot`, which would otherwise reset the value, and is skipped on later launches so the prefix keeps it.
 
@@ -109,7 +109,7 @@ Wine recreates the remaining symlinks (`d:`, `com*`, etc.) on first `wineboot`.
 
 **File:** `backup_license()` / `restore_license()` in the launcher script.
 
-A full uninstall (`td-install --uninstall` → *Uninstall EVERYTHING*) removes the whole prefix — including `ins*.dat` — so the license activation is lost by design. The uninstaller prints a warning before deleting it (`_warn_license_loss()` in `td_lib/cleanup.py`), and removing a single version does **not** touch the license.
+A full uninstall (`td-install --uninstall` → *Uninstall EVERYTHING*) removes the whole prefix - including `ins*.dat` - so the license activation is lost by design. The uninstaller prints a warning before deleting it (`_warn_license_loss()` in `td_lib/cleanup.py`), and removing a single version does **not** touch the license.
 
 ---
 
@@ -141,6 +141,6 @@ This is the first thing to ask when someone reports an issue.
 
 ## Related
 
-- [Compatibility status](compatibility.md) — what works and what doesn't
-- [Troubleshooting](troubleshooting.md) — common issues and fixes
-- [Advanced tools](advanced-tools.md) — toeexpand / toecollapse
+- [Compatibility status](compatibility.md) - what works and what doesn't
+- [Troubleshooting](troubleshooting.md) - common issues and fixes
+- [Advanced tools](advanced-tools.md) - toeexpand / toecollapse

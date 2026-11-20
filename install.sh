@@ -1,5 +1,5 @@
 #!/bin/bash
-# TouchDesigner-Linux — Automated installer for TouchDesigner on Linux.
+# TouchDesigner-Linux - Automated installer for TouchDesigner on Linux.
 # This is a lightweight launcher that downloads and runs td-install (Python).
 #
 # Usage:
@@ -25,7 +25,7 @@ if [ -f "$SCRIPT_DIR/td-install" ]; then
     # Running from a local clone
     TD_CLI="$SCRIPT_DIR/td-install"
 elif command -v git &>/dev/null; then
-    # Running from curl pipe — clone the repo (keeps a cached, updatable copy)
+    # Running from curl pipe - clone the repo (keeps a cached, updatable copy)
     REPO_DIR="$INSTALL_DIR/source"
     if [ ! -d "$REPO_DIR/.git" ]; then
         echo "Downloading TouchDesigner-Linux..."
@@ -45,7 +45,7 @@ elif command -v git &>/dev/null; then
     TD_CLI="$REPO_DIR/td-install"
     cd "$REPO_DIR"
 else
-    # No git — e.g. a fresh distrobox container ships curl/wget but not git.
+    # No git - e.g. a fresh distrobox container ships curl/wget but not git.
     # Fall back to a plain tarball download (no cache; re-downloads each run).
     if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
         echo "Error: need git (or curl/wget) to download the installer."
@@ -55,7 +55,7 @@ else
         echo "  sudo pacman -S git      # Arch"
         exit 1
     fi
-    echo "git not found — downloading the installer tarball instead..."
+    echo "git not found - downloading the installer tarball instead..."
     mkdir -p "$INSTALL_DIR"
     TARBALL_URL="https://github.com/ismail-bahloul/TouchDesigner-Linux/archive/refs/heads/${REPO_BRANCH}.tar.gz"
     TARBALL_PATH="$INSTALL_DIR/source.tar.gz"
@@ -73,7 +73,7 @@ fi
 
 # Reconnect stdin to terminal so interactive menus work through curl pipe.
 # /dev/tty can exist as a device node yet fail to open (no controlling
-# terminal, e.g. inside a container) — test the open, not just the node.
+# terminal, e.g. inside a container) - test the open, not just the node.
 if [ -c /dev/tty ] && { exec 3</dev/tty; } 2>/dev/null; then
     exec 3<&-
     exec "$TD_CLI" "$@" </dev/tty

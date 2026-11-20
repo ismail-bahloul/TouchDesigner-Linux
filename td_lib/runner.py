@@ -6,7 +6,7 @@ TOPs (Background, Denoise, Upscaler, RTX Video, Video Stream In/Out) and the
 CodeMeter runtime work.
 
 Credit: DAW-GE-Proton is KitsuneDev's fork of GE-Proton, with the DWrite fix
-that lets TouchDesigner start on Wine 11 — https://github.com/KitsuneDev/daw-proton-ge
+that lets TouchDesigner start on Wine 11 - https://github.com/KitsuneDev/daw-proton-ge
 
 Design: every other module (pip, dpi, patches, CodeMeter, the launcher...)
 calls ``<runner>/bin/wine64 <args>``. Proton cannot be driven that way (it
@@ -56,8 +56,8 @@ PROTON11_SHA256 = os.environ.get(
 
 # nvcuda (CUDA bridge) patched for Wine 11: maps shared handles through D3DKMT
 # and no longer destroys live semaphores (see patches/ and docs/runners.md).
-# Built against the exact Wine headers of DAW-GE-Proton11-6c — the wineserver
-# request number is build specific — so it must not be used with another build.
+# Built against the exact Wine headers of DAW-GE-Proton11-6c - the wineserver
+# request number is build specific - so it must not be used with another build.
 NVCUDA_PATCHED_URL = os.environ.get(
     "NVCUDA_PATCHED_URL",
     "https://github.com/ismail-bahloul/TouchDesigner-Linux/releases/download/"
@@ -160,7 +160,7 @@ def set_runner_kind(kind: str) -> None:
 def ensure_runner_compatible(requested: str) -> None:
     """Refuse to switch runner on top of an existing prefix.
 
-    A Soda (Wine 9) prefix upgraded in place by Proton 11 — or the reverse —
+    A Soda (Wine 9) prefix upgraded in place by Proton 11 - or the reverse -
     gives hard-to-debug breakage, and recreating it would drop the TD license.
     """
     from .wine import WINE_PREFIX

@@ -1,5 +1,5 @@
 name: Bug report
-description: Something doesn't work — install, launch, or a TD feature broken under Wine
+description: Something doesn't work - install, launch, or a TD feature broken under Wine
 labels: ["bug"]
 body:
   - type: textarea
@@ -25,7 +25,7 @@ body:
     id: diagnose
     attributes:
       label: "`td-install --diagnose` output"
-      description: Run `td-install --diagnose` and paste the full output here. This covers distro, GPU, Wine runner, and TD version in one go — please include it even if some parts seem unrelated.
+      description: Run `td-install --diagnose` and paste the full output here. This covers distro, GPU, Wine runner, and TD version in one go - please include it even if some parts seem unrelated.
       render: shell
     validations:
       required: true
@@ -34,7 +34,7 @@ body:
     id: runner
     attributes:
       label: Wine runner
-      description: If you changed it from the default, or aren't sure, say so — it's also in the diagnose output above.
+      description: If you changed it from the default, or aren't sure, say so - it's also in the diagnose output above.
       options:
         - Soda 9 (default)
         - GE-Proton

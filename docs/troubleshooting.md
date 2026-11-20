@@ -43,7 +43,7 @@ support is incomplete, and `Automatic`/`Bitmap` can render blank.
 
 The UI is tiny after a fresh install. Changing the DPI in `winecfg`, `winetricks` or the Wine registry has **no effect**: TouchDesigner ignores the DPI Wine reports and only reads `LogPixels` at startup, so the value must be written into the prefix directly.
 
-Set it with `td-install --dpi` (persistent — remembered across launches and updates):
+Set it with `td-install --dpi` (persistent - remembered across launches and updates):
 
 ```bash
 td-install --dpi 120     # 125% (most common on HiDPI laptops)
@@ -123,8 +123,8 @@ td-install --pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
 This environment variable is already set automatically:
-- In the **launcher** (`launch-touchdesigner.sh`) — torch works in TOP Scripts out of the box
-- In **`td-install --pip`** — pip installs and `--pip run` commands work automatically
+- In the **launcher** (`launch-touchdesigner.sh`) - torch works in TOP Scripts out of the box
+- In **`td-install --pip`** - pip installs and `--pip run` commands work automatically
 
 **Works with:** PyTorch CPU-only (tested 2.13.0+cpu under Wine TkG)
 **CUDA support:** Not yet tested

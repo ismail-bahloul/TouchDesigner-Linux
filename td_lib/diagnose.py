@@ -73,7 +73,7 @@ def _check_container():
 
     if is_inside_distrobox():
         print("  location:  inside the container")
-        print("  (distrobox itself only exists on the host — this is normal)")
+        print("  (distrobox itself only exists on the host - this is normal)")
         print()
         return
 
@@ -83,7 +83,7 @@ def _check_container():
         print("  Install: curl -sSL https://distrobox.it/install | sh")
     else:
         print(f"  distrobox: {distrobox}")
-        print(f"  backend:   {find_backend() or 'none — install podman or docker'}")
+        print(f"  backend:   {find_backend() or 'none - install podman or docker'}")
         if container_exists(CONTAINER_NAME):
             print(f"  container '{CONTAINER_NAME}': created")
             print("  usage:     td-install --container <action>")
@@ -159,7 +159,7 @@ def _check_td_base():
     td_dir = TD_BASE_DIR
 
     if not os.path.isdir(td_dir):
-        warning(f"  {td_dir} — not found")
+        warning(f"  {td_dir} - not found")
         print()
         return
 

@@ -3,11 +3,11 @@
 Runs the whole TouchDesigner-Wine environment inside an isolated distrobox
 container (podman or docker backend) so the host system is never modified:
 
-- the 32-bit (i386/multilib) dependency problem disappears — those packages
+- the 32-bit (i386/multilib) dependency problem disappears - those packages
   are installed inside the container's distro instead of the host's
 - immutable / read-only hosts (SteamOS, Fedora Silverblue, ...) need no
   system changes, and ``sudo`` is never needed on the host
-- ``noexec`` mounts on ``/home`` are the one remaining host-level issue —
+- ``noexec`` mounts on ``/home`` are the one remaining host-level issue -
   see :func:`noexec_mount` (a different ``TD_BASE_DIR`` fixes it)
 
 The container shares the host ``$HOME``, so the launcher, desktop
@@ -41,7 +41,7 @@ CONTAINER_IMAGE = os.environ.get("TD_CONTAINER_IMAGE", "ubuntu:24.04")
 # GPU acceleration inside the container (or find the init too slow).
 NVIDIA_DISABLED = os.environ.get("TD_CONTAINER_NO_NVIDIA") == "1"
 
-# distrobox sets this inside the container — the canonical "we are inside"
+# distrobox sets this inside the container - the canonical "we are inside"
 # signal (also used by distrobox's own init scripts).
 _INSIDE_VAR = "DISTROBOX_ENTER_PATH"
 
@@ -140,7 +140,7 @@ def create_container(name: str = CONTAINER_NAME, image: str = CONTAINER_IMAGE) -
         info("NVIDIA GPU detected: enabling host driver passthrough (--nvidia)")
         warning(
             "distrobox's NVIDIA init scans the whole host tree on every"
-            " container start — first launch can take several minutes."
+            " container start - first launch can take several minutes."
             " Set TD_CONTAINER_NO_NVIDIA=1 to skip it."
         )
         cmd.append("--nvidia")
@@ -167,7 +167,7 @@ def remove_container(name: str = CONTAINER_NAME) -> int:
     """Remove a distrobox container. Returns the exit code."""
     distrobox = find_distrobox()
     if not distrobox:
-        warning("distrobox not installed — nothing to remove")
+        warning("distrobox not installed - nothing to remove")
         return 0
     if not container_exists(name):
         info(f"Container {name} does not exist")

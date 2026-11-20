@@ -12,7 +12,7 @@ on:
 jobs:
   # ── End-to-end smoke test with real Wine + winetricks ──
   weekly-smoke:
-    name: Weekly smoke — real deps install
+    name: Weekly smoke - real deps install
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
@@ -86,7 +86,7 @@ jobs:
         run: td-install --diagnose 2>&1 | head -40
 
   distro-detect:
-    name: Distro detect — ${{ matrix.distro.name }}
+    name: Distro detect - ${{ matrix.distro.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

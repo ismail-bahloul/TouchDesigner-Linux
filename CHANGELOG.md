@@ -106,7 +106,7 @@ All notable changes to this project are documented here.
 
 ### Added
 
-- **`td-install --dpi`** — set TouchDesigner's UI scaling (LogPixels) without
+- **`td-install --dpi`** - set TouchDesigner's UI scaling (LogPixels) without
   hunting for the undocumented `TD_DPI` variable: `td-install --dpi 120`
   (96/120/144/192, or `auto`). The choice is stored in `prefix/.td_dpi` and
   reapplied by the launcher, so it survives launches and updates. With no value,
@@ -116,7 +116,7 @@ All notable changes to this project are documented here.
 
 - **UI scaling is no longer a discoverability trap.** TouchDesigner ignores the
   DPI reported by Wine (`winecfg`/`winetricks` have no effect on it), and when
-  the first-launch auto-detection settled on 96 DPI the launcher said nothing —
+  the first-launch auto-detection settled on 96 DPI the launcher said nothing -
   leaving a tiny UI with no hint. The launcher now always reports the scaling it
   applies on first launch together with the command to change it, and honours
   `TD_DPI`/`.td_dpi` even on that first launch (previously `TD_DPI` was ignored
@@ -130,7 +130,7 @@ All notable changes to this project are documented here.
   the launcher, and edits to the launcher are **not** preserved across updates
   (it is regenerated).
 - Updated the runner docs for Wine 11: the old "Wine 11 unusable / UMU
-  unreliable" verdicts are superseded — a patched Wine 11 (DAW-GE-Proton11-6c via
+  unreliable" verdicts are superseded - a patched Wine 11 (DAW-GE-Proton11-6c via
   `umu-run` + `winetricks allfonts`) launches TD, uses the GPU and renders fonts
   correctly.
 - Updated the CodeMeter docs: `CodeMeter.exe` starts under Wine 11 (opens port
@@ -187,10 +187,10 @@ All notable changes to this project are documented here.
 
 ### Fixes
 
-- **Lucida Console mono font in the Wine prefix** — TouchDesigner uses
+- **Lucida Console mono font in the Wine prefix** - TouchDesigner uses
   "Lucida Console" as its default mono font (parameter value fields, OP name
   fields, DAT tables, Textport). It ships with Windows but is not part of
-  `corefonts`, so prefixes built by this tool couldn't resolve it — TD logged
+  `corefonts`, so prefixes built by this tool couldn't resolve it - TD logged
   `Error Loading Default Mono Font ... Substituted with Verdana` and rendered
   mono text blank. Install and `--update` now install a mono `lucon.ttf` whose
   family is "Lucida Console" (generated from DejaVu Sans Mono, in `Assets/`)
@@ -201,7 +201,7 @@ All notable changes to this project are documented here.
 
 ### New
 
-- **`touchdesigner` terminal command** — `~/.local/bin/touchdesigner` is now
+- **`touchdesigner` terminal command** - `~/.local/bin/touchdesigner` is now
   symlinked to the launcher, so `touchdesigner [project.toe]` works from any
   terminal (parity with the AUR package's `/usr/bin/touchdesigner`). It
   works from the host and inside the container, and is removed on
@@ -213,11 +213,11 @@ All notable changes to this project are documented here.
   skips the automatic `.toe` font-fix pass, `--verbose` enables Wine debug
   output. The tool version is baked into the launcher at generation time,
   so `-v` stays in sync with the installed version after each update.
-- Fix: `--exe <path>` on the launcher never worked — a stray `]` in the
+- Fix: `--exe <path>` on the launcher never worked - a stray `]` in the
   template (`[ -n "$2" ]]`) broke argument parsing at runtime (invisible to
   `bash -n`). Both `--exe <path>` and `--exe=<path>` now parse correctly.
 
-- **Container mode (Distrobox / Podman)** — `td-install --container <action>`
+- **Container mode (Distrobox / Podman)** - `td-install --container <action>`
   runs the whole install inside an isolated container, leaving the host
   untouched: no sudo, no 32-bit repository setup, works on immutable distros
   and SteamOS. First run creates a `touchdesigner-linux` container
@@ -235,16 +235,16 @@ All notable changes to this project are documented here.
     limitations.
 - `--diagnose` now reports container-mode status (distrobox installed,
   backend, container state, inside/outside).
-- **CodeMeter runtime installation without msiexec** —
+- **CodeMeter runtime installation without msiexec** -
   `td-install --codemeter install <path>` extracts a CodeMeter Runtime
   installer natively on the host and lays the files into the Wine prefix,
   bypassing the Wibu MSI that hangs under Wine's `msiexec`. Handles both
-  Inno setups (innoextract) and WiX/MSI bundles (7z) — the official 7.60d
+  Inno setups (innoextract) and WiX/MSI bundles (7z) - the official 7.60d
   download is a WiX bundle. Also copies the Wibu system DLLs
   (`WibuCm64.dll`/`cpsrt.dll`) into the prefix's system directories.
   First real test (runtime 7.60d): `cpsrt.dll` loads fine under Wine 9.0
   (the `c000007b` failure only affects 8.41a/9.10), but `CodeMeter.exe`
-  still stalls during startup — see [docs/codemeter.md](docs/codemeter.md)
+  still stalls during startup - see [docs/codemeter.md](docs/codemeter.md)
   for the updated status and next steps.
 
 ### Fixes
@@ -254,7 +254,7 @@ All notable changes to this project are documented here.
   `install.sh` falls back to downloading the installer tarball. Its
   `/dev/tty` reconnect also tests the open instead of the node's existence,
   so containers without a controlling terminal no longer error.
-- `xdg-utils` and `file` added to all distro package lists — the editor
+- `xdg-utils` and `file` added to all distro package lists - the editor
   bridge (`winebrowser.exe → xdg-open`) and DXVK/winetricks both shell out
   to those commands, and minimal containers ship neither. Found by the
   first real container-mode install.

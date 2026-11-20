@@ -372,7 +372,7 @@ def install_packages(distro: DistroInfo) -> None:
 def _install_pacman() -> None:
     # SteamOS (and forks like HoloISO) ship a read-only root filesystem:
     # pacman cannot write until it is disabled. The signal is the
-    # distro-specific tool itself, not the ID — keying on it covers every
+    # distro-specific tool itself, not the ID - keying on it covers every
     # SteamOS-like system. Must run before touching /etc/pacman.conf.
     if shutil.which("steamos-readonly"):
         info("Read-only root detected (SteamOS): disabling it to install packages...")

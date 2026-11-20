@@ -8,7 +8,7 @@ from .wine import RUNNER_DIR, WINE_PREFIX
 
 LAUNCHER_PATH = os.path.expanduser("~/.local/bin/launch-touchdesigner.sh")
 # Friendly terminal command, symlinked to the launcher (the AUR package
-# already ships /usr/bin/touchdesigner — parity for curl installs).
+# already ships /usr/bin/touchdesigner - parity for curl installs).
 TD_COMMAND = os.path.expanduser("~/.local/bin/touchdesigner")
 BACKUP_DIR = os.path.join(TD_BASE_DIR, "backups")
 
@@ -17,7 +17,7 @@ def create_launcher_script() -> str:
     """Generate the launcher shell script and return its path.
 
     The launcher includes auto-patching of .toe files with wine_ui_fixes.tox
-    and backup creation. No GPU offloading is forced — the system default
+    and backup creation. No GPU offloading is forced - the system default
     usage. On hybrid laptops, NVIDIA is auto-detected and used if available.
     """
     ensure_dir(os.path.dirname(LAUNCHER_PATH))
@@ -42,7 +42,7 @@ fi
 '''
 
     # A non-default TD_BASE_DIR (e.g. to escape a noexec $HOME) lives inside
-    # the container, so it must be baked in — desktop shortcuts launch the
+    # the container, so it must be baked in - desktop shortcuts launch the
     # launcher from the host without that env var.
     baked_base = ""
     if container_mode and TD_BASE_DIR != os.path.expanduser(
@@ -231,7 +231,7 @@ if [ -z "$TOUCHDESIGNER_EXE" ]; then
     exit 1
 fi
 
-# Auto-detect NVIDIA dGPU on hybrid laptops — only when the driver actually
+# Auto-detect NVIDIA dGPU on hybrid laptops - only when the driver actually
 # works. nvidia-smi can exist while the driver fails (e.g. GPU passthrough, a
 # missing kernel module, or the GPU dropped off after boot: "nvidia-smi -L" then
 # prints "No devices found." yet exits 0, hence the grep for a GPU line); forcing
@@ -313,7 +313,7 @@ check_and_patch_toe() {{
                 rm -rf "$MERGE_TMP" 2>/dev/null || true
             fi
             # Replace stale fix entries from a previous injection, then add the
-            # current ones — otherwise duplicates corrupt the collapsed .toe
+            # current ones - otherwise duplicates corrupt the collapsed .toe
             sed -i '/wine_ui_fixes/d' "$TOC_PATH" 2>/dev/null || true
             for entry in "${{FIX_ENTRIES[@]}}"; do
                 echo "$entry" >> "$TOC_PATH"

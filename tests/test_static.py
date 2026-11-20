@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TouchDesigner-Linux v1.4 — Static test suite.
+TouchDesigner-Linux v1.4 - Static test suite.
 
 Runs unit-level validation for all td_lib modules.
 Safe to run anywhere: no sudo, no Wine, no system modifications.
@@ -356,7 +356,7 @@ def test_container_module():
         check("create_container fails cleanly without distrobox", not container.create_container())
         check("remove_container no-ops without distrobox", container.remove_container() == 0)
     else:
-        skip("distrobox present — skipping failure-path checks")
+        skip("distrobox present - skipping failure-path checks")
 
     # The TD_CONTAINER_NO_NVIDIA escape hatch must be wired into the create
     # command (slow distrobox --nvidia init on every container start).
@@ -385,7 +385,7 @@ def test_dry_run():
 
 
 # =============================================================================
-#  Utilities — safety & helpers
+#  Utilities - safety & helpers
 # =============================================================================
 
 
@@ -1547,7 +1547,7 @@ def test_codemeter_install_runtime():
         check("run_codemeter install (no path) fails cleanly without a runtime",
               rc != 0)
     else:
-        skip("run_codemeter install (no path) — runtime present on this machine")
+        skip("run_codemeter install (no path) - runtime present on this machine")
 
     # remove/uninstall routing must be recognized (it touches the real prefix,
     # so only assert the command is accepted by the dispatcher, not run it
@@ -1653,7 +1653,7 @@ def test_diagnose_output():
 
 
 # =============================================================================
-#  Cleanup — uninstall selection parsing
+#  Cleanup - uninstall selection parsing
 # =============================================================================
 
 
@@ -1747,7 +1747,7 @@ def test_progress_bar_format():
 
 
 # =============================================================================
-#  AUR launcher parity — the AUR python launcher must not drift from the bash
+#  AUR launcher parity - the AUR python launcher must not drift from the bash
 #  launcher's font-fix behaviors (this class of drift caused real user bugs)
 # =============================================================================
 

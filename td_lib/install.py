@@ -20,10 +20,10 @@ def run_install(args):
     from .container import is_container_mode, noexec_mount
 
     if is_container_mode():
-        info("Running inside a distrobox container — the host system is untouched")
+        info("Running inside a distrobox container - the host system is untouched")
         if noexec_mount():
             warning(
-                "Your home directory is on a noexec filesystem — Wine cannot"
+                "Your home directory is on a noexec filesystem - Wine cannot"
                 + " run from it, even inside the container."
             )
             info("Reinstall with a different base directory, e.g.:")

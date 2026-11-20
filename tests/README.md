@@ -9,7 +9,7 @@ python3 tests/test_static.py
 ```
 
 Validates imports, CLI args, dry-run, version fetching, and assets.
-Safe to run anywhere — no system modifications.
+Safe to run anywhere - no system modifications.
 
 ## Docker
 
