@@ -1,5 +1,8 @@
 # Patches
 
+- [`nvcuda-wine11-d3dkmt.patch`](#nvcuda-wine11-d3dkmtpatch): the NVIDIA CUDA TOPs on Proton 11.
+- [`qcap-release-on-stop.patch`](#qcap-release-on-stoppatch): Video Device In keeps working after the TOP is deactivated.
+
 ## `nvcuda-wine11-d3dkmt.patch`
 
 Patch for [SveSop/nvcuda](https://github.com/SveSop/nvcuda) (the CUDA bridge for
@@ -62,3 +65,67 @@ nvcuda is derived from Wine Staging code and is licensed under the
 [LGPL 2.1 or later](https://github.com/SveSop/nvcuda/blob/master/LICENSE.md).
 The patch above, the upstream commit and the recipe are the corresponding source
 of the binary distributed as a release asset.
+
+## `qcap-release-on-stop.patch`
+
+Patch for Wine's `qcap` (the DirectShow video capture filter that TouchDesigner's Video
+Device In TOP goes through). Against Valve's Wine at commit
+`00e639898e01f8dd6fbee3851bd4c1e412c5b875` (the `wine` submodule of DAW-GE-Proton11-6c)
+**with the two `qcap-dshow-fixes` patches that build applies on top**
+([`patches/wine-hotfixes/qcap-dshow-fixes/`](https://github.com/KitsuneDev/daw-proton-ge/tree/DAW-GE-Proton11-6c/patches/wine-hotfixes/qcap-dshow-fixes)
+in KitsuneDev's fork). Background: issue #35.
+
+What was wrong: Wine opens `/dev/video0` when the capture filter is created and only closes it
+when the filter is destroyed. Stopping the graph leaves the descriptor open, and on a UVC
+camera the descriptor that called `VIDIOC_S_FMT` keeps the stream "privilege" until it is
+closed. TouchDesigner builds a new graph on each deactivation / format change, and the new
+graph's `VIDIOC_S_FMT` then fails with `EBUSY` ("Failed to set pixel format: Device or
+resource busy"): no image, and no other program can use the camera either.
+
+What it does: the capture filter closes the camera when the graph goes to *Stopped*, after
+the streaming thread has ended, and the camera is reopened on demand (the saved format is
+applied again at the next start). Every access to the descriptor goes through a lock, since
+the property calls (brightness...) can come from another thread than the one stopping the
+graph.
+
+Measured on the clean `--runner proton11` install (CachyOS, USB HP webcam):
+
+| | stock qcap | patched qcap |
+|---|---|---|
+| Deactivate / reactivate the TOP, 6 times | image 1 time out of 6 | image 6 out of 6 (0.8 s each) |
+| Camera free for another program after deactivation | never (4 probes out of 4 busy) | always (0 probes out of 4 busy) |
+| Change the signal format 8 times | 45 `EBUSY` errors, test never finishes | image 8 out of 8, right resolution, 0 errors |
+
+### Build
+
+Needs `flex`, `bison`, `autoconf`, `make`, `gcc` and `mingw-w64-gcc`; about 15 minutes.
+
+```bash
+mkdir wine && cd wine
+curl -L https://github.com/ValveSoftware/wine/archive/00e639898e01f8dd6fbee3851bd4c1e412c5b875.tar.gz \
+    | tar xz --strip-components=1
+base=https://raw.githubusercontent.com/KitsuneDev/daw-proton-ge/DAW-GE-Proton11-6c/patches/wine-hotfixes/qcap-dshow-fixes
+for f in 0001-qcap-fix-Smart-Tee-preview-allocator-and-RGB32-negot.patch \
+         0002-qcap-fix-wow64-media-type-marshaling-in-v4l-backend.patch; do
+    curl -fL $base/$f | patch -p1
+done
+patch -p1 < /path/to/qcap-release-on-stop.patch
+sh autogen.sh        # the tarball lacks configure and some generated headers
+mkdir ../obj && cd ../obj
+../wine/configure --enable-archs=x86_64 --disable-tests --without-x --without-wayland \
+    --without-vulkan --without-opengl
+make -j"$(nproc)" dlls/qcap/x86_64-windows/qcap.dll dlls/qcap/qcap.so
+x86_64-w64-mingw32-strip dlls/qcap/x86_64-windows/qcap.dll && strip dlls/qcap/qcap.so
+```
+
+The two files replace `<runner>/files/lib/wine/x86_64-windows/qcap.dll` and
+`<runner>/files/lib/wine/x86_64-unix/qcap.so`; they must be replaced together. The PE
+imports/exports and the unix library's dependencies are identical to the stock ones.
+
+`td-install` downloads them as the `qcap-DAW-GE-Proton11-6c.tar.gz` release asset (checksums
+pinned in `td_lib/runner.py`), keeps the stock files as `*.orig`, and only does so for the
+runner build it is pinned to. The change is small and generic, so it is a candidate for
+upstream Wine.
+
+Wine is licensed under the LGPL 2.1 or later; the patch above, the Wine commit and the recipe
+are the corresponding source of the binaries.

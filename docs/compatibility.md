@@ -9,7 +9,7 @@
 | NDI | ✅ | Confirmed working |
 | TDAbleton | ✅ | Confirmed working |
 | TDBitwig | ✅ | Confirmed working |
-| Video Device In | ⚠️ | USB Webcams work on first init, but Wine "locks" the device. Replug or TD restart required to reset |
+| Video Device In | ⚠️ | On the default Soda runner, USB webcams work on first init, but Wine "locks" the device: replug or restart TD to reset. On `--runner proton11` a patched `qcap` releases the camera when the TOP is deactivated or its format changes |
 | Virtual webcam (SpoutCam) | ❌ | Windows virtual cameras like SpoutCam are not exposed to the embedded Chromium that browser-based plugins (e.g. MediaPipe) use to grab video, so they never show up in the camera list. Wine has no equivalent for a DirectShow virtual-camera filter. Workaround: a Linux virtual camera (NDI out of TD into a native receiver writing to `v4l2loopback`) |
 | NVIDIA TOPs (Background, Denoise, Upscaler, RTX Video) | ⚠️ | ❌ on the default Soda runner: CUDA/TensorRT fail to initialise. ✅ with the experimental `--runner proton11` (patched nvcuda + NVIDIA Video Effects SDK), see [docs/runners.md](runners.md#experimental-td-install---runner-proton11) |
 | NVIDIA Flow / Flex TOPs | ❌ | Flow: Wine lacks the keyed mutex for Vulkan-exported memory. Flex: needs a private NVAPI function that dxvk-nvapi does not implement. Same on both runners |
