@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-11-20
+
 ### Added
 
 - **Experimental `td-install --runner proton11`.** Installs DAW-GE-Proton11-6c
@@ -56,6 +58,8 @@ All notable changes to this project are documented here.
 
 ### Docs
 
+- Noted that the AUR package is unchanged: it installs Soda and has no `--runner` option, so
+  the experimental runner is for the curl installer.
 - Documented, for the `proton11` runner, that the EDIT button asks which program to use once per
   file type (the container's `xdg-open` goes through the desktop portal): tick "Set as default
   app" once. Also corrected the runner summary table, which still said CUDA TOPs, NVENC and
