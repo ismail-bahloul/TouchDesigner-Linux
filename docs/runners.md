@@ -103,7 +103,8 @@ Or through the one-liner: `curl -sSL .../install.sh | bash -s -- --runner proton
 **Needs** [umu-launcher](https://github.com/Open-Wine-Components/umu-launcher) (`umu-run` in
 `PATH`: `sudo pacman -S umu-launcher` on Arch, `sudo dnf install umu-launcher` on Fedora). The
 first run also downloads the Steam Linux Runtime (a few hundred MB). Expect about **13 GB** on
-disk (Soda: 3-5 GB).
+disk (Soda: 3-5 GB). The AUR package is unchanged: it installs Soda and has no `--runner`
+option, so this is for the curl installer.
 
 ### What it sets up
 
