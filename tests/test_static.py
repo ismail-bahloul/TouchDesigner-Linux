@@ -2395,6 +2395,44 @@ def test_proton11_runner():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_launcher_nvidia_guard():
+    print("\n── Launcher NVIDIA offload guard ──")
+    import contextlib
+    import io
+
+    import td_lib.launcher as launcher
+
+    tmp = os.path.realpath(tempfile.mkdtemp(prefix="td_guard_test_"))
+    saved = (launcher.LAUNCHER_PATH, launcher.TD_COMMAND)
+    try:
+        launcher.LAUNCHER_PATH = os.path.join(tmp, "launch-touchdesigner.sh")
+        launcher.TD_COMMAND = os.path.join(tmp, "touchdesigner")
+        with contextlib.redirect_stdout(io.StringIO()):
+            launcher.create_launcher_script()
+        with open(launcher.LAUNCHER_PATH) as f:
+            guard = next(l for l in f.read().splitlines() if l.startswith("if command -v nvidia-smi"))
+
+        fakebin = os.path.join(tmp, "bin")
+        os.makedirs(fakebin)
+
+        def offloads(smi_body: str) -> bool:
+            with open(os.path.join(fakebin, "nvidia-smi"), "w") as f:
+                f.write("#!/bin/bash\n" + smi_body)
+            os.chmod(os.path.join(fakebin, "nvidia-smi"), 0o755)
+            env = dict(os.environ, PATH=f"{fakebin}:{os.environ['PATH']}")
+            r = subprocess.run(["bash", "-c", guard + "\n echo OFFLOAD\nfi"], capture_output=True, text=True, env=env)
+            return "OFFLOAD" in r.stdout
+
+        check("guard: a real GPU line enables the offload", offloads('echo "GPU 0: NVIDIA RTX (UUID: x)"\n'))
+        # "nvidia-smi -L" exits 0 even when the GPU dropped off after boot, and forcing the
+        # NVIDIA GLX vendor then leaves TouchDesigner on a blank screen
+        check("guard: 'No devices found.' with exit 0 does not", not offloads('echo "No devices found."\n'))
+        check("guard: a failing nvidia-smi does not", not offloads("exit 9\n"))
+    finally:
+        launcher.LAUNCHER_PATH, launcher.TD_COMMAND = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     print("=" * 60)
     from td_lib import __version__
@@ -2450,6 +2488,7 @@ def main():
     test_install_sh_sync()
     test_release_version_consistency()
     test_proton11_runner()
+    test_launcher_nvidia_guard()
 
     total = PASS + FAIL
     print(f"\n{'=' * 60}")

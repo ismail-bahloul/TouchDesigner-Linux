@@ -232,10 +232,11 @@ if [ -z "$TOUCHDESIGNER_EXE" ]; then
 fi
 
 # Auto-detect NVIDIA dGPU on hybrid laptops — only when the driver actually
-# works. nvidia-smi can exist while the driver fails (e.g. GPU passthrough or a
-# missing kernel module); forcing the offload vars then breaks GLX and
-# TouchDesigner refuses to start.
-if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
+# works. nvidia-smi can exist while the driver fails (e.g. GPU passthrough, a
+# missing kernel module, or the GPU dropped off after boot: "nvidia-smi -L" then
+# prints "No devices found." yet exits 0, hence the grep for a GPU line); forcing
+# the offload vars then breaks GLX and TouchDesigner refuses to start.
+if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L 2>/dev/null | grep -q '^GPU '; then
     export __NV_PRIME_RENDER_OFFLOAD=1
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
     export DRI_PRIME=1
