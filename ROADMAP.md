@@ -15,7 +15,7 @@ Currently locked to **Soda Wine 9.0-1** — still the recommended default. See [
 - **Wine 9.x** (Soda, TkG, vanilla) → fully compatible
 - **Wine 10.x** (GE-Proton10) → works with `wine_ui_fixes.tox` but fonts need correction
 - **Wine 11.x** → unpatched builds hang at the splash (DWrite font-enumeration loop)
-- **Wine 11.x + DWrite fix** (`DAW-GE-Proton11-6c` via UMU) → ✅ works, GPU acceleration, fonts correct with **no** `wine_ui_fixes.tox`. Tested 2026-09 (CachyOS + NVIDIA 615). The fix is being upstreamed to GE-Proton.
+- **Wine 11.x + DWrite fix** (`DAW-GE-Proton11-6c` via UMU) → ✅ works, GPU acceleration. Text renders, but `wine_ui_fixes.tox` is still needed (descenders are clipped in Bitmap-mode UI text; checked with before/after screenshots, 2026-11). The fix is being upstreamed to GE-Proton.
 - **Reason:** Soda disables Wine Staging patches (`_use_staging="false"`). Staging introduced the DWrite/mimalloc bug in Wine 10; the Wine 11 DWrite loop is fixed by KitsuneDev's patch.
 
 **Known Proton 10 issue:** TD hangs due to mimalloc + DWrite incompatibility. Fix: set `MIMALLOC_DISABLE_REDIRECT=1`. Must be auto-applied when using Proton runners.
@@ -24,7 +24,7 @@ Currently locked to **Soda Wine 9.0-1** — still the recommended default. See [
 
 **Spout2PW:** Bridges Spout2 video from Windows apps under Proton to PipeWire on Linux. Useful for OBS capture. AUR package: `spout2pw-bin`. Worth documenting or integrating when Spout output is needed.
 
-**In progress: moving TD to a newer Wine build.** The project is pinned to Soda 9.0 because it is the only runner that is fully compatible today. A newer Wine build would also unlock **DXVK 3.x**, which currently crashes on the Syphon/Spout Out TOP under Wine 9.0 (DXVK stays on 2.7.1 for v1.8). This is also the leading candidate to unblock the CodeMeter client (see #21). A working path now exists: **`DAW-GE-Proton11-6c` + UMU** runs TD on Wine 11 with GPU acceleration and no `.tox` font fix (2026-09, see `docs/runners.md`). Before adopting it, two open questions: wait for the DWrite patch to reach upstream **GE-Proton** (rather than depending on a personal fork), and evaluate the UMU + Steam Runtime dependency it pulls in.
+**Shipped (v1.9.0, experimental): `td-install --runner proton11`.** `DAW-GE-Proton11-6c` through umu-launcher, opt-in, Soda stays the default. It is the runner where the NVIDIA CUDA TOPs (Background, Denoise, Upscaler, RTX Video), Video Stream In/Out and the CodeMeter service work, and where Video Device In releases the camera. That took three small patches to Wine-side bridges (nvcuda, NVENC, qcap, in `patches/`). Still failing there: NVIDIA Flow (Wine lacks the keyed mutex for Vulkan-exported memory), Flex (a private NVAPI function) and Web Render. Launches are slower (each Wine call goes through umu's container, about 3 s). **Making it the default** needs: more machines tested (AMD/Intel only, X11, other distros), the DWrite fix in upstream GE-Proton instead of a single-maintainer fork, and a decision on the launch time. A newer Wine would also unlock **DXVK 3.x** (it crashed the Syphon/Spout Out TOP under Wine 9.0, but Spout Out works on the 6c). See `docs/runners.md`.
 
 ### 2. Diagnostic / Health check (`--diagnose`)
 
@@ -156,7 +156,24 @@ This repo's `td_lib` and installer are unaffected — the historical code that l
 
 **Service blocker solved on Wine 11 (2026-09).** Under Wine 9.0 TkG/Soda the Windows CodeMeter service did not come up: 8.41a/9.10 crash on load (protected `cpsrt.dll`, `c000007b`), and **7.60d stalls during startup** (single thread, never opens port 22350). Under **Wine 11** (`DAW-GE-Proton11-6c` via UMU), runtime 7.60d starts, runs with 12 threads and **listens on port 22350** (WebAdmin answers on 127.0.0.1). The stall was Wine-version dependent, as suspected. Still to verify: a full license checkout against a license server. Direct USB dongle passthrough remains out of scope. See [docs/codemeter.md](docs/codemeter.md).
 
-**Next step:** a real end-to-end checkout against a license server (native Linux, Docker, or another machine with the dongle). This depends on adopting a Wine 11 runner, which is now also attractive for fonts and GPU (see item #1). Optional: upstream the Wine 9.0 failures (7.60d stall + 9.10 `cpsrt.dll` loader error) to WineHQ, though they no longer block us.
+**Next step:** a real end-to-end checkout against a license server (native Linux, Docker, or another machine with the dongle). The Wine 11 runner is available now (`--runner proton11`), but `td-install --codemeter` has not been run on it yet; that and the checkout wait for someone with a dongle (#29). Optional: upstream the Wine 9.0 failures (7.60d stall + 9.10 `cpsrt.dll` loader error) to WineHQ, though they no longer block us.
+
+### 22. Upstream the Wine-side fixes
+
+The three patches in `patches/` are small and generic: qcap (close the camera when the capture graph stops, #35),
+the NVENC bridge (`NvEncGetInputFormats` never filled its array) and nvcuda (shared handles through D3DKMT on Wine 11,
+#31). Send them to Wine, SveSop and KitsuneDev so `--runner proton11` can stop shipping its own binaries.
+
+### 23. Self-test command
+
+A `td-install --selftest` that opens a project in TouchDesigner and checks what matters (Python, NDI, webcam, Spout, the NVIDIA TOPs,
+fonts) automatically, so a user can validate an install or a runner. The harness exists (an Execute DAT that runs a suite and writes
+JSON); it needs to be cleaned up and shipped. It would also be how a runner earns "default" status.
+
+### 24. NVIDIA Flow / Flex, Web Render under the Wine 11 runner
+
+Flow needs a keyed mutex for memory exported by Vulkan in Wine's `win32u/vulkan.c`. Flex crashes on a null pointer after calling a private
+NVAPI function (id `0x07B86467`) that dxvk-nvapi does not implement. Web Render never starts its Chromium helper.
 
 ## Long-term
 
