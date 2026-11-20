@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- An interactive `td-install` on a fresh prefix now asks which runner to install:
+  Soda Wine 9 (default) or the experimental Proton 11. `--runner` still skips the
+  question, an existing prefix keeps its runner, and headless / non-interactive
+  installs (including the one-liner) still get Soda.
+
 ## [1.9.0] - 2026-11-20
 
 ### Added
