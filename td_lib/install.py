@@ -37,9 +37,22 @@ def run_install(args):
     _check_prerequisites()
 
     # A runner cannot be switched on an existing prefix; fail before downloading anything
-    from .runner import RUNNER_PROTON11, ensure_runner_compatible, require_umu
+    from .runner import (
+        RUNNER_PROTON11,
+        choose_runner,
+        ensure_runner_compatible,
+        require_umu,
+    )
 
-    runner = getattr(args, "runner", "soda")
+    interactive = (
+        sys.stdin.isatty()
+        and sys.stdout.isatty()
+        and not args.non_interactive
+        and not args.headless
+        and not args.dry_run
+    )
+    runner = choose_runner(getattr(args, "runner", None), interactive)
+    args.runner = runner
     ensure_runner_compatible(runner)
     if runner == RUNNER_PROTON11 and not args.dry_run:
         require_umu()

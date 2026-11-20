@@ -2125,7 +2125,7 @@ def test_proton11_runner():
     from td_lib.cli import parse_args
 
     # ── CLI ──
-    check("--runner defaults to soda", parse_args([]).runner == "soda")
+    check("--runner is unset by default (install asks or falls back to soda)", parse_args([]).runner is None)
     check(
         "--runner proton11 accepted",
         parse_args(["--runner", "proton11"]).runner == "proton11",
@@ -2182,6 +2182,32 @@ def test_proton11_runner():
             digest = hashlib.sha256(f.read()).hexdigest()
         check("verify_checksum accepts a multi-chunk file", verify_checksum(big, digest))
         check("verify_checksum rejects a wrong hash", not verify_checksum(big, "0" * 64))
+
+        # ── Interactive runner choice ──
+        import builtins
+        import io
+        import contextlib
+
+        from td_lib import wine as _wine
+
+        def _ask(answers, requested=None, interactive=True):
+            it = iter(answers)
+            real = builtins.input
+            real_prefix = _wine.WINE_PREFIX
+            _wine.WINE_PREFIX = os.path.join(tmp, "no-prefix")  # never the user's real one
+            builtins.input = lambda *_: next(it)
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    return runner.choose_runner(requested, interactive)
+            finally:
+                builtins.input = real
+                _wine.WINE_PREFIX = real_prefix
+
+        check("choose_runner: explicit --runner wins", _ask([], "proton11") == "proton11")
+        check("choose_runner: non-interactive gives soda", _ask([], None, False) == "soda")
+        check("choose_runner: Enter picks soda", _ask([""]) == "soda")
+        check("choose_runner: 2 picks proton11", _ask(["2"]) == "proton11")
+        check("choose_runner: invalid answer asks again", _ask(["x", "2"]) == "proton11")
 
         # ── Runner kind marker ──
         runner.RUNNER_MARKER = os.path.join(tmp, ".runner")

@@ -82,9 +82,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--runner",
         dest="runner",
         choices=["soda", "proton11"],
-        default="soda",
+        default=None,
         help=(
-            "Wine runner to install. 'soda' (default) is Soda Wine 9. "
+            "Wine runner to install. When omitted, an interactive install asks "
+            "(Soda is the default and what scripted installs use). 'soda' is Soda Wine 9. "
             "'proton11' (experimental) is DAW-GE-Proton11 through umu-launcher: "
             "adds the NVIDIA CUDA TOPs and CodeMeter, needs umu-launcher and an "
             "NVIDIA GPU for the CUDA part. A runner cannot be switched on an "

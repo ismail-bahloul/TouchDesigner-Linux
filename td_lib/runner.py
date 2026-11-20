@@ -176,6 +176,39 @@ def ensure_runner_compatible(requested: str) -> None:
     raise SystemExit(1)
 
 
+def choose_runner(requested: str | None, interactive: bool) -> str:
+    """Resolve the runner for an install.
+
+    An explicit ``--runner`` wins; an existing prefix keeps its runner; otherwise
+    an interactive install asks, and everything else gets Soda (the default).
+    """
+    from .wine import WINE_PREFIX
+
+    if requested:
+        return requested
+    if os.path.isdir(os.path.join(WINE_PREFIX, "drive_c")):
+        return get_runner_kind()
+    if not interactive:
+        return RUNNER_SODA
+    print("Choose the compatibility runner:\n")
+    print("  1. Soda Wine 9 (default)")
+    print("     Stable and well tested. No NVIDIA CUDA TOPs.")
+    print("  2. Proton 11 (experimental)")
+    print("     Adds the NVIDIA CUDA TOPs (Background, Denoise, Upscaler, RTX Video,")
+    print("     Video Stream In/Out) and CodeMeter. Needs umu-launcher; launches are slower.")
+    print("     A runner cannot be switched later without a fresh install.\n")
+    while True:
+        try:
+            answer = input("Runner [1/2, Enter = 1]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise SystemExit(1)
+        if answer in ("", "1"):
+            return RUNNER_SODA
+        if answer == "2":
+            return RUNNER_PROTON11
+
+
 def describe_runner() -> str:
     """One-line runner description for --diagnose."""
     if get_runner_kind() != RUNNER_PROTON11:

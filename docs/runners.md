@@ -94,8 +94,9 @@ The DAW-GE-Proton11-6c recipe above, packaged in the installer. Soda 9 stays the
 this is opt-in, for the NVIDIA CUDA TOPs and the CodeMeter service.
 
 ```bash
-td-install --runner proton11                  # asks before downloading NVIDIA's Video Effects SDK
-td-install --runner proton11 --nvidia-vfx     # downloads it without asking (~770 MB)
+td-install                                  # interactive: asks which runner (Enter = Soda)
+td-install --runner proton11               # asks before downloading NVIDIA's Video Effects SDK
+td-install --runner proton11 --nvidia-vfx  # downloads it without asking (~770 MB)
 ```
 
 Or through the one-liner: `curl -sSL .../install.sh | bash -s -- --runner proton11`.
