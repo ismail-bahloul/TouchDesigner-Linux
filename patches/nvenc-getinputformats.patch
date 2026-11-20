@@ -1,0 +1,15 @@
+diff --git a/dlls/nvencodeapi/nvencodeapi.c b/dlls/nvencodeapi/nvencodeapi.c
+index b8b784c..713c828 100644
+--- a/dlls/nvencodeapi/nvencodeapi.c
++++ b/dlls/nvencodeapi/nvencodeapi.c
+@@ -76,8 +76,8 @@ static NVENCSTATUS WINAPI NvEncGetInputFormatCount(void *encoder, GUID encodeGUI
+ static NVENCSTATUS WINAPI NvEncGetInputFormats(void *encoder, GUID encodeGUID, NV_ENC_BUFFER_FORMAT *inputFmts,
+                                                uint32_t inputFmtArraySize, uint32_t *inputFmtCount)
+ {
+-    TRACE("(%p, %s, %p)\n", encoder, debugstr_guid(&encodeGUID), inputFmtCount);
+-    return origFunctions.nvEncGetInputFormatCount(encoder, encodeGUID, inputFmtCount);
++    TRACE("(%p, %s, %p, %u, %p)\n", encoder, debugstr_guid(&encodeGUID), inputFmts, inputFmtArraySize, inputFmtCount);
++    return origFunctions.nvEncGetInputFormats(encoder, encodeGUID, inputFmts, inputFmtArraySize, inputFmtCount);
+ }
+ 
+ static NVENCSTATUS WINAPI NvEncGetEncodeCaps(void *encoder, GUID encodeGUID, NV_ENC_CAPS_PARAM *capsParam, int *capsVal)

@@ -2395,6 +2395,41 @@ def test_proton11_runner():
         finally:
             runner.download_file, runner.NVCUDA_PATCHED_SHA256 = saved_dl, saved_sha
 
+        # ── patched nvenc: NvEncGetInputFormats fix, same single-file mechanism as nvcuda ──
+        nve_dest = os.path.join(wine.RUNNER_DIR, runner._NVENC_REL)
+        os.makedirs(os.path.dirname(nve_dest), exist_ok=True)
+        nve_new, nve_src = b"fixed nvenc", os.path.join(tmp, "nvenc-new.so")
+        with open(nve_src, "wb") as f:
+            f.write(nve_new)
+        saved_nve = (runner.download_file, runner.NVENC_PATCHED_SHA256)
+        quiet_nve = contextlib.redirect_stdout(io.StringIO())
+
+        def nve_stock():
+            if os.path.exists(nve_dest):
+                os.chmod(nve_dest, 0o755)
+            for stale in (nve_dest, nve_dest + ".orig"):
+                if os.path.exists(stale):
+                    os.remove(stale)
+            with open(nve_dest, "wb") as f:
+                f.write(b"stock nvenc")
+
+        try:
+            runner.download_file = lambda url, dest, *a, **k: shutil.copy2(nve_src, dest) and True
+            runner.NVENC_PATCHED_SHA256 = hashlib.sha256(nve_new).hexdigest()
+            nve_stock()
+            with quiet_nve:
+                ok = runner.install_patched_nvenc()
+            check("patched nvenc replaces the bundled one", ok and open(nve_dest, "rb").read() == nve_new)
+            check("stock nvenc is kept as .orig", open(nve_dest + ".orig", "rb").read() == b"stock nvenc")
+            nve_stock()
+            runner.NVENC_PATCHED_SHA256 = "0" * 64
+            with quiet_nve, contextlib.redirect_stderr(io.StringIO()):
+                ok = runner.install_patched_nvenc()
+            check("nvenc with a wrong checksum is not installed", not ok and open(nve_dest, "rb").read() == b"stock nvenc")
+        finally:
+            runner.download_file, runner.NVENC_PATCHED_SHA256 = saved_nve
+        check("nvenc sha256 is pinned", bool(hexre.match(runner.NVENC_PATCHED_SHA256)))
+
         # ── patched qcap: webcam release fix, a PE dll + unix library pair ──
         import io
         import tarfile as _tarfile

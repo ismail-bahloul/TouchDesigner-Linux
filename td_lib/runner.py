@@ -70,6 +70,24 @@ _NVCUDA_REL = os.path.join(
     "files", "lib", "wine", "nvidia-libs", "nvcuda", "x86_64-windows", "nvcuda.dll.so"
 )
 
+# nvencodeapi64 (the NVENC bridge) with NvEncGetInputFormats fixed: stock, it calls
+# nvEncGetInputFormatCount instead of nvEncGetInputFormats, so it never fills the array
+# and the application sees no supported input format ("Encoding this pixel format is not
+# supported on this GPU" in the Video Stream Out TOP). Built from the exact SveSop/nvenc
+# commit bundled with DAW-GE-Proton11-6c; one line changed, see patches/README.md.
+NVENC_PATCHED_URL = os.environ.get(
+    "NVENC_PATCHED_URL",
+    "https://github.com/ismail-bahloul/TouchDesigner-Linux/releases/download/"
+    f"runner-assets/nvencodeapi64-{PROTON11_NAME}.dll.so",
+)
+NVENC_PATCHED_SHA256 = os.environ.get(
+    "NVENC_PATCHED_SHA256",
+    "5407994f542ddc92ad140278730d23bf2e9040f4f2ddf6b56b40775ba1b6844b",
+)
+_NVENC_REL = os.path.join(
+    "files", "lib", "wine", "nvidia-libs", "nvenc", "x86_64-windows", "nvencodeapi64.dll.so"
+)
+
 # qcap (Wine's DirectShow video capture) patched to close the camera when the capture
 # graph is stopped. Stock Wine keeps /dev/video0 open for the life of the filter, so
 # after the first deactivation of a Video Device In TOP, or a change of format, the next
@@ -430,27 +448,31 @@ def vfx_arch_for_compute_cap(compute_cap: str | None) -> str | None:
     return _COMPUTE_CAP_TO_ARCH.get((compute_cap or "").strip())
 
 
-def install_patched_nvcuda() -> bool:
-    """Replace the bundled nvcuda with the Wine 11 patched build. True if in place."""
+def _install_patched_lib(name: str, rel: str, url: str, sha256: str, what: str, effect: str, failure: str) -> bool:
+    """Replace one library of the runner with a patched build, keeping the stock file as .orig.
+
+    ``name`` is for messages, ``rel`` the path inside the runner. True if the patched file
+    is in place.
+    """
     from .wine import RUNNER_DIR
 
-    dest = os.path.join(RUNNER_DIR, _NVCUDA_REL)
+    dest = os.path.join(RUNNER_DIR, rel)
     if not os.path.isdir(os.path.dirname(dest)):
-        warning("This Proton build has no bundled nvidia-libs; CUDA TOPs are not available")
+        warning(f"This Proton build has no bundled {name}; {failure}")
         return False
-    if os.path.isfile(dest) and _sha256(dest) == NVCUDA_PATCHED_SHA256:
-        success("Patched nvcuda already in place")
+    if os.path.isfile(dest) and _sha256(dest) == sha256:
+        success(f"Patched {name} already in place")
         return True
 
-    info("Downloading the patched CUDA bridge (nvcuda)...")
-    tmp = os.path.join(TD_BASE_DIR, "nvcuda-patched.dll.so")
-    if not download_file(NVCUDA_PATCHED_URL, tmp, "patched nvcuda", show_progress=False):
-        warning("Could not download the patched nvcuda: NVIDIA CUDA TOPs will not work")
-        warning(f"  ({NVCUDA_PATCHED_URL})")
+    info(f"Downloading the patched {what}...")
+    tmp = os.path.join(TD_BASE_DIR, f"{name}-patched.dll.so")
+    if not download_file(url, tmp, f"patched {name}", show_progress=False):
+        warning(f"Could not download the patched {name}: {failure}")
+        warning(f"  ({url})")
         safe_rm(tmp)
         return False
-    if not verify_checksum(tmp, NVCUDA_PATCHED_SHA256):
-        error("Patched nvcuda checksum mismatch; not installing it")
+    if not verify_checksum(tmp, sha256):
+        error(f"Patched {name} checksum mismatch; not installing it")
         safe_rm(tmp)
         return False
 
@@ -465,12 +487,30 @@ def install_patched_nvcuda() -> bool:
         os.chmod(staged, 0o755)
         os.replace(staged, dest)
     except OSError as e:
-        warning(f"Could not install the patched nvcuda: {e}")
+        warning(f"Could not install the patched {name}: {e}")
         return False
     finally:
         safe_rm(tmp)
-    success("Patched nvcuda installed (CUDA TOPs enabled)")
+    success(f"Patched {name} installed ({effect})")
     return True
+
+
+def install_patched_nvcuda() -> bool:
+    """Replace the bundled nvcuda with the Wine 11 patched build. True if in place."""
+    return _install_patched_lib(
+        "nvcuda", _NVCUDA_REL, NVCUDA_PATCHED_URL, NVCUDA_PATCHED_SHA256,
+        what="CUDA bridge (nvcuda)", effect="CUDA TOPs enabled",
+        failure="NVIDIA CUDA TOPs will not work",
+    )
+
+
+def install_patched_nvenc() -> bool:
+    """Replace the bundled NVENC bridge with the build that lists the input formats."""
+    return _install_patched_lib(
+        "nvenc", _NVENC_REL, NVENC_PATCHED_URL, NVENC_PATCHED_SHA256,
+        what="NVENC bridge (video encoding)", effect="Video Stream Out can encode",
+        failure="the Video Stream Out TOP will report an unsupported pixel format",
+    )
 
 
 def install_patched_qcap() -> bool:
@@ -606,8 +646,9 @@ def install_nvidia_extras(vfx: bool | None, interactive: bool) -> None:
     if not nvidia_driver_works():
         info("No working NVIDIA driver detected: skipping the NVIDIA TOP support")
         return
-    info("Setting up NVIDIA CUDA support...")
+    info("Setting up NVIDIA CUDA and video encoding support...")
     install_patched_nvcuda()
+    install_patched_nvenc()
 
     if vfx is None:
         if not interactive:
@@ -633,3 +674,4 @@ def update_proton_runner() -> None:
     install_patched_qcap()
     if nvidia_driver_works():
         install_patched_nvcuda()
+        install_patched_nvenc()

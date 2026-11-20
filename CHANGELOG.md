@@ -23,8 +23,15 @@ All notable changes to this project are documented here.
   (#35). Stock Wine keeps `/dev/video0` open until the filter is destroyed. On a clean
   install, 6 of 6 reactivations and 8 of 8 format changes give an image; stock Wine gives
   1 of 6. Same pinned-build rule as nvcuda.
-- `patches/`: the nvcuda and qcap patches, the tool that reads a wineserver request number
-  out of a Wine build, and the rebuild recipes.
+- The `proton11` runner installs a fixed NVENC bridge, so the **Video Stream Out TOP works**:
+  stock, `NvEncGetInputFormats` calls the *count* function instead of filling the array (a
+  one-line bug in SveSop/nvenc, still there upstream), TouchDesigner sees no input format
+  and reports `Encoding this pixel format is not supported on this GPU`. Checked with a
+  Video Stream Out to Video Stream In loop over a local RTSP server: a 640x360 stream comes
+  back in 2 s, encoded and decoded on the GPU. `td-install --update` adds it to an existing
+  install. The RTX Video TOP was checked too.
+- `patches/`: the nvcuda, qcap and nvenc patches, the tool that reads a wineserver request
+  number out of a Wine build, and the rebuild recipes.
 - `td-install --codemeter` now honors `WINEPREFIX` (and `WINELOADER` for the
   Wine binary), so the commands can target another prefix, such as the Wine
   11 / UMU one where the CodeMeter service actually starts (#29).
@@ -49,6 +56,10 @@ All notable changes to this project are documented here.
 
 ### Docs
 
+- Documented, for the `proton11` runner, that the EDIT button asks which program to use once per
+  file type (the container's `xdg-open` goes through the desktop portal): tick "Set as default
+  app" once. Also corrected the runner summary table, which still said CUDA TOPs, NVENC and
+  fonts did not work on DAW-GE-Proton11-6c.
 - Documented two traps with Wibu's official `docker-codemeter` image: pin
   `v1.0.2` (later releases drop `libusb`, so HID dongles can't be passed
   through), and mount the whole `CodeMeter` config directory so `Server.ini`

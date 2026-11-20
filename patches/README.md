@@ -2,6 +2,7 @@
 
 - [`nvcuda-wine11-d3dkmt.patch`](#nvcuda-wine11-d3dkmtpatch): the NVIDIA CUDA TOPs on Proton 11.
 - [`qcap-release-on-stop.patch`](#qcap-release-on-stoppatch): Video Device In keeps working after the TOP is deactivated.
+- [`nvenc-getinputformats.patch`](#nvenc-getinputformatspatch): the Video Stream Out TOP can encode.
 
 ## `nvcuda-wine11-d3dkmt.patch`
 
@@ -129,3 +130,44 @@ upstream Wine.
 
 Wine is licensed under the LGPL 2.1 or later; the patch above, the Wine commit and the recipe
 are the corresponding source of the binaries.
+
+## `nvenc-getinputformats.patch`
+
+Patch for [SveSop/nvenc](https://github.com/SveSop/nvenc) (the NVENC / NVDEC bridge GE-Proton bundles
+as `nvidia-libs/nvenc`), against commit `09ec9e1c8b25a351e415a6d0361bfacad0fd710c`, the one
+DAW-GE-Proton11-6c ships. It is one line, and the bug is still in the latest upstream version.
+
+What was wrong: `NvEncGetInputFormats` in `dlls/nvencodeapi/nvencodeapi.c` called
+`nvEncGetInputFormatCount` instead of `nvEncGetInputFormats`. The count came back right but the
+array of formats was never filled, so an application asking "which pixel formats can I give
+you?" got an empty list. TouchDesigner's Video Stream Out TOP then stopped before initializing
+the encoder, with `Encoding this pixel format is not supported on this GPU`. Any application that
+checks the input formats first (ffmpeg's `nvenc` does) is affected the same way.
+
+Measured on the clean `--runner proton11` install: with the stock bridge TouchDesigner opens an
+NVENC session, asks for the formats, and closes it again. With the fix the encoder initializes,
+registers its resources and encodes pictures. A Video Stream Out TOP feeding a Video Stream In TOP
+over a local RTSP server returns a 640x360 image with real content after 2 s, and the NVDEC calls
+(`cuvidCreateVideoParser`, `cuvidParseVideoData`) show the decoder in use.
+
+### Build
+
+Needs `wine` (the `winegcc` tool chain), `meson` and `ninja`.
+
+```bash
+git clone https://github.com/SveSop/nvenc && cd nvenc
+git checkout 09ec9e1c8b25a351e415a6d0361bfacad0fd710c
+git apply /path/to/nvenc-getinputformats.patch
+meson setup build64 --cross-file build-wine64.txt --buildtype release
+ninja -C build64
+strip build64/dlls/nvencodeapi/nvencodeapi64.dll.so
+```
+
+The result replaces
+`<runner>/files/lib/wine/nvidia-libs/nvenc/x86_64-windows/nvencodeapi64.dll.so`. Unlike nvcuda it
+does not depend on the wineserver request numbers, but `td-install` still only installs it on the
+runner build it is pinned to. It downloads it as the `nvencodeapi64-DAW-GE-Proton11-6c.dll.so`
+release asset (checksum pinned in `td_lib/runner.py`) and keeps the stock file as `*.orig`.
+
+nvenc is derived from Wine Staging code and is licensed under the LGPL 2.1 or later; the patch,
+the upstream commit and the recipe above are the corresponding source of the binary.
