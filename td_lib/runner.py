@@ -18,6 +18,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 
@@ -190,23 +191,109 @@ def choose_runner(requested: str | None, interactive: bool) -> str:
         return get_runner_kind()
     if not interactive:
         return RUNNER_SODA
-    print("Choose the compatibility runner:\n")
-    print("  1. Soda Wine 9 (default)")
-    print("     Stable and well tested. No NVIDIA CUDA TOPs.")
-    print("  2. Proton 11 (experimental)")
-    print("     Adds the NVIDIA CUDA TOPs (Background, Denoise, Upscaler, RTX Video,")
-    print("     Video Stream In/Out) and CodeMeter. Needs umu-launcher; launches are slower.")
-    print("     A runner cannot be switched later without a fresh install.\n")
-    while True:
-        try:
-            answer = input("Runner [1/2, Enter = 1]: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            raise SystemExit(1)
-        if answer in ("", "1"):
-            return RUNNER_SODA
-        if answer == "2":
-            return RUNNER_PROTON11
+    return _pick_runner_menu()
+
+
+_RUNNER_CHOICES = [
+    (
+        RUNNER_SODA,
+        "Soda Wine 9 (default)",
+        "Stable and well tested. No NVIDIA CUDA TOPs.",
+    ),
+    (
+        RUNNER_PROTON11,
+        "Proton 11 (experimental)",
+        "Adds the NVIDIA CUDA TOPs (Background, Denoise, Upscaler, RTX Video)\n"
+        "     and CodeMeter. Needs umu-launcher, launches are slower.",
+    ),
+]
+
+
+def _pick_runner_menu() -> str:
+    """Arrow-key menu in the style of the main menu; numbered prompt without a TTY."""
+    import termios
+    import tty
+
+    from .utils import Colors
+
+    print("\nChoose the compatibility runner")
+    print("A runner cannot be switched later without a fresh install\n")
+
+    if not sys.stdin.isatty():
+        for i, (_, title, desc) in enumerate(_RUNNER_CHOICES, 1):
+            print(f"  {i}. {title}")
+            print(f"{Colors.accent}     {desc}{Colors.nc}\n")
+        while True:
+            try:
+                answer = input("  Select option [1]: ").strip() or "1"
+            except (EOFError, KeyboardInterrupt):
+                print()
+                raise SystemExit(1)
+            if answer in ("1", "2"):
+                return _RUNNER_CHOICES[int(answer) - 1][0]
+
+    print("Use ↑ ↓ to navigate, Enter to select\n")
+    cursor = 0
+
+    def _draw() -> list[str]:
+        lines = []
+        for i, (_, title, desc) in enumerate(_RUNNER_CHOICES):
+            marker = "▶" if i == cursor else " "
+            lines.append(f"  {marker}  {i + 1}. {title}")
+            for part in desc.split("\n"):
+                lines.append(f"{Colors.accent}     {part.strip()}{Colors.nc}")
+            if i < len(_RUNNER_CHOICES) - 1:
+                lines.append("")
+        return lines
+
+    lines = _draw()
+    sys.stdout.write("\033[?25l")
+    sys.stdout.flush()
+    for line in lines:
+        print(line)
+    count = len(lines)
+
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        new = termios.tcgetattr(fd)
+        new[tty.LFLAG] &= ~(termios.ICANON | termios.ECHO)
+        new[tty.CC][termios.VMIN] = 1
+        new[tty.CC][termios.VTIME] = 0
+        termios.tcsetattr(fd, termios.TCSADRAIN, new)
+        while True:
+            try:
+                key = sys.stdin.read(1)
+            except (EOFError, KeyboardInterrupt):
+                key = "\x03"
+            if key == "\x03":
+                print()
+                raise SystemExit(1)
+            if key == "\x1b":
+                try:
+                    seq = sys.stdin.read(2)
+                except (EOFError, OSError):
+                    seq = ""
+                if seq == "[A":
+                    cursor = (cursor - 1) % len(_RUNNER_CHOICES)
+                elif seq == "[B":
+                    cursor = (cursor + 1) % len(_RUNNER_CHOICES)
+            elif key in ("1", "2"):
+                cursor = int(key) - 1
+            elif key in ("\r", "\n"):
+                break
+            lines = _draw()
+            for _ in range(count):
+                sys.stdout.write("\033[A")
+            for line in lines:
+                sys.stdout.write(f"\033[K{line}\n")
+            sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
+    print()
+    return _RUNNER_CHOICES[cursor][0]
 
 
 def describe_runner() -> str:
