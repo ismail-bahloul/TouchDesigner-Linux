@@ -14,7 +14,7 @@
 | NVIDIA TOPs (Background, Denoise, Upscaler, RTX Video) | ⚠️ | ❌ on the default Soda runner: CUDA/TensorRT fail to initialise. ✅ with the experimental `--runner proton11` (patched nvcuda + NVIDIA Video Effects SDK), see [docs/runners.md](runners.md#experimental-td-install---runner-proton11) |
 | NVIDIA Flow / Flex TOPs | ❌ | Flow: Wine lacks the keyed mutex for Vulkan-exported memory. Flex: needs a private NVAPI function that dxvk-nvapi does not implement. Same on both runners |
 | Engine COMP | ❌ | The background process may start (PID assigned), but the IPC bridge fails to initialize. Workaround: move your logic into a Base or Container COMP to run within the main process |
-| Video Stream Out TOP | ⚠️ | ❌ on Soda: needs NVENC (`nvEncodeAPI64.dll`), which is not available there. Use Spout2PW + OBS, NDI, or FFmpeg instead. ✅ on `--runner proton11` (NVENC through the nvidia-libs bridge; encoding is limited by the non-commercial license) |
+| Video Stream Out TOP | ⚠️ | ❌ on Soda: needs NVENC (`nvEncodeAPI64.dll`), which is not available there. Use Spout2PW + OBS, NDI, or FFmpeg instead. ✅ on `--runner proton11` (NVENC through the nvidia-libs bridge, with a one-line fix the runner installs) |
 | Video Stream In TOP | ⚠️ | ❌ on Soda: needs NVIDIA's hardware decoder. ✅ on `--runner proton11` |
 | WebRender TOP | ❌ | Web pages do not render (no errors thrown). Known upstream limitation with Chromium-based components in Wine environments. On `--runner proton11` TouchDesigner never even starts its Chromium helper |
 | External installs / integrations | ❓ | Third-party installs, Kinect, extra plugins, and advanced external production pipelines still need broader testing |

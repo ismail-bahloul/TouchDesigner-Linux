@@ -84,7 +84,7 @@ umu-run "$WINEPREFIX/pfx/drive_c/Program Files/Derivative/TouchDesigner/bin/Touc
   method lose the bottom of their glyphs; switching them to Scalable (what the `.tox` does)
   fixes it. Checked with before/after screenshots on TD 2025.33230 (2026-11).
 - NVIDIA TOPs: Background, Denoise, Upscaler, RTX Video and Video Stream In/Out work with a
-  patched nvcuda and the NVIDIA Video Effects SDK runtime (see issue #31). Flow, Flex and
+  patched nvcuda and NVENC bridge and the NVIDIA Video Effects SDK runtime (see issue #31). Flow, Flex and
   Web Render still don't.
 
 
@@ -111,7 +111,8 @@ disk (Soda: 3-5 GB).
   checksum pinned, run through umu-launcher.
 - A fresh prefix, fonts (`winetricks allfonts`) and the Lucida Console mono font. No DXVK or
   vcrun: Proton manages its own DXVK and re-copies it on every launch.
-- On an NVIDIA GPU: a **patched nvcuda** (the CUDA bridge), see [`patches/`](../patches/README.md),
+- On an NVIDIA GPU: a **patched nvcuda** (the CUDA bridge) and a **patched NVENC bridge**, see
+  [`patches/`](../patches/README.md),
   and the NVAPI / nvenc / nvml bridges bundled with the runner. For a hybrid laptop, DXVK and
   vkd3d are limited to the NVIDIA GPU, otherwise Direct3D 12 code can land on the iGPU.
 - Optionally NVIDIA's **Video Effects SDK** runtime (0.7.6), downloaded from NVIDIA for your GPU
@@ -134,14 +135,14 @@ Wayland, RTX 3070 Laptop + AMD iGPU, driver 620.70, TouchDesigner 2025.33230.
 | Works | Notes |
 |-------|-------|
 | NVIDIA Background, Denoise, Upscaler TOPs | with the patched nvcuda and the Video Effects SDK |
+| NVIDIA RTX Video TOP | super resolution mode, no error, image out |
+| Video Stream Out TOP to Video Stream In TOP over a local RTSP server | a 640x360 stream comes back in 2 s with real content. NVENC encodes and NVDEC decodes on the GPU. Needs the patched NVENC bridge: the stock one reports `Encoding this pixel format is not supported on this GPU` |
 | NDI Out to NDI In, Spout Out, Python (numpy, cv2, requests, HTTPS) | |
 | Video Device In: deactivating the TOP, reactivating it, changing the format | the camera is released each time: 6 of 6 reactivations and 8 of 8 format changes gave an image. Stock Wine gave 1 of 6 reactivations, and its format-change test never finished (`Device or resource busy`, issue #35) |
 | Font fix (`wine_ui_fixes.tox`) | still needed, the launcher injects it as usual |
 | Projects stored outside `$HOME` | tried with `/var/tmp`. If TouchDesigner cannot see files on another mount, add `export PRESSURE_VESSEL_FILESYSTEMS_RW=/your/path` to `proton11.user.env` (not tried) |
 
-NVIDIA RTX Video and Video Stream In/Out were checked by hand on the same runner and nvcuda,
-but not re-run on the installer-made install. Video Stream Out encoding is also limited by the
-non-commercial TouchDesigner license, which has nothing to do with Wine.
+Existing installs get the NVENC fix with `td-install --update`.
 
 | Does not work | Why |
 |---------------|-----|
@@ -151,6 +152,12 @@ non-commercial TouchDesigner license, which has nothing to do with Wine.
 
 ### Trade-offs
 
+- **The EDIT button asks which program to use, once per file type.** The runner's programs run in
+  a container that looks like a Flatpak sandbox, so `xdg-open` goes through the desktop portal.
+  On KDE Plasma the first EDIT on a `.txt` or `.frag` file shows a "Choose an application" window
+  even when a default exists. Pick your editor and tick "Set as default app to open Plain text
+  document files": it does not ask again, and the choice covers `.txt`, `.frag` and the other
+  plain text types. (Seen on Plasma 6; not tried on other desktops.)
 - **Slower launch.** Every Wine call goes through umu's container, about 3.3 s each. Opening an
   already patched project takes about 23 s from the launcher to a loaded TouchDesigner, against
   15 s for the bare launch (`touchdesigner --no-patch`). Most of the difference is the font-fix
@@ -161,7 +168,7 @@ non-commercial TouchDesigner license, which has nothing to do with Wine.
   or install into another directory: `TD_BASE_DIR=~/td-proton td-install --runner proton11`.
 - **The license is tied to the prefix.** A new prefix has a new Wine machine id, so TouchDesigner
   asks for a key again, the same as after any reinstall (issue #26).
-- **Pinned to one Proton build.** The patched nvcuda and qcap are only valid for DAW-GE-Proton11-6c; see
+- **Pinned to one Proton build.** The patched nvcuda, NVENC bridge and qcap are only valid for DAW-GE-Proton11-6c; see
   [`patches/README.md`](../patches/README.md) for why and how to rebuild it. The fork has not
   had a release since 2026-09-13; once the DWrite fix reaches upstream GE-Proton, that is the
   better target.
@@ -383,9 +390,12 @@ TD ships `mimalloc.dll` and `mimalloc-redirect.dll`. On Wine 10+, DWrite's font 
 This is not needed on Wine 9.x (Soda) because DWrite's allocation patterns are compatible.
 
 ### NVENC (Video Stream Out TOP)
-Not available under any Wine runner. Requires `nvEncodeAPI64.dll` from the Windows NVIDIA driver, which is not redistributable and not provided by Wine.
+Not available on Soda or on stock GE-Proton: the NVENC bridge that ships with GE-Proton has a
+bug in `NvEncGetInputFormats` (it never lists the input formats), so TouchDesigner reports an
+unsupported pixel format. With the fixed bridge that `td-install --runner proton11` installs, the
+Video Stream Out TOP encodes on the GPU, see [patches/README.md](../patches/README.md).
 
-**Workarounds:**
+**Workarounds on Soda:**
 - **Spout2PW** — TD → Spout → PipeWire → OBS (NVENC on Linux side)
 - **NDI** — confirmed working
 - **FFmpeg** — pipe frames to native Linux FFmpeg with `-hwaccel nvenc`
@@ -398,11 +408,11 @@ Wine's native Wayland support can cause window creation issues. Always set `WAYL
 | Feature | Soda 9.0 | GE-P10 | GE-P11 | DAW-GE-P11-6c (UMU) |
 |---------|----------|--------|--------|---------------------|
 | TD launches | ✅ | ✅* | ✅* | ✅ |
-| Font rendering | ✅ (via .tox) | ⚠️ Present but deformed | ⚠️ Present but deformed | ✅ correct, no `.tox` needed |
+| Font rendering | ✅ (via .tox) | ⚠️ Present but deformed | ⚠️ Present but deformed | ⚠️ descenders clipped in Bitmap UI text, `.tox` fixes it |
 | D3D11/Vulkan | ✅ | ✅ | ✅ | ✅ |
-| NDI output | ✅ | ❓ | ❓ | ❓ |
-| Video Stream Out (NVENC) | ❌ | ❌ | ❌ | ❌ |
-| CUDA TOPs | ❌ | ❌ | ❌ | ❌ (pending) |
+| NDI output | ✅ | ❓ | ❓ | ✅ |
+| Video Stream Out (NVENC) | ❌ | ❌ | ❌ | ✅ (patched NVENC bridge) |
+| CUDA TOPs | ❌ | ❌ | ❌ | ✅ (patched nvcuda, `--runner proton11`) |
 | Setup complexity | Low | Medium | Medium | Medium (needs UMU) |
 
 * *Requires IDS patch, corefonts, vcrun2019, mimalloc fix*
