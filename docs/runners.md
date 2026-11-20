@@ -117,6 +117,8 @@ disk (Soda: 3-5 GB).
 - Optionally NVIDIA's **Video Effects SDK** runtime (0.7.6), downloaded from NVIDIA for your GPU
   generation (RTX 20 / 30 / 40 / 50 series, checksum pinned). The NVIDIA Background, Denoise and
   Upscaler TOPs need it; it is not a Wine thing, Windows needs it too.
+- A **patched `qcap`** (Wine's webcam capture), so a Video Device In TOP releases the camera when
+  it is deactivated or its format changes, see [`patches/`](../patches/README.md) and issue #35.
 - Small relay scripts at `runner/bin/{wine64,wine,wineboot,wineserver}` that forward to
   `umu-run`, so `--pip`, `--dpi`, `--codemeter` and the `.toe` font patching keep working
   unchanged.
@@ -132,7 +134,8 @@ Wayland, RTX 3070 Laptop + AMD iGPU, driver 620.70, TouchDesigner 2025.33230.
 | Works | Notes |
 |-------|-------|
 | NVIDIA Background, Denoise, Upscaler TOPs | with the patched nvcuda and the Video Effects SDK |
-| NDI Out to NDI In, Video Device In, Spout Out, Python (numpy, cv2, requests, HTTPS) | |
+| NDI Out to NDI In, Spout Out, Python (numpy, cv2, requests, HTTPS) | |
+| Video Device In: deactivating the TOP, reactivating it, changing the format | the camera is released each time: 6 of 6 reactivations and 8 of 8 format changes gave an image. Stock Wine gave 1 of 6 reactivations, and its format-change test never finished (`Device or resource busy`, issue #35) |
 | Font fix (`wine_ui_fixes.tox`) | still needed, the launcher injects it as usual |
 | Projects stored outside `$HOME` | tried with `/var/tmp`. If TouchDesigner cannot see files on another mount, add `export PRESSURE_VESSEL_FILESYSTEMS_RW=/your/path` to `proton11.user.env` (not tried) |
 
@@ -158,7 +161,7 @@ non-commercial TouchDesigner license, which has nothing to do with Wine.
   or install into another directory: `TD_BASE_DIR=~/td-proton td-install --runner proton11`.
 - **The license is tied to the prefix.** A new prefix has a new Wine machine id, so TouchDesigner
   asks for a key again, the same as after any reinstall (issue #26).
-- **Pinned to one Proton build.** The patched nvcuda is only valid for DAW-GE-Proton11-6c; see
+- **Pinned to one Proton build.** The patched nvcuda and qcap are only valid for DAW-GE-Proton11-6c; see
   [`patches/README.md`](../patches/README.md) for why and how to rebuild it. The fork has not
   had a release since 2026-09-13; once the DWrite fix reaches upstream GE-Proton, that is the
   better target.

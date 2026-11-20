@@ -17,8 +17,14 @@ All notable changes to this project are documented here.
   existing install. Details, limits (Flow, Flex and Web Render still fail, launches
   are slower) and measurements in `docs/runners.md`. Thanks to KitsuneDev for the
   fork and the DWrite fix, and to SveSop for nvcuda (#31).
-- `patches/`: the nvcuda patch, the tool that reads a wineserver request number out
-  of a Wine build, and the rebuild recipe.
+- The `proton11` runner ships a patched `qcap` (Wine's webcam capture): a Video Device In
+  TOP now releases the camera when it is deactivated or its format changes, instead of
+  failing with `Failed to set pixel format: Device or resource busy` on the next graph
+  (#35). Stock Wine keeps `/dev/video0` open until the filter is destroyed. On a clean
+  install, 6 of 6 reactivations and 8 of 8 format changes give an image; stock Wine gives
+  1 of 6. Same pinned-build rule as nvcuda.
+- `patches/`: the nvcuda and qcap patches, the tool that reads a wineserver request number
+  out of a Wine build, and the rebuild recipes.
 - `td-install --codemeter` now honors `WINEPREFIX` (and `WINELOADER` for the
   Wine binary), so the commands can target another prefix, such as the Wine
   11 / UMU one where the CodeMeter service actually starts (#29).
@@ -27,9 +33,9 @@ All notable changes to this project are documented here.
 
 - The NVIDIA offload guard of the launcher accepted a driver that had lost its GPU:
   `nvidia-smi -L` prints `No devices found.` but exits 0, so the launcher forced the NVIDIA
-  GLX vendor and TouchDesigner stayed on a blank screen with no message. The launcher now
-  requires an actual `GPU` line before enabling the offload, and falls back to the other
-  GPU otherwise.
+  GLX vendor and TouchDesigner stayed on a blank screen with no message. The launcher and the
+  `proton11` runner now require an actual `GPU` line before enabling the NVIDIA setup, and
+  fall back to the other GPU otherwise.
 - `td-install --patch-toe` crashed with `NameError: TD_BASE_DIR` before doing
   anything, and, once past that, with `NotADirectoryError`: the current
   `wine_ui_fixes.tox` expands to files as well as a folder, and the merge called

@@ -1,0 +1,244 @@
+diff --git a/dlls/qcap/qcap_private.h b/dlls/qcap/qcap_private.h
+index 10d93e2..a8f1d44 100644
+--- a/dlls/qcap/qcap_private.h
++++ b/dlls/qcap/qcap_private.h
+@@ -157,6 +157,7 @@ enum unix_funcs
+     unix_get_prop,
+     unix_set_prop,
+     unix_read_frame,
++    unix_release,
+     unix_funcs_count
+ };
+ 
+diff --git a/dlls/qcap/v4l.c b/dlls/qcap/v4l.c
+index 20052b5..0927cc6 100644
+--- a/dlls/qcap/v4l.c
++++ b/dlls/qcap/v4l.c
+@@ -37,6 +37,7 @@
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
+ #include <errno.h>
++#include <pthread.h>
+ #include <sys/time.h>
+ #ifdef HAVE_ASM_TYPES_H
+ #include <asm/types.h>
+@@ -101,6 +102,8 @@ struct video_capture_device
+     int image_size, image_pitch;
+     BYTE *image_data;
+ 
++    char path[20];
++    pthread_mutex_t lock; /* protects fd: it is closed and reopened, see v4l_device_release() */
+     int fd, mmap;
+ };
+ 
+@@ -120,10 +123,50 @@ static struct video_capture_device *get_device( video_capture_device_t dev )
+     return (struct video_capture_device *)(ULONG_PTR)dev;
+ }
+ 
++static int device_open(struct video_capture_device *device)
++{
++    int fd;
++
++    TRACE("Opening device %s.\n", device->path);
++#ifdef O_CLOEXEC
++    if ((fd = video_open(device->path, O_RDWR | O_NONBLOCK | O_CLOEXEC)) == -1 && errno == EINVAL)
++#endif
++        fd = video_open(device->path, O_RDWR | O_NONBLOCK);
++    if (fd == -1)
++    {
++        WARN("Failed to open video device: %s\n", strerror(errno));
++        return -1;
++    }
++    fcntl(fd, F_SETFD, FD_CLOEXEC);  /* in case O_CLOEXEC isn't supported */
++    device->fd = fd;
++    return fd;
++}
++
++/* The device is closed when the graph is stopped (see v4l_device_release()),
++ * and reopened when it is needed again. */
++static int device_ioctl(struct video_capture_device *device, int request, void *arg)
++{
++    int ret, err;
++
++    pthread_mutex_lock(&device->lock);
++    if (device->fd == -1 && device_open(device) == -1)
++    {
++        pthread_mutex_unlock(&device->lock);
++        errno = ENODEV;
++        return -1;
++    }
++    ret = xioctl(device->fd, request, arg);
++    err = errno;
++    pthread_mutex_unlock(&device->lock);
++    errno = err;
++    return ret;
++}
++
+ static void device_destroy(struct video_capture_device *device)
+ {
+     if (device->fd != -1)
+         video_close(device->fd);
++    pthread_mutex_destroy(&device->lock);
+     if (device->caps_count)
+         free(device->caps);
+     free(device->image_data);
+@@ -187,7 +230,7 @@ static HRESULT set_caps(struct video_capture_device *device, const struct caps *
+     format.fmt.pix.pixelformat = caps->pixelformat;
+     format.fmt.pix.width = width;
+     format.fmt.pix.height = height;
+-    if (xioctl(device->fd, try ? VIDIOC_TRY_FMT : VIDIOC_S_FMT, &format) == -1
++    if (device_ioctl(device, try ? VIDIOC_TRY_FMT : VIDIOC_S_FMT, &format) == -1
+             || format.fmt.pix.pixelformat != caps->pixelformat
+             || format.fmt.pix.width != width
+             || format.fmt.pix.height != height)
+@@ -281,7 +324,7 @@ static NTSTATUS v4l_device_get_prop_range( void *args )
+ 
+     ctrl.id = v4l2_cid_from_qcap_property(params->property);
+ 
+-    if (xioctl(device->fd, VIDIOC_QUERYCTRL, &ctrl) == -1)
++    if (device_ioctl(device, VIDIOC_QUERYCTRL, &ctrl) == -1)
+     {
+         WARN("Failed to query control: %s\n", strerror(errno));
+         return E_PROP_ID_UNSUPPORTED;
+@@ -303,7 +346,7 @@ static NTSTATUS v4l_device_get_prop( void *args )
+ 
+     ctrl.id = v4l2_cid_from_qcap_property(params->property);
+ 
+-    if (xioctl(device->fd, VIDIOC_G_CTRL, &ctrl) == -1)
++    if (device_ioctl(device, VIDIOC_G_CTRL, &ctrl) == -1)
+     {
+         WARN("Failed to get property: %s\n", strerror(errno));
+         return E_FAIL;
+@@ -324,7 +367,7 @@ static NTSTATUS v4l_device_set_prop( void *args )
+     ctrl.id = v4l2_cid_from_qcap_property(params->property);
+     ctrl.value = params->value;
+ 
+-    if (xioctl(device->fd, VIDIOC_S_CTRL, &ctrl) == -1)
++    if (device_ioctl(device, VIDIOC_S_CTRL, &ctrl) == -1)
+     {
+         WARN("Failed to set property: %s\n", strerror(errno));
+         return E_FAIL;
+@@ -442,7 +485,7 @@ static NTSTATUS v4l_device_get_frame_intervals( void *args )
+     };
+     __u32 count = 0;
+ 
+-    for (frmival.index = 0; xioctl(device->fd, VIDIOC_ENUM_FRAMEINTERVALS, &frmival) != -1; ++frmival.index)
++    for (frmival.index = 0; device_ioctl(device, VIDIOC_ENUM_FRAMEINTERVALS, &frmival) != -1; ++frmival.index)
+     {
+         if (frmival.type == V4L2_FRMIVAL_TYPE_DISCRETE)
+         {
+@@ -468,7 +511,6 @@ static NTSTATUS v4l_device_create( void *args )
+     struct v4l2_capability caps = {{0}};
+     struct v4l2_format format = {0};
+     BOOL have_libv4l2;
+-    char path[20];
+     HRESULT hr;
+     int fd, i;
+ 
+@@ -476,20 +518,12 @@ static NTSTATUS v4l_device_create( void *args )
+ 
+     if (!(device = calloc(1, sizeof(*device))))
+         return E_OUTOFMEMORY;
++    pthread_mutex_init(&device->lock, NULL);
+ 
+-    sprintf(path, "/dev/video%i", params->index);
+-    TRACE("Opening device %s.\n", path);
+-#ifdef O_CLOEXEC
+-    if ((fd = video_open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC)) == -1 && errno == EINVAL)
+-#endif
+-        fd = video_open(path, O_RDWR | O_NONBLOCK);
+-    if (fd == -1)
+-    {
+-        WARN("Failed to open video device: %s\n", strerror(errno));
++    sprintf(device->path, "/dev/video%i", params->index);
++    device->fd = -1;
++    if ((fd = device_open(device)) == -1)
+         goto error;
+-    }
+-    fcntl(fd, F_SETFD, FD_CLOEXEC);  /* in case O_CLOEXEC isn't supported */
+-    device->fd = fd;
+ 
+     if (xioctl(fd, VIDIOC_QUERYCAP, &caps) == -1)
+     {
+@@ -513,9 +547,9 @@ static NTSTATUS v4l_device_create( void *args )
+         WARN("Device does not support read().\n");
+         if (!have_libv4l2)
+ #ifdef SONAME_LIBV4L2
+-            ERR_(winediag)("Reading from %s requires libv4l2, but it could not be loaded.\n", path);
++            ERR_(winediag)("Reading from %s requires libv4l2, but it could not be loaded.\n", device->path);
+ #else
+-            ERR_(winediag)("Reading from %s requires libv4l2, but Wine was compiled without libv4l2 support.\n", path);
++            ERR_(winediag)("Reading from %s requires libv4l2, but Wine was compiled without libv4l2 support.\n", device->path);
+ #endif
+         goto error;
+     }
+@@ -623,7 +657,7 @@ static NTSTATUS v4l_device_start( void *args )
+ 
+     if (device->started) return S_OK;
+ 
+-    if (xioctl(device->fd, VIDIOC_S_FMT, &device->device_format) == -1)
++    if (device_ioctl(device, VIDIOC_S_FMT, &device->device_format) == -1)
+     {
+         ERR("Failed to set pixel format: %s.\n", strerror(errno));
+         return errno == EBUSY ? HRESULT_FROM_WIN32(ERROR_NO_SYSTEM_RESOURCES) : VFW_E_TYPE_NOT_ACCEPTED;
+@@ -632,6 +666,27 @@ static NTSTATUS v4l_device_start( void *args )
+     return S_OK;
+ }
+ 
++/* Give the camera back when the graph is stopped. A V4L2 device only lets one
++ * file descriptor stream: as long as this one stays open after read() has started
++ * the stream, anything else that tries VIDIOC_S_FMT (another capture filter, another
++ * application) fails with EBUSY. */
++static NTSTATUS v4l_device_release( void *args )
++{
++    const struct destroy_params *params = args;
++    struct video_capture_device *device = get_device(params->device);
++
++    pthread_mutex_lock(&device->lock);
++    if (device->fd != -1)
++    {
++        TRACE("Releasing device %s.\n", device->path);
++        video_close(device->fd);
++        device->fd = -1;
++    }
++    device->started = FALSE; /* the format is applied again on the next start */
++    pthread_mutex_unlock(&device->lock);
++    return S_OK;
++}
++
+ static NTSTATUS v4l_device_destroy( void *args )
+ {
+     const struct destroy_params *params = args;
+@@ -656,6 +711,7 @@ const unixlib_entry_t __wine_unix_call_funcs[] =
+     v4l_device_get_prop,
+     v4l_device_set_prop,
+     v4l_device_read_frame,
++    v4l_device_release,
+ };
+ 
+ C_ASSERT( ARRAYSIZE(__wine_unix_call_funcs) == unix_funcs_count );
+@@ -951,6 +1007,7 @@ const unixlib_entry_t __wine_unix_call_wow64_funcs[] =
+     wow64_v4l_device_get_prop,
+     v4l_device_set_prop,
+     wow64_v4l_device_read_frame,
++    v4l_device_release,
+ };
+ 
+ C_ASSERT( ARRAYSIZE(__wine_unix_call_wow64_funcs) == unix_funcs_count );
+diff --git a/dlls/qcap/vfwcapture.c b/dlls/qcap/vfwcapture.c
+index 97f79c9..e2c9580 100644
+--- a/dlls/qcap/vfwcapture.c
++++ b/dlls/qcap/vfwcapture.c
+@@ -265,6 +265,12 @@ static HRESULT vfw_capture_cleanup_stream(struct strmbase_filter *iface)
+     CloseHandle(filter->thread);
+     filter->thread = NULL;
+ 
++    if (filter->init)
++    {
++        struct destroy_params params = { filter->device };
++        V4L_CALL( release, &params );
++    }
++
+     hr = IMemAllocator_Decommit(filter->source.pAllocator);
+     if (hr != S_OK && hr != VFW_E_NOT_COMMITTED)
+         ERR("Failed to decommit allocator, hr %#lx.\n", hr);

@@ -2171,7 +2171,9 @@ def test_proton11_runner():
         wine.WINE_PREFIX,
         launcher.LAUNCHER_PATH,
         launcher.TD_COMMAND,
+        runner.TD_BASE_DIR,
     )
+    runner.TD_BASE_DIR = tmp  # downloads and markers must never touch the real ~/.local/share
     try:
         big = os.path.join(tmp, "big.bin")
         with open(big, "wb") as f:
@@ -2257,7 +2259,7 @@ def test_proton11_runner():
                 [os.path.join(bin_dir, script)] + args, capture_output=True, text=True, env=env
             )
 
-        fake("nvidia-smi", "exit 0\n")
+        fake("nvidia-smi", 'echo "GPU 0: NVIDIA RTX (UUID: x)"\n')
         out = relay("wine64", ["cmd", "/c", "exit"]).stdout
         check("wine64 relay forwards its arguments to umu-run", "ARGS:cmd /c exit" in out)
         check("relay points PROTONPATH at <base>/runner", f"PROTONPATH:{wine.RUNNER_DIR}" in out)
@@ -2276,6 +2278,16 @@ def test_proton11_runner():
         fake("nvidia-smi", "exit 1\n")
         out = relay("wine64", ["x"]).stdout
         check("no NVIDIA driver: nvidia-libs left off", "NVLIBS:unset" in out and "FILTER:unset" in out)
+
+        # "nvidia-smi -L" exits 0 even when the GPU dropped off after boot
+        fake("nvidia-smi", 'echo "No devices found."; exit 0\n')
+        out = relay("wine64", ["x"]).stdout
+        check(
+            "driver loaded but no GPU (exit 0, 'No devices found.'): nvidia-libs left off",
+            "NVLIBS:unset" in out and "FILTER:unset" in out,
+        )
+        fake("nvidia-smi", 'echo "GPU 0: NVIDIA GeForce RTX 3070 (UUID: GPU-x)"; exit 0\n')
+        check("a real GPU line enables nvidia-libs again", "NVLIBS:1" in relay("wine64", ["x"]).stdout)
 
         with open(os.path.join(tmp, "proton11.user.env"), "w") as f:
             f.write("export GAMEID=custom-id\n")
@@ -2297,6 +2309,20 @@ def test_proton11_runner():
         check("launcher reads the runner kind marker", 'RUNNER_KIND="soda"' in content and "/.runner" in content)
         check("launcher requires umu-run on the proton11 runner", "command -v umu-run" in content and '"$RUNNER_KIND" = "proton11"' in content)
         check("launcher sources the Proton environment files", "proton11.env" in content and "proton11.user.env" in content)
+
+        guard = next(l for l in content.splitlines() if l.startswith("if command -v nvidia-smi"))
+
+        def launcher_offloads(smi_body: str) -> bool:
+            fake("nvidia-smi", smi_body)
+            r = subprocess.run(
+                ["bash", "-c", guard + "\n echo OFFLOAD\nfi"],
+                capture_output=True, text=True, env=dict(base_env),
+            )
+            return "OFFLOAD" in r.stdout
+
+        check("launcher offload guard: real GPU line -> offload", launcher_offloads('echo "GPU 0: NVIDIA RTX (UUID: x)"\n'))
+        check("launcher offload guard: 'No devices found.' (exit 0) -> no offload", not launcher_offloads('echo "No devices found."\n'))
+        check("launcher offload guard: failing nvidia-smi -> no offload", not launcher_offloads("exit 9\n"))
         check(
             "launcher skips the NewProject.toe re-check on proton11 once stamped",
             ".newproject_fix_stamp" in content and '"$RUNNER_KIND" != "proton11"' in content,
@@ -2369,6 +2395,137 @@ def test_proton11_runner():
         finally:
             runner.download_file, runner.NVCUDA_PATCHED_SHA256 = saved_dl, saved_sha
 
+        # ── patched qcap: webcam release fix, a PE dll + unix library pair ──
+        import io
+        import tarfile as _tarfile
+
+        qcap_dir = {
+            "qcap.dll": os.path.join(wine.RUNNER_DIR, "files", "lib", "wine", "x86_64-windows", "qcap.dll"),
+            "qcap.so": os.path.join(wine.RUNNER_DIR, "files", "lib", "wine", "x86_64-unix", "qcap.so"),
+        }
+        for dest in qcap_dir.values():
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+
+        def write_stock():
+            for dest in qcap_dir.values():
+                for stale in (dest, dest + ".orig"):  # every scenario starts from a fresh stock install
+                    if os.path.exists(stale):
+                        os.chmod(stale, 0o755)
+                        os.remove(stale)
+                with open(dest, "wb") as f:
+                    f.write(b"stock " + os.path.basename(dest).encode())
+                os.chmod(dest, 0o555)  # Proton ships them read-only
+
+        new_bytes = {"qcap.dll": b"patched dll", "qcap.so": b"patched so"}
+        sha = lambda b: hashlib.sha256(b).hexdigest()  # noqa: E731
+        archive = os.path.join(tmp, "qcap-test.tar.gz")
+
+        def make_archive(contents):
+            with _tarfile.open(archive, "w:gz") as tar:
+                for name, data in contents.items():
+                    info = _tarfile.TarInfo(name)
+                    info.size = len(data)
+                    tar.addfile(info, io.BytesIO(data))
+            with open(archive, "rb") as f:
+                return sha(f.read())
+
+        saved_q = (runner.download_file, runner._QCAP_FILES, runner.QCAP_PATCHED_SHA256, os.replace)
+        dl_calls = []
+
+        def qcap_download(url, dest, *a, **kw):
+            dl_calls.append(url)
+            shutil.copy2(archive, dest)
+            return True
+
+        try:
+            runner.download_file = qcap_download
+            runner._QCAP_FILES = tuple(
+                (n, os.path.relpath(qcap_dir[n], wine.RUNNER_DIR), sha(new_bytes[n])) for n in ("qcap.dll", "qcap.so")
+            )
+            write_stock()
+            runner.QCAP_PATCHED_SHA256 = make_archive(new_bytes)
+            quiet = contextlib.redirect_stdout(io.StringIO())
+            with quiet:
+                ok = runner.install_patched_qcap()
+            got = {n: open(d, "rb").read() for n, d in qcap_dir.items()}
+            check("patched qcap: both files replaced", ok and got == new_bytes)
+            check(
+                "patched qcap: stock files kept as .orig",
+                all(open(d + ".orig", "rb").read() == b"stock " + os.path.basename(d).encode() for d in qcap_dir.values()),
+            )
+            check("patched qcap: files are executable", all(os.access(d, os.X_OK) for d in qcap_dir.values()))
+            check("patched qcap: no staging leftovers", not any(f.endswith(".new") for d in qcap_dir.values() for f in os.listdir(os.path.dirname(d))))
+
+            dl_calls.clear()
+            with quiet:
+                ok = runner.install_patched_qcap()
+            check("patched qcap already in place: no re-download", ok and not dl_calls)
+
+            # wrong archive checksum -> nothing is touched
+            write_stock()
+            runner.QCAP_PATCHED_SHA256 = "0" * 64
+            with quiet, contextlib.redirect_stderr(io.StringIO()):
+                ok = runner.install_patched_qcap()
+            check("patched qcap: wrong archive checksum is refused", not ok and open(qcap_dir["qcap.so"], "rb").read() == b"stock qcap.so")
+
+            # archive that does not contain what the code pinned -> refused
+            write_stock()
+            runner.QCAP_PATCHED_SHA256 = make_archive({"qcap.dll": b"something else", "qcap.so": new_bytes["qcap.so"]})
+            with quiet, contextlib.redirect_stderr(io.StringIO()):
+                ok = runner.install_patched_qcap()
+            check(
+                "patched qcap: a member that does not match its pinned checksum is refused",
+                not ok and open(qcap_dir["qcap.dll"], "rb").read() == b"stock qcap.dll",
+            )
+
+            # second replacement fails -> the first one is rolled back (never a mismatched pair)
+            write_stock()
+            runner.QCAP_PATCHED_SHA256 = make_archive(new_bytes)
+            real_replace, count = os.replace, []
+
+            def flaky_replace(src, dst):
+                count.append(dst)
+                if len(count) == 2:
+                    raise OSError("disk full")
+                return real_replace(src, dst)
+
+            os.replace = flaky_replace
+            try:
+                with quiet, contextlib.redirect_stderr(io.StringIO()):
+                    ok = runner.install_patched_qcap()
+            finally:
+                os.replace = real_replace
+            check(
+                "patched qcap: a failure half way restores the stock pair",
+                not ok and all(open(d, "rb").read() == b"stock " + os.path.basename(d).encode() for d in qcap_dir.values()),
+            )
+
+            # a build without qcap is left alone
+            for d in qcap_dir.values():
+                os.chmod(d, 0o755)
+                os.remove(d)
+            with quiet, contextlib.redirect_stderr(io.StringIO()):
+                ok = runner.install_patched_qcap()
+            check("patched qcap: a runner without qcap is skipped", not ok)
+        finally:
+            runner.download_file, runner._QCAP_FILES, runner.QCAP_PATCHED_SHA256, os.replace = saved_q
+
+        check("qcap archive sha256 is pinned", bool(hexre.match(runner.QCAP_PATCHED_SHA256)))
+        check("qcap file sha256s are pinned", all(hexre.match(sha_) for _, _, sha_ in runner._QCAP_FILES))
+
+        # ── nvidia_driver_works(): the exit code alone proves nothing ──
+        saved_path = os.environ["PATH"]
+        os.environ["PATH"] = base_env["PATH"]
+        try:
+            fake("nvidia-smi", 'echo "GPU 0: NVIDIA RTX (UUID: x)"\n')
+            check("nvidia_driver_works: GPU listed", runner.nvidia_driver_works())
+            fake("nvidia-smi", 'echo "No devices found."\n')
+            check("nvidia_driver_works: exit 0 but no devices", not runner.nvidia_driver_works())
+            fake("nvidia-smi", "exit 6\n")
+            check("nvidia_driver_works: nvidia-smi fails", not runner.nvidia_driver_works())
+        finally:
+            os.environ["PATH"] = saved_path
+
         # ── describe_runner / dry-run ──
         runner.set_runner_kind("soda")
         check("describe_runner is empty on soda", runner.describe_runner() == "")
@@ -2380,7 +2537,7 @@ def test_proton11_runner():
         r = subprocess.run(
             [sys.executable, "-I", os.path.join(os.path.dirname(__file__), "..", "td-install"),
              "--install", "--dry-run", "--headless", "--runner", "proton11"],
-            capture_output=True, text=True, env=env,
+            capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL, timeout=120,
         )
         check("td-install --runner proton11 --dry-run exits cleanly", r.returncode == 0)
     finally:
@@ -2391,45 +2548,8 @@ def test_proton11_runner():
             wine.WINE_PREFIX,
             launcher.LAUNCHER_PATH,
             launcher.TD_COMMAND,
+            runner.TD_BASE_DIR,
         ) = saved
-        shutil.rmtree(tmp, ignore_errors=True)
-
-
-def test_launcher_nvidia_guard():
-    print("\n── Launcher NVIDIA offload guard ──")
-    import contextlib
-    import io
-
-    import td_lib.launcher as launcher
-
-    tmp = os.path.realpath(tempfile.mkdtemp(prefix="td_guard_test_"))
-    saved = (launcher.LAUNCHER_PATH, launcher.TD_COMMAND)
-    try:
-        launcher.LAUNCHER_PATH = os.path.join(tmp, "launch-touchdesigner.sh")
-        launcher.TD_COMMAND = os.path.join(tmp, "touchdesigner")
-        with contextlib.redirect_stdout(io.StringIO()):
-            launcher.create_launcher_script()
-        with open(launcher.LAUNCHER_PATH) as f:
-            guard = next(l for l in f.read().splitlines() if l.startswith("if command -v nvidia-smi"))
-
-        fakebin = os.path.join(tmp, "bin")
-        os.makedirs(fakebin)
-
-        def offloads(smi_body: str) -> bool:
-            with open(os.path.join(fakebin, "nvidia-smi"), "w") as f:
-                f.write("#!/bin/bash\n" + smi_body)
-            os.chmod(os.path.join(fakebin, "nvidia-smi"), 0o755)
-            env = dict(os.environ, PATH=f"{fakebin}:{os.environ['PATH']}")
-            r = subprocess.run(["bash", "-c", guard + "\n echo OFFLOAD\nfi"], capture_output=True, text=True, env=env)
-            return "OFFLOAD" in r.stdout
-
-        check("guard: a real GPU line enables the offload", offloads('echo "GPU 0: NVIDIA RTX (UUID: x)"\n'))
-        # "nvidia-smi -L" exits 0 even when the GPU dropped off after boot, and forcing the
-        # NVIDIA GLX vendor then leaves TouchDesigner on a blank screen
-        check("guard: 'No devices found.' with exit 0 does not", not offloads('echo "No devices found."\n'))
-        check("guard: a failing nvidia-smi does not", not offloads("exit 9\n"))
-    finally:
-        launcher.LAUNCHER_PATH, launcher.TD_COMMAND = saved
         shutil.rmtree(tmp, ignore_errors=True)
 
 
@@ -2488,7 +2608,6 @@ def main():
     test_install_sh_sync()
     test_release_version_consistency()
     test_proton11_runner()
-    test_launcher_nvidia_guard()
 
     total = PASS + FAIL
     print(f"\n{'=' * 60}")
