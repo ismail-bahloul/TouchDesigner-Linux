@@ -25,6 +25,11 @@ All notable changes to this project are documented here.
 
 ### Fixes
 
+- The NVIDIA offload guard of the launcher accepted a driver that had lost its GPU:
+  `nvidia-smi -L` prints `No devices found.` but exits 0, so the launcher forced the NVIDIA
+  GLX vendor and TouchDesigner stayed on a blank screen with no message. The launcher now
+  requires an actual `GPU` line before enabling the offload, and falls back to the other
+  GPU otherwise.
 - `td-install --patch-toe` crashed with `NameError: TD_BASE_DIR` before doing
   anything, and, once past that, with `NotADirectoryError`: the current
   `wine_ui_fixes.tox` expands to files as well as a folder, and the merge called
